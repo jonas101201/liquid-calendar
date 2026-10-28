@@ -8,6 +8,8 @@ from PySide6.QtWidgets import QApplication
 from PySide6.QtQml import QQmlApplicationEngine,QQmlExpression
 from PySide6.QtCore import QUrl,QTimer,QEventLoop,qInstallMessageHandler,QLocale
 from PySide6.QtQuick import QQuickWindow
+from PySide6.QtTest import QTest
+from PySide6.QtCore import Qt
 QLocale.setDefault(QLocale('en_GB'));app=QApplication([]);logs=[];qInstallMessageHandler(lambda typ,ctx,text:logs.append(text))
 temp=tempfile.TemporaryDirectory(prefix='reviewer-language-');p=pathlib.Path(temp.name);shutil.copytree(src/'qml',p/'qml')
 s=(p/'qml/App.qml').read_text().replace('id:win','id:win\n function review(code){return eval(code);}',1);(p/'qml/App.qml').write_text(s)
@@ -80,6 +82,27 @@ expr('editorSurface.review('+json.dumps('editor.checklist=[{id:"verify",title:""
 expr('editorSurface.review('+json.dumps('editor.checklist=[{id:"verify",title:"Verify package",done:true}];saveButton.clicked()')+')');settle()
 assert st.read()[0]['checklist'][0]['done']
 b.undo();assert st.read()==[saved]
+# Reproduce actual typing into delegate fields, rather than assigning the draft.
+b.edit(saved['id'],'',False);settle()
+expr('editorSurface.review("addChecklistStep.clicked()")');settle()
+expr('editorSurface.review("checklistRows.itemAt(1).children[1].forceActiveFocus()")');settle()
+for char in 'second step':QTest.keyClick(win,Qt.Key(ord(char.upper())))
+settle()
+assert expr('editorSurface.review("checklistRows.itemAt(1).children[1].text")')=='second step'
+assert expr('editorSurface.review("editor.checklist[1].title")')=='second step', 'Typed checklist text did not reach saved draft'
+# Adding another row must retain earlier input; toggling checks must use the draft too.
+expr('editorSurface.review("addChecklistStep.clicked()")');settle()
+assert expr('editorSurface.review("checklistRows.itemAt(1).children[1].text")')=='second step'
+expr('editorSurface.review("checklistRows.itemAt(1).children[0].toggle();checklistRows.itemAt(1).children[0].clicked()")');settle()
+assert expr('editorSurface.review("editor.checklist[1].done")') is True
+expr('editorSurface.review("checklistRows.itemAt(2).children[2].clicked()")');settle()
+expr('editorSurface.review("saveButton.clicked()")');settle()
+assert len(st.read()[0]['checklist'])==2
+assert st.read()[0]['checklist'][1]['title']=='second step'
+assert st.read()[0]['checklist'][1]['done'] is True
+b.edit(st.read()[0]['id'],'',False);settle()
+assert expr('editorSurface.review("checklistRows.itemAt(1).children[1].text")')=='second step'
+expr('editorSurface.review("editor.close()")')
 print('0.2 task editor Save/reopen/validation, project filters and checklist Undo passed.')
 print('Recurring task Qt slot, hidden calendar fallback and visible app-wide group Undo passed.')
 print('English dates/search; German aliases; non-ASCII data preserved; 14 small-window views rendered.')

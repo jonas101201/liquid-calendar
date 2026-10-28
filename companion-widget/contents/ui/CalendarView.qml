@@ -547,15 +547,15 @@ Item {
                         RowLayout {
                             Layout.fillWidth:true
                             Label {text:"Checklist · "+editor.checklist.filter(function(c){return c.done;}).length+" / "+editor.checklist.length;color:root.muted;Layout.fillWidth:true}
-                            GlassButton {objectName:"addChecklistStep";text:"+ Step";enabled:editor.checklist.length<100;onClicked:editor.checklist=editor.checklist.concat([{id:Date.now().toString(36)+'-'+Math.random().toString(36).slice(2),title:"",done:false}])}
+                            GlassButton {id:addChecklistStep;objectName:"addChecklistStep";text:"+ Step";enabled:editor.checklist.length<100;onClicked:editor.checklist=editor.checklist.concat([{id:Date.now().toString(36)+'-'+Math.random().toString(36).slice(2),title:"",done:false}])}
                         }
-                        Repeater {model:editor.checklist
+                        Repeater {id:checklistRows;model:editor.checklist
                             delegate:RowLayout {
                                 required property int index
                                 required property var modelData
                                 Layout.fillWidth:true
-                                GlassCheck {checked:modelData.done;Accessible.name:"Complete checklist step";onClicked:{modelData.done=checked;editor.checklist=editor.checklist.slice();}}
-                                GlassField {Layout.fillWidth:true;text:modelData.title;maximumLength:200;placeholderText:"Describe this step";Accessible.name:"Checklist step title";onTextEdited:modelData.title=text;selectByMouse:true}
+                                GlassCheck {checked:modelData.done;Accessible.name:"Complete checklist step";onClicked:{editor.checklist[index].done=checked;editor.checklist=editor.checklist.slice();}}
+                                GlassField {Layout.fillWidth:true;text:modelData.title;maximumLength:200;placeholderText:"Describe this step";Accessible.name:"Checklist step title";onTextEdited:{editor.checklist[index].title=text;editor.validation="";} selectByMouse:true}
                                 GlassButton {text:"−";Accessible.name:"Remove checklist step";onClicked:{var items=editor.checklist.slice();items.splice(index,1);editor.checklist=items;}}
                             }
                         }
@@ -597,7 +597,8 @@ Item {
                             if(projectField.text.trim()||(previous&&previous.project!==undefined))e.project=projectField.text.trim();
                             if(editor.checklist.length||(previous&&previous.checklist!==undefined))e.checklist=JSON.parse(JSON.stringify(editor.checklist));
                         } else {delete e.priority;delete e.project;delete e.checklist;}
-                        if(task.checked&&!Cal.validTaskDetails(e)){editor.validation="Check project name (up to 80 characters; * is reserved) and checklist step titles (1–200 characters).";return;}
+                        if(task.checked&&e.project==="*"){editor.validation="Choose a different project name; * is reserved.";return;}
+                        if(task.checked&&!Cal.validTaskDetails(e)){editor.validation="Every checklist step needs a title of 1–200 characters. Fill in or remove empty steps.";return;}
                         if(!Cal.valid(e)) { editor.validation="Check the title and, for scheduled entries, the date, time and repeat end date. Notes can contain up to 10,000 characters."; return; }
                         var next=root.events.filter(function(v){return v.id!==e.id;}); next.push(e);
                         if(root.store(next)) { if(e.date)root.select(Cal.parse(e.date));else{searchInput.clear();kindBox.currentIndex=3;} editor.close(); } else editor.validation=root.error;
