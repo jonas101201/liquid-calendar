@@ -1,6 +1,6 @@
-# Targeted maintenance refactor — 0.3.8 preparation
+# Targeted maintenance refactor — released as 0.3.8.1
 
-Scope: reduce duplicated implementation while preserving the existing public behavior after 0.3.7. No new feature, visual redesign, database format change or personal-data migration. The public release remains 0.3.7-beta.1.
+Scope: reduce duplicated implementation while preserving the existing public behavior after 0.3.7. No new feature, visual redesign, database format change or personal-data migration. Published as **0.3.8.1** (beta prerelease) at the maintainer's request. The 0.3.8-beta.1 preparation was not published separately. See [the release record](RELEASE_0.3.8.1.md).
 
 ## Changes
 

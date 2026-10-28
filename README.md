@@ -2,13 +2,13 @@
 
 A local desktop calendar and task planner for **Fedora Linux / KDE Plasma 6**. English interface, no account required.
 
-**Development build: 0.3.8-beta.1** · Latest published beta: **0.3.7-beta.1** · Released **2026-10-28** · **GPL-3.0-or-later**
+**Current beta: 0.3.8.1** · Released **2026-10-28** · **GPL-3.0-or-later**
 
-[Download 0.3.7 Beta 1](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.3.7-beta.1) · [Release notes](RELEASE_NOTES.md) · [Known issues](KNOWN_ISSUES.md) · [Roadmap](ROADMAP.md)
+[Download 0.3.8.1](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.3.8.1) · [Release notes](RELEASE_NOTES.md) · [Known issues](KNOWN_ISSUES.md) · [Roadmap](ROADMAP.md)
 
 ![Today view with synthetic example data](docs/screenshots/today.png)
 
-The 0.3.8 development branch is a targeted maintenance refactor; it has not been released. See [the refactor record](docs/REFACTOR_0.3.8.md).
+**0.3.8.1** publishes the targeted maintenance refactor under the version requested by the maintainer. It remains a beta prerelease. See [the refactor record](docs/REFACTOR_0.3.8.md) and [release record](docs/RELEASE_0.3.8.1.md).
 
 ## Features
 
@@ -37,7 +37,7 @@ See the [roadmap](ROADMAP.md) for the ten beta milestones, planned features and 
 
 Requirements: Fedora/KDE Plasma 6, **Python 3.10–3.14**, venv/pip support, network access to PyPI and the system Qt platform libraries. `notify-send` is needed for notifications. Other systems are not validated.
 
-Download an archive from the [0.3.7 Beta 1 release](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.3.7-beta.1), extract it and open a terminal in its folder:
+Download an archive from the [0.3.8.1 release](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.3.8.1), extract it and open a terminal in its folder:
 
 ```bash
 python3 installieren.py

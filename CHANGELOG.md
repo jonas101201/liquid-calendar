@@ -2,7 +2,9 @@
 
 **0.3.6-beta.1** is the cumulative public release of the 0.3.x development work. Versions 0.3.0–0.3.5 below are unpublished historical snapshots. Patch numbers were assigned retrospectively on 28 October 2026, one per functional code patch after the initial 0.3.0 baseline. Source links identify the original implementation commits, which retain their original version strings. No commits or published tags were rewritten. Documentation-only commits are not numbered separately.
 
-## 0.3.8-beta.1 — Unreleased
+## 0.3.8.1 — 2026-10-28
+
+Beta prerelease, using the maintainer-requested version. The 0.3.8-beta.1 preparation was not published separately.
 
 - Share identical text-field, checkbox and editable-number controls between editors and date/time pickers, preserving their palette bindings and interaction behavior.
 - Treat qml/ as the canonical source for shared controls/calendar JavaScript. Synchronize standalone widget copies with scripts/sync_widget_sources.py and reject drift in CI, source packaging and installation before changing installed files.
