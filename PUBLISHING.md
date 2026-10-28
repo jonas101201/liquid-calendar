@@ -18,6 +18,10 @@ The maintainer brought publication forward from 29 October to **28 October 2026*
 
 The maintainer renewed release authorization on 28 October 2026. Version 0.3.6-beta.1 is the first published 0.3.x beta, including all six development patches after the 0.3.0 baseline. See [the release record](docs/RELEASE_0.3.6.md). Earlier published tags/assets remain unchanged; intermediate development versions were not published separately.
 
+## Preparing 0.3.7-beta.1
+
+The targeted bug audit is on `fix/0.3.7-beta.1`. The development app/widget use that version, while 0.3.6-beta.1 remains the public release. No release is scheduled or authorized by the audit request. A future release requires final CI and explicit publication authorization.
+
 ## Preparing a future release
 
 1. Choose the next version using ROADMAP.md. Bug fixes increment the patch version; feature milestones increment the minor version.

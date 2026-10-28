@@ -72,7 +72,7 @@ Item {
         try { db.transaction(function(tx) { tx.executeSql('INSERT OR REPLACE INTO state VALUES (?,?)', ['preferences', JSON.stringify({opacity:glassOpacity,accent:String(accent)})]); }); }
         catch(e) { error="Could not save settings: "+e; }
     }
-    function select(d) { selected=d; page=Cal.month(d,0); }
+    function select(d) { if(!d||!Cal.parse(Cal.key(d)))return; selected=d; page=Cal.month(d,0); }
     function jump(d) {
         searchInput.clear(); kindBox.currentIndex=0; mode=0; select(d);
     }
@@ -84,7 +84,7 @@ Item {
         if(store(next)) { deletedEntry=null; undoExpiry.stop(); }
     }
     function navigate(n) {
-        if(mode===0) { page=Cal.month(page,n); selected=new Date(page); }
+        if(mode===0) { var next=Cal.month(page,n);if(!Cal.parse(Cal.key(next)))return;page=next; selected=new Date(page); }
         else select(Cal.add(selected,n*(mode===1?7:30)));
     }
     function openEvent(e, date) {

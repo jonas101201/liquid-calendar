@@ -2,6 +2,14 @@
 
 **0.3.6-beta.1** is the cumulative public release of the 0.3.x development work. Versions 0.3.0–0.3.5 below are unpublished historical snapshots. Patch numbers were assigned retrospectively on 28 October 2026, one per functional code patch after the initial 0.3.0 baseline. Source links identify the original implementation commits, which retain their original version strings. No commits or published tags were rewritten. Documentation-only commits are not numbered separately.
 
+## 0.3.7-beta.1 — Unreleased
+
+- Exact ISO/DMY date and relative-day searches return actual occurrences only, excluding cancelled days and undated title matches. App and widget agree.
+- Planning suggestions and final validation advance past already-started minutes, including seconds/microseconds.
+- Revalidate task scheduling availability inside the SQLite write transaction, rejecting bookings inserted after the initial check.
+- Bound recurrence scans and week rendering/navigation to the supported date range; disable drop targets for nonexistent days.
+- Regression tests cover injected concurrent bookings, exact-date results, sub-minute timing and actual Qt rendering at date endpoints. An independent agent reviewed the fixes and performed a second verification round; see the [audit record](docs/BUG_AUDIT_0.3.7.md).
+
 ## 0.3.6-beta.1 — 2026-10-28
 
 Source: [`144d3e5`](https://github.com/jonas101201/liquid-calendar/commit/144d3e518c02163168491443a376711228a1908f).

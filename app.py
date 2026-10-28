@@ -211,7 +211,12 @@ class Bridge(QObject):
     @Property('QVariantList',notify=changed)
     def weekDays(self):
         start=self._selected-dt.timedelta(days=self._selected.weekday())
-        return [{'date':(start+dt.timedelta(days=n)).isoformat(),'name':WEEKDAYS[n][:2].upper(),'number':(start+dt.timedelta(days=n)).day,'today':start+dt.timedelta(days=n)==dt.date.today()} for n in range(7)]
+        rows=[]
+        for n in range(7):
+            ordinal=start.toordinal()+n
+            day=dt.date.fromordinal(ordinal) if dt.date(1000,1,1).toordinal()<=ordinal<=dt.date.max.toordinal() else None
+            rows.append({'date':day.isoformat() if day else '', 'name':WEEKDAYS[n][:2].upper(),'number':day.day if day else '—','today':day==dt.date.today()})
+        return rows
     @Property('QVariantList',notify=changed)
     def weekItems(self):
         start=self._selected-dt.timedelta(days=self._selected.weekday())
@@ -238,11 +243,11 @@ class Bridge(QObject):
             current=self.store.read();compatible=self.check_compatibility();templates=self.store.templates()
             if current!=self._events or compatible!=self._compatible or templates!=self._templates:self._events=current;self._compatible=compatible;self._templates=templates;self.changed.emit()
         except Exception as e:self.fail(e)
-    def commit(self,desired,base=None,label="Saved",allow_occurrences=False,project_name=None):
+    def commit(self,desired,base=None,label="Saved",allow_occurrences=False,project_name=None,planning_slot=None):
         if not self._compatible:
             self.fail("Update the desktop calendar using “Connect” first. The app is read-only until connected.");return None
         try:
-            before,after=self.store.merge(desired,self._events if base is None else base,allow_occurrences=allow_occurrences,project_name=project_name)
+            before,after=self.store.merge(desired,self._events if base is None else base,allow_occurrences=allow_occurrences,project_name=project_name,planning_slot=planning_slot)
             self._undo=(before,after) if before!=after else self._undo
             if before!=after:self._undo_project_filter=None
             self._events=after;self._error='';self.errorChanged.emit();self.changed.emit();self.note(label);return after
@@ -267,7 +272,8 @@ class Bridge(QObject):
         except Exception as e:self.fail(e)
     @Slot(int)
     def navigate(self,n):
-        self._selected+=dt.timedelta(days=n*(7 if self._view=='week' else 1));self.changed.emit()
+        ordinal=self._selected.toordinal()+n*(7 if self._view=='week' else 1)
+        self._selected=dt.date.fromordinal(max(dt.date(1000,1,1).toordinal(),min(dt.date.max.toordinal(),ordinal)));self.changed.emit()
     @Slot()
     def today(self):self._selected=dt.date.today();self.changed.emit()
     @Slot(str)
@@ -398,7 +404,7 @@ class Bridge(QObject):
             self.commit(desired,label='Checklist updated',allow_occurrences=True)
         except Exception as e:self.fail(e)
     @Slot(str,str,str,int,str)
-    def move(self,ident,original,target,minute,expected,as_task=False):
+    def move(self,ident,original,target,minute,expected,as_task=False,planning_slot=None):
         try:
             if not 0<=minute<=1439:raise ValueError("Invalid time.")
             parse(target);e=next(copy.deepcopy(e) for e in self._events if e['id']==ident)
@@ -410,7 +416,7 @@ class Bridge(QObject):
             else:
                 if not occurs(e,parse(original)):raise ConflictError("This occurrence no longer exists.")
                 child=copy.deepcopy(e);child.update(id=uuid.uuid4().hex,date=target,time=time,allDay=False if as_task else e['allDay'],repeat='none',until='',exceptions={},occurrenceOf=ident,occurrenceDate=original,originHash=fingerprint(e));child.pop('weekdays',None);desired.append(child)
-            self.commit(desired,label="Event rescheduled · overlaps are highlighted in red",allow_occurrences=True)
+            self.commit(desired,label="Event rescheduled · overlaps are highlighted in red",allow_occurrences=True,planning_slot=planning_slot)
         except Exception as e:self.fail(e)
     @Slot(str,str,result='QVariantList')
     def slotsFor(self,ident,original):
@@ -438,7 +444,7 @@ class Bridge(QObject):
             if parse(date)<dt.date.today():raise ValueError("Choose today or a future date.")
             if not slot_available(self._events,parse(date),e['minutes'],minute,ident,original):
                 raise ConflictError("This time slot is no longer available. Search again.")
-            self.move(ident,original,date,minute,expected,True)
+            self.move(ident,original,date,minute,expected,True,planning_slot=(parse(date),e['minutes'],minute,ident,original))
             return not bool(self._error)
         except Exception as e:self.fail(e);return False
     @Slot()

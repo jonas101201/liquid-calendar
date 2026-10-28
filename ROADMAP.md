@@ -47,3 +47,5 @@ Share feature suggestions and reproducible bug reports through [GitHub Issues](h
 ## Development patch tracking
 
 Each functional patch after the initial 0.3.0 development baseline received the next patch number, retaining `-beta.1`. Documentation-only commits were not numbered separately. **0.3.6-beta.1** publishes the cumulative result; 0.3.0–0.3.5 remain unpublished historical snapshots. Existing published tags are never moved. See the [per-patch changelog](CHANGELOG.md). Future bug fixes increment the patch number, for example 0.3.7-beta.1; the next feature milestone is 0.4.0-beta.1.
+
+The **0.3.7-beta.1** bug-fix patch is in preparation on `fix/0.3.7-beta.1`; it does not constitute a new feature milestone or a published release.

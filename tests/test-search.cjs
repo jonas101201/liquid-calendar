@@ -28,3 +28,20 @@ assert.equal(search([e],'',2).length,0);
 assert.equal(search([{...e,task:true,done:true}],'',4).length,1);
 assert.equal(c.instances([{...e,date:'2026-10-28',task:true}],today,1,'',-1,1).length,0);
 console.log('24 Such-, Datums-, Serien- und Filterprüfungen bestanden.');
+for (const file of ['qml/Calendar.js','companion-widget/contents/ui/Calendar.js']) {
+ const x={};vm.createContext(x);vm.runInContext(fs.readFileSync(file,'utf8'),x);
+ const now=x.parse('2026-10-28');const series={...weekly,exceptions:{'2026-10-07':{cancelled:true}}};
+ for(const q of ['2026-10-07','7.10.2026','7.10'])assert.equal(x.searchAll([series],q,-1,0,now).length,0,file+' '+q);
+ for(const q of ['2026-11-04','4.11.2026','4.11'])assert.equal(x.searchAll([series],q,-1,0,now)[0].date,'2026-11-04');
+ const undated={...e,task:true,date:'',time:'',repeat:'none',reminder:-1,title:'tomorrow 2026-10-28'};
+ for(const q of ['tomorrow','2026-10-28'])assert.equal(x.searchAll([undated],q,-1,0,now).length,0);
+}
+console.log('Exact-date search excludes cancelled occurrences and undated text matches in app and widget.');
+
+for(const file of ['qml/Calendar.js','companion-widget/contents/ui/Calendar.js']) {
+ const x={};vm.createContext(x);vm.runInContext(fs.readFileSync(file,'utf8'),x);
+ const boundary={...weekly,date:'9999-12-31',weekdays:[0]};
+ assert.equal(x.nextOccurrence(boundary,x.parse('2026-10-28')),null);
+ assert.equal(x.searchAll([boundary],'zah',-1,0,x.parse('2026-10-28')).length,0);
+ assert.equal(x.occurs({...daily,date:'1000-01-01'},new Date(999,11,31,12)),false);
+}

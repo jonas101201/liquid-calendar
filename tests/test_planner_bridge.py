@@ -128,4 +128,39 @@ class TestOccurrenceMergeBridge(unittest.TestCase):
   self.assertFalse(self.bridge.mergeEvents(json.dumps(a),json.dumps(b)))
   self.assertEqual(len(self.store.read()),2)
 
+class AtomicSchedulingTests(unittest.TestCase):
+ setUp=TestBridge.setUp
+ tearDown=TestBridge.tearDown
+ def test_booking_between_suggestion_check_and_commit_is_rejected(self):
+  task=event(id='task',task=True,date='',time='',reminder=-1)
+  self.store.merge([task],[]);self.bridge.reload()
+  original_merge=self.store.merge
+  competitor=Store(self.store.path)
+  busy=event(id='busy',date='2032-01-05',time='09:00')
+  def racing_merge(desired,base,**kwargs):
+   competitor.merge([task,busy],[task])
+   return original_merge(desired,base,**kwargs)
+  with patch.object(self.store,'merge',side_effect=racing_merge):
+   self.assertFalse(self.bridge.scheduleTask('task','','2032-01-05',540,fingerprint(task)))
+  saved=self.store.read()
+  self.assertEqual(next(e for e in saved if e['id']=='task'),task)
+  self.assertIn(busy,saved)
+ def test_atomic_check_excludes_only_the_moved_occurrence(self):
+  task=event(id='task',task=True,repeat='daily',date='2032-01-05')
+  self.store.merge([task],[]);self.bridge.reload()
+  self.assertTrue(self.bridge.scheduleTask('task','2032-01-05','2032-01-05',540,fingerprint(task)))
+  self.assertEqual(len(self.store.read()),2)
+
+class DateBoundaryTests(unittest.TestCase):
+ setUp=TestBridge.setUp
+ tearDown=TestBridge.tearDown
+ def test_week_headers_and_navigation_are_bounded(self):
+  self.bridge.setView('week');self.bridge.selectDate('9999-12-31')
+  rows=self.bridge.weekDays;self.assertEqual(len(rows),7);self.assertEqual(rows[-1]['date'],'')
+  self.assertEqual(self.bridge.weekItems,[])
+  self.bridge.navigate(1);self.assertEqual(self.bridge.selected,'9999-12-31')
+  self.bridge.selectDate('1000-01-01');self.bridge.navigate(-1)
+  self.assertEqual(self.bridge.selected,'1000-01-01')
+  self.assertTrue(all(not r['date'] or r['date']>='1000-01-01' for r in self.bridge.weekDays))
+
 if __name__=='__main__':unittest.main(verbosity=2)
