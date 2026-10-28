@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.0-beta.1 — Unreleased
+
+- Offline quick entry with English/German dates, explicit times, am/pm, all-day input, durations and an editable preview before saving.
+- Calendar month/year grid, Today/Tomorrow shortcuts, start-time controls and repeat-end picking in app and widget editors.
+- Desktop event-template library: save from the editor, use on the selected day, rename and delete without changing existing events. Templates exclude dates, repeats and series identities.
+- Separate transactional template storage with a 50-template limit, Unicode-aware validation and stale-edit conflict protection. Automatic SQLite backups include templates; event JSON export does not.
+- Regression checks cover parsing ambiguity, preview-only behavior, template persistence/concurrency and actual QML creation flows.
+
 ## 0.2.0-beta.1 — 2026-10-28
 
 - No/low/medium/high task priorities with filtering and sorting.

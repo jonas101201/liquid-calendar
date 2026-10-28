@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 import sqlite3
 from contextlib import contextmanager, closing
-from logic import validate, fingerprint
+from logic import validate, fingerprint, validate_templates
 
 class ConflictError(ValueError):pass
 
@@ -87,6 +87,27 @@ class Store:
         with self.connect() as c:
             row=c.execute('SELECT value FROM state WHERE key=?',('planner-settings',)).fetchone()
         return json.loads(row[0]) if row else {'reminders':True,'theme':'dark'}
+    @staticmethod
+    def templates_conn(c):
+        row=c.execute('SELECT value FROM state WHERE key=?',('event-templates',)).fetchone()
+        return validate_templates(json.loads(row[0])) if row else []
+    def templates(self):
+        with self.connect() as c:return self.templates_conn(c)
+    def write_template(self,template,base=None):
+        if template is not None:validate_templates([template])
+        if base is not None:validate_templates([base])
+        ident=template['id'] if template else base['id']
+        if base and base['id']!=ident:raise ValueError('Template identity changed.')
+        self.backup()
+        with self.connect() as c:
+            c.execute('BEGIN IMMEDIATE');items=self.templates_conn(c)
+            current=next((t for t in items if t['id']==ident),None)
+            if current!=base:raise ConflictError('This template has changed. Reopen the template library.')
+            items=[t for t in items if t['id']!=ident]
+            if template is not None:items.append(copy.deepcopy(template))
+            validate_templates(items)
+            c.execute('INSERT OR REPLACE INTO state VALUES (?,?)',('event-templates',json.dumps(items,ensure_ascii=False)))
+        return items
     def set_settings(self,data):
         with self.connect() as c:c.execute('INSERT OR REPLACE INTO state VALUES (?,?)',('planner-settings',json.dumps(data)))
     def preferences(self,opacity,accent):

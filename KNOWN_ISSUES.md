@@ -1,6 +1,6 @@
 # Known issues and beta limitations
 
-Applies to **Liquid Calendar 0.2.0-beta.1**. Last updated: **2026-10-28**.
+Applies to the **0.3.0-beta.1 preparation**; latest published beta is **0.2.0-beta.1**. Last updated: **2026-10-28**.
 
 This page distinguishes current limitations from issues fixed in earlier beta versions. It is not a guarantee that the beta is free of bugs.
 
@@ -15,6 +15,13 @@ This page distinguishes current limitations from issues fixed in earlier beta ve
 - **Import and export:** JSON import adds new IDs and preserves existing IDs. ICS export includes events, not tasks. ICS import is not implemented.
 - **Shared storage:** app and widget use the same local Plasma database. If an incompatible active widget is detected, editing is blocked until **Connect** reloads it. This briefly refreshes the desktop and panels.
 - **Undo:** app-wide Undo covers the last local app change and refuses to overwrite a newer edit of the same entry. It is not an unlimited history or backup restoration tool.
+
+## Creation scope in 0.3.0
+
+- Quick entry recognizes documented date/time/duration syntax. It does not infer recurring schedules, locations, timezones or arbitrary natural language. Date-like words in a title can be interpreted as scheduling input; review the preview and edit the title if needed.
+- Event templates exclude dates and repeat/series identities. Task templates are not implemented. Template creation and library management are desktop-app functions; the widget includes date/time pickers.
+- Templates live in a separate SQLite state key. Automatic database backups include them; event JSON export/import does not. Template rename/delete is not part of event Undo.
+- Pickers use local dates and 24-hour times. Manual date/time fields remain available. Live Plasma widget validation on multiple desktop configurations remains outside offscreen checks.
 
 ## Task organization scope in 0.2.0
 

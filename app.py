@@ -27,10 +27,12 @@ DEFAULT_DB=Path.home()/'.local/share/plasmashell/QML/OfflineStorage/Databases/dd
 
 class Bridge(QObject):
     changed=Signal(); errorChanged=Signal(); editRequested=Signal('QVariantMap'); noticeChanged=Signal()
+    createRequested=Signal('QVariantMap')
     def __init__(self,store,smoke=False):
         super().__init__();self.store=store;self._events=store.read();self._selected=dt.date.today();self._view='today';self._query='';self._kind='all';self._category=-1;self._agenda_days=14;self._task_order='default';self._planning_filter='all';self._error='';self._notice='';self._undo=None;self._settings=store.settings();self.smoke=smoke
         self._need_widget=False
         self._project_filter='*';self._priority_filter=-1;self._undo_project_filter=None
+        self._templates=store.templates()
         if not smoke:
             try:
                 result=subprocess.run(['/usr/lib64/qt6/bin/qdbus','org.kde.plasmashell','/PlasmaShell','org.kde.PlasmaShell.evaluateScript','var active=false; desktops().forEach(function(d){d.widgets().forEach(function(w){if(w.type==="org.jonas.liquidglass.calendar")active=true;});}); print(active);'],capture_output=True,text=True,timeout=3)
@@ -44,6 +46,42 @@ class Bridge(QObject):
         if not smoke:self.reminder_timer.start(15000)
     @Property(str,constant=True)
     def version(self):return APP_VERSION
+    @Property('QVariantList',notify=changed)
+    def templates(self):return copy.deepcopy(self._templates)
+    @Slot(str,result='QVariantMap')
+    def quickPreview(self,text):
+        try:
+            event=quick_entry(text,dt.date.today(),self._selected)
+            return {'event':event,'summary':event['date']+' · '+('All day' if event['allDay'] else event['time'])+' · '+str(event['minutes'])+' min','error':''}
+        except Exception as e:return {'error':str(e),'summary':''}
+    @Slot(str,str,result=bool)
+    def saveTemplate(self,name,snapshot):
+        try:
+            template=template_from_event(name,json.loads(snapshot))
+            self._templates=self.store.write_template(template);self.changed.emit();self.note('Event template saved');return True
+        except Exception as e:self.fail(e);return False
+    @Slot(str)
+    def useTemplate(self,ident):
+        try:
+            self._templates=self.store.templates()
+            template=next(t for t in self._templates if t['id']==ident)
+            self.createRequested.emit(event_from_template(template,self._selected))
+        except Exception as e:self.fail(e)
+    @Slot(str,str,str,result=bool)
+    def renameTemplate(self,ident,name,snapshot):
+        try:
+            base=json.loads(snapshot)
+            if base['id']!=ident:raise ValueError('Invalid template identity.')
+            new=copy.deepcopy(base);new['name']=name.strip()
+            self._templates=self.store.write_template(new,base);self.changed.emit();return True
+        except Exception as e:self.fail(e);return False
+    @Slot(str,str,result=bool)
+    def deleteTemplate(self,ident,snapshot):
+        try:
+            base=json.loads(snapshot)
+            if base['id']!=ident:raise ValueError('Invalid template identity.')
+            self._templates=self.store.write_template(None,base);self.changed.emit();self.note('Template deleted; events kept');return True
+        except Exception as e:self.fail(e);return False
     def fail(self,error):self._error=str(error);self.errorChanged.emit();return ''
     def note(self,text):self._notice=text;self.noticeChanged.emit()
     def check_compatibility(self):
@@ -197,8 +235,8 @@ class Bridge(QObject):
     @Slot()
     def reload(self):
         try:
-            current=self.store.read();compatible=self.check_compatibility()
-            if current!=self._events or compatible!=self._compatible:self._events=current;self._compatible=compatible;self.changed.emit()
+            current=self.store.read();compatible=self.check_compatibility();templates=self.store.templates()
+            if current!=self._events or compatible!=self._compatible or templates!=self._templates:self._events=current;self._compatible=compatible;self._templates=templates;self.changed.emit()
         except Exception as e:self.fail(e)
     def commit(self,desired,base=None,label="Saved",allow_occurrences=False,project_name=None):
         if not self._compatible:

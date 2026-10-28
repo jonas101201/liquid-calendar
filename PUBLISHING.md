@@ -14,6 +14,10 @@ The release includes source ZIP and TAR archives plus SHA256SUMS. It is marked a
 
 The maintainer brought publication forward from 29 October to **28 October 2026**. See [the release record](docs/RELEASE_0.2.0.md). The former scheduled follow-up is no longer needed.
 
+## Preparing 0.3.0-beta.1
+
+Work is on `prepare/0.3.0-beta.1`; publication has not been requested or scheduled. Follow [the preparation checklist](docs/RELEASE_0.3.0.md). Published 0.2.0 tags/assets remain unchanged.
+
 ## Preparing a future release
 
 1. Choose the next version using ROADMAP.md. Bug fixes increment the patch version; feature milestones increment the minor version.

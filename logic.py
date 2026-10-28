@@ -256,3 +256,77 @@ def export_ics(events):
             chunk+=char
         folded.append(chunk)
     return '\r\n'.join(folded)+'\r\n'
+
+# Creation helpers are deterministic, offline and independent of Qt.
+TEMPLATE_FIELDS=('title','time','minutes','allDay','category','location','notes','reminder')
+
+def new_event(day):
+    return dict(id=uuid.uuid4().hex,title='',date=day.isoformat(),time='09:00',minutes=60,allDay=False,task=False,done=False,repeat='none',until='',category=0,location='',notes='',reminder=10)
+
+def quick_entry(text,today,default_date=None):
+    """Parse explicit dates/times; return a draft for review, never write it."""
+    import re
+    if not isinstance(text,str) or not text.strip() or len(text)>500:raise ValueError('Enter an event of up to 500 characters.')
+    remaining=text.strip();draft=new_event(default_date or today)
+    def take(pattern):
+        nonlocal remaining
+        matches=list(re.finditer(pattern,remaining,re.I))
+        if len(matches)>1:raise ValueError('Several dates, times or durations were found. Use one of each.')
+        if not matches:return None
+        m=matches[0];remaining=remaining[:m.start()]+' '+remaining[m.end():];return m
+    duration=take(r'(?<!\w)(?:for|für|fuer)\s+(\d+)\s*(minutes?|mins?|minuten?|m|hours?|stunden?|h)\b')
+    if duration:
+        draft['minutes']=int(duration[1])*(60 if duration[2].lower().startswith(('h','stund')) else 1)
+        if not 5<=draft['minutes']<=1440:raise ValueError('Duration must be between 5 and 1440 minutes.')
+    names=sorted(['day after tomorrow','today','tomorrow','heute','morgen','übermorgen','uebermorgen']+WEEKDAYS+GERMAN_WEEKDAYS,key=len,reverse=True)
+    date_match=take(r'(?<!\w)(?:on\s+|am\s+)?(?P<date>\d{4}-\d{2}-\d{2}|\d{1,2}\.\d{1,2}\.(?:\d{4})?|'+ '|'.join(map(re.escape,names))+r')(?!\w)')
+    if date_match:
+        token=date_match['date'];q=normalize(token)
+        if re.fullmatch(r'\d{4}-\d{2}-\d{2}',token):day=parse(token)
+        elif re.fullmatch(r'\d{1,2}\.\d{1,2}\.(?:\d{4})?',token):
+            parts=token.split('.');day=dt.date(int(parts[2] or today.year),int(parts[1]),int(parts[0]))
+        elif q in ['today','heute']:day=today
+        elif q in ['tomorrow','morgen']:day=today+dt.timedelta(days=1)
+        elif q in ['day after tomorrow','ubermorgen','uebermorgen']:day=today+dt.timedelta(days=2)
+        else:
+            weekdays={normalize(name):i for nameset in [WEEKDAYS,GERMAN_WEEKDAYS] for i,name in enumerate(nameset)}
+            day=today+dt.timedelta(days=(weekdays[q]-today.weekday())%7)
+        draft['date']=day.isoformat()
+    clock=take(r'(?<!\w)(?:(?:at|um)\s+)?(?:(?P<ampmh>\d{1,2})(?::(?P<ampmm>\d{2}))?\s*(?P<period>am|pm)|(?P<hour>\d{1,2}):(?P<minute>\d{2})|(?P<uhr>\d{1,2})\s*Uhr)(?!\w)')
+    if clock:
+        hour=int(clock['ampmh'] or clock['hour'] or clock['uhr']);minute=int(clock['ampmm'] or clock['minute'] or 0)
+        if clock['period']:
+            if not 1<=hour<=12:raise ValueError('Use 1–12 with am/pm.')
+            hour=hour%12+(12 if clock['period'].lower()=='pm' else 0)
+        if not 0<=hour<=23 or not 0<=minute<=59:raise ValueError('Use a valid time, e.g. 15:00.')
+        draft['time']=f'{hour:02d}:{minute:02d}'
+    all_day=take(r'(?<!\w)(all day|ganztägig|ganztaegig)(?!\w)')
+    if all_day:
+        if clock:raise ValueError('Choose either all day or a start time.')
+        draft['allDay']=True
+    # Recognizable but incomplete input must not silently become a different event.
+    if re.search(r'(?<!\w)(?:at|um)\s+\d|\d{1,2}:\d|\b(?:for|für|fuer)\s+\d',remaining,re.I):raise ValueError('Check the time or duration. Try “tomorrow 15:00 Dentist for 45m”.')
+    draft['title']=' '.join(remaining.split()).strip(' ,;')
+    validate([draft]);return draft
+
+def template_from_event(name,event,ident=None):
+    if not isinstance(name,str) or not name.strip() or len(name.strip())>80:raise ValueError('Enter a template name of 1–80 characters.')
+    validate([event])
+    if event['task']:raise ValueError('Templates currently support events. Tasks stay in the task editor.')
+    defaults={key:copy.deepcopy(event.get(key,10 if key=='reminder' else None)) for key in TEMPLATE_FIELDS}
+    return dict(id=ident or uuid.uuid4().hex,name=name.strip(),event=defaults)
+
+def event_from_template(template,day):
+    draft=new_event(day);draft.update(copy.deepcopy(template['event']));validate([draft]);return draft
+
+def validate_templates(templates):
+    if not isinstance(templates,list) or len(templates)>50:raise ValueError('You can store up to 50 event templates.')
+    ids=set()
+    for t in templates:
+        if not isinstance(t,dict) or set(t)!= {'id','name','event'}:raise ValueError('Invalid template.')
+        if not isinstance(t['id'],str) or not 0<len(t['id'])<=150 or t['id'] in ids:raise ValueError('Invalid template ID.')
+        ids.add(t['id'])
+        if not isinstance(t['name'],str) or not t['name'].strip() or len(t['name'])>80:raise ValueError('Invalid template name.')
+        if not isinstance(t['event'],dict) or set(t['event'])!=set(TEMPLATE_FIELDS):raise ValueError('Invalid template fields.')
+        event_from_template(t,dt.date(2000,1,1))
+    return templates

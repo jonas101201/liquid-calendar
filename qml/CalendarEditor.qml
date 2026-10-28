@@ -101,6 +101,10 @@ Item {
         untilField.text=e?e.until:""; locationField.text=e?e.location:""; notesField.text=e?e.notes:"";
         categoryBox.currentIndex=e?e.category:0; editor.detailsExpanded=!!(e&&(e.category!==0||e.repeat!=="none"||e.location||e.notes||(e.reminder!==undefined&&e.reminder!==10&&e.reminder!==-1))); editor.validation=""; editor.open(); titleField.forceActiveFocus();
     }
+    function openDraft(event) {openEvent(event);editor.eventId="";editor.draftOriginal=null;}
+    function templateSnapshot(){
+        return JSON.stringify({id:"template-draft",title:titleField.text.trim(),date:dateField.text,time:timeField.text,minutes:durationField.value,allDay:allDay.checked,task:false,done:false,repeat:"none",until:"",category:categoryBox.currentIndex,location:locationField.text,notes:notesField.text,reminder:[-1,0,5,10,30,60,1440][reminderBox.currentIndex]});
+    }
     function openNewTask(date) {openEvent(null,date);task.checked=true;scheduled.checked=false;}
     function toggleTask(e,date) {
         if(persistence) {persistence.toggleTaskSnapshot(e.id,date||e.date,JSON.stringify(e));return;}
@@ -484,6 +488,26 @@ Item {
     }
     Popup {
         id:editor
+        Popup {
+            id:templateNamePopup;parent:editor.contentItem;anchors.centerIn:parent;width:Math.min(parent.width-8,420);modal:true;focus:true;padding:16
+            property string error:""
+            background:LiquidSurface {light:root.light;radius:16;glassOpacity:1}
+            contentItem:ColumnLayout {
+                spacing:10
+                Label {text:"Save event template";color:root.ink;font.pixelSize:18}
+                Label {text:"Keeps title, time, duration, category, reminder, location and notes. Dates and repeats are not copied.";color:root.muted;Layout.fillWidth:true;wrapMode:Text.Wrap}
+                GlassField {id:templateNameField;Layout.fillWidth:true;maximumLength:160;Accessible.name:"Template name";placeholderText:"e.g. Team meeting"}
+                Label {visible:templateNamePopup.error!=="";text:templateNamePopup.error;textFormat:Text.PlainText;color:root.danger;Layout.fillWidth:true;wrapMode:Text.Wrap}
+                RowLayout {
+                    GlassButton {text:"Cancel";onClicked:templateNamePopup.close()}
+                    Item {Layout.fillWidth:true}
+                    GlassButton {id:saveTemplateButton;text:"Save template";highlighted:true;enabled:templateNameField.text.trim().length>0;onClicked:{if(root.persistence.saveTemplate(templateNameField.text,root.templateSnapshot()))templateNamePopup.close();else templateNamePopup.error=root.persistence.error;}}
+                }
+            }
+        }
+        DatePicker {id:untilPicker;parent:editor.contentItem;anchors.centerIn:parent;light:root.light;onPicked:function(value){untilField.text=value;}}
+        DatePicker {id:datePicker;parent:editor.contentItem;anchors.centerIn:parent;light:root.light;onPicked:function(value){dateField.text=value;}}
+        TimePicker {id:timePicker;parent:editor.contentItem;anchors.centerIn:parent;light:root.light;onPicked:function(value){timeField.text=value;}}
         property string eventId:""
         property var draftOriginal:null
         property string validation:""
@@ -507,8 +531,8 @@ Item {
                     RowLayout {
                         visible:!task.checked||scheduled.checked
                         Layout.fillWidth:true
-                        ColumnLayout { Layout.fillWidth:true; Label { text:"Date (YYYY-MM-DD)"; color:root.muted } GlassField { id:dateField; Accessible.name:"Date in year-month-day format"; Layout.fillWidth:true; placeholderText:"2026-10-28"; maximumLength:10; selectByMouse:true } }
-                        ColumnLayout { Label { text:"Time (HH:MM)"; color:root.muted } GlassField { id:timeField; Accessible.name:"Time in hours and minutes"; Layout.preferredWidth:100; enabled:!allDay.checked; maximumLength:5; selectByMouse:true } }
+                        ColumnLayout { Layout.fillWidth:true; RowLayout {Layout.fillWidth:true;Label {text:"Date";color:root.muted;Layout.fillWidth:true} GlassButton {text:"Pick…";Accessible.name:"Choose event date";onClicked:datePicker.openFor(dateField.text)}} GlassField { id:dateField; Accessible.name:"Date in year-month-day format"; Layout.fillWidth:true; placeholderText:"2026-10-28"; maximumLength:10; selectByMouse:true } }
+                        ColumnLayout { RowLayout {Label {text:"Time";color:root.muted} GlassButton {text:"Pick…";enabled:!allDay.checked;Accessible.name:"Choose start time";onClicked:timePicker.openFor(timeField.text)}} GlassField { id:timeField; Accessible.name:"Time in hours and minutes"; Layout.preferredWidth:100; enabled:!allDay.checked; maximumLength:5; selectByMouse:true } }
                     }
                     RowLayout {
                         GlassCheck { id:allDay; visible:!task.checked||scheduled.checked; text:"All day" }
@@ -569,6 +593,7 @@ Item {
                     GlassCombo { visible:!task.checked||scheduled.checked; id:repeatBox; Accessible.name:"Repeat"; Layout.fillWidth:true; model:["Once","Daily","Weekly","Monthly","Yearly"] }
                     Label { visible:(!task.checked||scheduled.checked)&&repeatBox.currentIndex>0; text:"Repeat until · YYYY-MM-DD (blank = no end)"; color:root.muted; font.pixelSize:11 }
                     GlassField { id:untilField; Accessible.name:"Repeat end date"; visible:(!task.checked||scheduled.checked)&&repeatBox.currentIndex>0; Layout.fillWidth:true; maximumLength:10; selectByMouse:true }
+                    GlassButton {visible:(!task.checked||scheduled.checked)&&repeatBox.currentIndex>0;text:"Choose repeat end…";onClicked:untilPicker.openFor(untilField.text||dateField.text)}
                     Label { visible:(!task.checked||scheduled.checked)&&repeatBox.currentIndex>=3; Layout.fillWidth:true; text:"Dates that do not exist are skipped (e.g. February 31). Changes apply to the entire series."; color:root.muted; font.pixelSize:10; wrapMode:Text.Wrap }
                     Label { visible:!task.checked||scheduled.checked; text:"Reminder"; color:root.muted }
                     GlassCombo { visible:!task.checked||scheduled.checked; id:reminderBox; Layout.fillWidth:true; model:["No reminder","At start","5 minutes before","10 minutes before","30 minutes before","1 hour before","1 day before"]; Accessible.name:"Reminder time" }
@@ -584,6 +609,7 @@ Item {
             RowLayout {
                 GlassButton { visible:editor.eventId!==""; text:"Delete …"; tint:root.danger; onClicked:deleteConfirm.open() }
                 GlassButton { id:duplicateButton; visible:editor.eventId!==""; text:"Duplicate"; onClicked: { editor.eventId=""; editor.draftOriginal=null; titleField.text=Array.from(titleField.text+" – Copy").slice(0,200).join(""); } Accessible.name:"Duplicate event as a template" }
+                GlassButton {id:templateButton;visible:!!root.persistence&&!task.checked;text:"Save template…";onClicked:{templateNameField.text=titleField.text;templateNamePopup.error="";templateNamePopup.open();}}
                 Item { Layout.fillWidth:true }
                 GlassButton {
                     id:saveButton

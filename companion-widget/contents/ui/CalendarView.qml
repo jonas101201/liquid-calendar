@@ -104,6 +104,7 @@ Item {
         untilField.text=e?e.until:""; locationField.text=e?e.location:""; notesField.text=e?e.notes:"";
         categoryBox.currentIndex=e?e.category:0; editor.validation=""; editor.open(); titleField.forceActiveFocus();
     }
+    function openDraft(event) {openEvent(event);editor.eventId="";editor.draftOriginal=null;}
     function openNewTask(date) {openEvent(null,date);task.checked=true;scheduled.checked=false;}
     function toggleTask(e,date) {
         try {store(Cal.toggleTaskOccurrence(events,e.id,date||e.date));}
@@ -491,6 +492,9 @@ Item {
     }
     Popup {
         id:editor
+        DatePicker {id:untilPicker;parent:editor.contentItem;anchors.centerIn:parent;light:root.light;onPicked:function(value){untilField.text=value;}}
+        DatePicker {id:datePicker;parent:editor.contentItem;anchors.centerIn:parent;light:root.light;onPicked:function(value){dateField.text=value;}}
+        TimePicker {id:timePicker;parent:editor.contentItem;anchors.centerIn:parent;light:root.light;onPicked:function(value){timeField.text=value;}}
         property string eventId:""
         property var original:null
         property string validation:""
@@ -512,8 +516,8 @@ Item {
                     RowLayout {
                         visible:!task.checked||scheduled.checked
                         Layout.fillWidth:true
-                        ColumnLayout { Layout.fillWidth:true; Label { text:"Date (YYYY-MM-DD)"; color:root.muted } GlassField { id:dateField; Accessible.name:"Date in year-month-day format"; Layout.fillWidth:true; placeholderText:"2026-10-28"; maximumLength:10; selectByMouse:true } }
-                        ColumnLayout { Label { text:"Time (HH:MM)"; color:root.muted } GlassField { id:timeField; Accessible.name:"Time in hours and minutes"; Layout.preferredWidth:100; enabled:!allDay.checked; maximumLength:5; selectByMouse:true } }
+                        ColumnLayout { Layout.fillWidth:true; RowLayout {Layout.fillWidth:true;Label {text:"Date";color:root.muted;Layout.fillWidth:true} GlassButton {text:"Pick…";Accessible.name:"Choose event date";onClicked:datePicker.openFor(dateField.text)}} GlassField { id:dateField; Accessible.name:"Date in year-month-day format"; Layout.fillWidth:true; placeholderText:"2026-10-28"; maximumLength:10; selectByMouse:true } }
+                        ColumnLayout { RowLayout {Label {text:"Time";color:root.muted} GlassButton {text:"Pick…";enabled:!allDay.checked;Accessible.name:"Choose start time";onClicked:timePicker.openFor(timeField.text)}} GlassField { id:timeField; Accessible.name:"Time in hours and minutes"; Layout.preferredWidth:100; enabled:!allDay.checked; maximumLength:5; selectByMouse:true } }
                     }
                     RowLayout {
                         GlassCheck { id:allDay; visible:!task.checked||scheduled.checked; text:"All day" }
@@ -571,6 +575,7 @@ Item {
                     GlassCombo { visible:!task.checked||scheduled.checked; id:repeatBox; Accessible.name:"Repeat"; Layout.fillWidth:true; model:["Once","Daily","Weekly","Monthly","Yearly"] }
                     Label { visible:(!task.checked||scheduled.checked)&&repeatBox.currentIndex>0; text:"Repeat until · YYYY-MM-DD (blank = no end)"; color:root.muted; font.pixelSize:11 }
                     GlassField { id:untilField; Accessible.name:"Repeat end date"; visible:(!task.checked||scheduled.checked)&&repeatBox.currentIndex>0; Layout.fillWidth:true; maximumLength:10; selectByMouse:true }
+                    GlassButton {visible:(!task.checked||scheduled.checked)&&repeatBox.currentIndex>0;text:"Choose repeat end…";onClicked:untilPicker.openFor(untilField.text||dateField.text)}
                     Label { visible:(!task.checked||scheduled.checked)&&repeatBox.currentIndex>=3; Layout.fillWidth:true; text:"Dates that do not exist are skipped (e.g. February 31). Changes apply to the entire series."; color:root.muted; font.pixelSize:10; wrapMode:Text.Wrap }
                     Label { text:"Location"; color:root.muted }
                     GlassField { id:locationField; Accessible.name:"Location"; Layout.fillWidth:true; maximumLength:1000; placeholderText:"Location or video link"; selectByMouse:true }

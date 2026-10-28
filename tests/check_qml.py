@@ -14,6 +14,8 @@ QLocale.setDefault(QLocale('en_GB'));app=QApplication([]);logs=[];qInstallMessag
 temp=tempfile.TemporaryDirectory(prefix='reviewer-language-');p=pathlib.Path(temp.name);shutil.copytree(src/'qml',p/'qml')
 s=(p/'qml/App.qml').read_text().replace('id:win','id:win\n function review(code){return eval(code);}',1);(p/'qml/App.qml').write_text(s)
 s=(p/'qml/CalendarEditor.qml').read_text().replace('id: root','id: root\n function review(code){return eval(code);}',1);(p/'qml/CalendarEditor.qml').write_text(s)
+for name in ['DatePicker.qml','TimePicker.qml']:
+ file=p/'qml'/name;file.write_text(file.read_text().replace('id:picker','id:picker\n function review(code){return eval(code);}',1))
 st=Store(p/'data.sqlite');b=Bridge(st,True);today=dt.date(2026,10,28)
 def e(ident,n=0,**kw):
  v=dict(id=ident,title='Besprechung mit Müller',date=(today+dt.timedelta(days=n)).isoformat(),time='09:00',minutes=60,task=False,done=False,allDay=False,repeat='none',until='',category=2,location='Büro Köln',notes='Grüße – Vorbereitung 日本語',reminder=10);v.update(kw);return v
@@ -118,6 +120,44 @@ b.commit([check_series]);b.setView('tasks');b.setTaskFilters('*',-1);b.setFilter
 expr('resultList.itemAtIndex(0).setChecklistExpanded(true)');expr('resultList.itemAtIndex(0).toggleStep("step")');settle()
 assert st.read()!=[check_series]
 assert expr('resultList.itemAtIndex(0).checklistExpanded') is True
+# Creation milestone: preview -> editor -> pickers -> template -> actual Save.
+b.commit([]);settle();expr('win.openQuick()');settle()
+expr('quickInput.text="tomorrow 15:00 Dentist for 45m";quickPopup.refresh()');settle()
+assert st.read()==[]
+assert expr('quickPopup.preview.event.time')=='15:00'
+expr('quickPopup.review()');settle()
+assert expr('editorSurface.review("titleField.text")')=='Dentist'
+assert expr('editorSurface.review("editor.eventId")')==''
+expr('editorSurface.review('+json.dumps('datePicker.openFor("2032-02-29");datePicker.shift(1);datePicker.choose("2032-03-15")')+')');settle()
+assert expr('editorSurface.review("dateField.text")')=='2032-03-15'
+expr('editorSurface.review('+json.dumps('datePicker.openFor(dateField.text);datePicker.review("yearChoice.contentItem.forceActiveFocus();yearChoice.contentItem.selectAll()")')+')');settle()
+for char in '2034':QTest.keyClick(win,Qt.Key(ord(char)))
+QTest.keyClick(win,Qt.Key_Tab);settle()
+assert expr('editorSurface.review('+json.dumps('datePicker.monthDate.getFullYear()')+')')==2034
+expr('editorSurface.review("datePicker.close()")')
+
+expr('editorSurface.review('+json.dumps('timePicker.openFor("23:55");timePicker.choose()')+')');settle()
+assert expr('editorSurface.review("timeField.text")')=='23:55'
+expr('editorSurface.review("templateButton.clicked()")');settle()
+expr('editorSurface.review('+json.dumps('templateNameField.text="Dentist visit";saveTemplateButton.clicked()')+')');settle()
+assert len(b.templates)==1 and st.read()==[]
+expr('editorSurface.review("saveButton.clicked()")');settle()
+assert len(st.read())==1 and st.read()[0]['time']=='23:55'
+original=st.read()[0];b.selectDate('2033-01-05');expr('templateLibrary.open()');settle()
+expr('templateList.itemAtIndex(0).children[1].clicked()');settle()
+assert expr('editorSurface.review("dateField.text")')=='2033-01-05'
+assert expr('editorSurface.review("editor.eventId")')==''
+expr('editorSurface.review("saveButton.clicked()")');settle()
+assert len(st.read())==2 and original in st.read()
+# Opening and cancelling creation/library controls never inserts events.
+expr('templateLibrary.open()');settle();expr('templateLibrary.close()');expr('win.openQuick()');settle();expr('quickPopup.close()')
+assert len(st.read())==2
+expr('templateLibrary.open()');settle();expr('templateList.itemAtIndex(0).children[2].clicked()');settle()
+expr('templateRename.text="Renamed visit";renameTemplateButton.clicked()');settle();assert b.templates[0]['name']=='Renamed visit'
+expr('templateList.itemAtIndex(0).children[2].clicked()');settle();expr('deleteTemplateButton.clicked()');settle()
+assert b.templates==[] and len(st.read())==2
+expr('templateLibrary.close()')
+print('0.3 quick preview, event/time pickers, template save/use and new IDs passed.')
 print('0.2 task editor Save/reopen/validation, project filters and checklist Undo passed.')
 print('Recurring task Qt slot, hidden calendar fallback and visible app-wide group Undo passed.')
 print('English dates/search; German aliases; non-ASCII data preserved; 14 small-window views rendered.')
