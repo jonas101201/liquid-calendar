@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.0-beta.1 — Unreleased (planned 2026-10-29)
+## 0.2.0-beta.1 — 2026-10-28
 
 - No/low/medium/high task priorities with filtering and sorting.
 - Editable checklists, inline completion and progress counters; per-occurrence progress for repeating tasks. Typed step titles and editor checkboxes update the saved draft correctly, including after adding another step.

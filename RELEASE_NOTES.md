@@ -1,6 +1,6 @@
-# Liquid Calendar 0.2.0 Beta 1 — release preparation
+# Liquid Calendar 0.2.0 Beta 1
 
-Planned for **29 October 2026, 12:00 Europe/Berlin**. This release has not been published yet. English interface, Fedora/KDE Plasma, GPL-3.0-or-later.
+Released **28 October 2026**. [Release and downloads](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.2.0-beta.1). English interface, Fedora/KDE Plasma, GPL-3.0-or-later.
 
 ## Task organization
 
@@ -30,4 +30,4 @@ Reminders still require the app or tray process. ICS exports events only; cloud 
 
 ## Verification
 
-The preparation is covered by 77 Python tests, seven JavaScript suites, real offscreen QML editor interactions and a smoke launch. [Preparation CI passed on Python 3.10, 3.12 and 3.14](https://github.com/jonas101201/liquid-calendar/actions/runs/40734583186). A separate agent reproduced the audit findings and rechecked the corrections. Hosted CI must pass again for the final release commit before publication. Fresh-account installation validation remains excluded at the maintainer's request. See [TESTING.md](TESTING.md) and the [release checklist](docs/RELEASE_0.2.0.md).
+This release is covered by 77 Python tests, seven JavaScript suites, real offscreen QML editor interactions and a smoke launch. [Preparation CI passed on Python 3.10, 3.12 and 3.14](https://github.com/jonas101201/liquid-calendar/actions/runs/40734583186). A separate agent reproduced the audit findings and rechecked the corrections. The release tag identifies the final checked source commit; its checks are available on GitHub. Fresh-account installation validation remains excluded at the maintainer's request. See [TESTING.md](TESTING.md) and the [release record](docs/RELEASE_0.2.0.md).

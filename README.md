@@ -2,9 +2,9 @@
 
 A local desktop calendar and task planner for **Fedora Linux / KDE Plasma 6**. English interface, no account required.
 
-**Preparing: 0.2.0-beta.1** · Latest published beta: **0.1.1-beta.1** · **GPL-3.0-or-later**
+**Current beta: 0.2.0-beta.1** · **GPL-3.0-or-later**
 
-[Download 0.1.1 Beta 1](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.1.1-beta.1) · [Release notes](RELEASE_NOTES.md) · [Known issues](KNOWN_ISSUES.md) · [Roadmap](ROADMAP.md)
+[Download 0.2.0 Beta 1](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.2.0-beta.1) · [Release notes](RELEASE_NOTES.md) · [Known issues](KNOWN_ISSUES.md) · [Roadmap](ROADMAP.md)
 
 ![Today view with synthetic example data](docs/screenshots/today.png)
 
@@ -20,7 +20,7 @@ A local desktop calendar and task planner for **Fedora Linux / KDE Plasma 6**. E
 
 ![Task organization with synthetic example data](docs/screenshots/tasks.png)
 
-This branch prepares the second beta milestone for **29 October 2026 at 12:00 Europe/Berlin**. It is not published yet; the download link above still points to the released 0.1.1 beta. See the [release preparation checklist](docs/RELEASE_0.2.0.md).
+The second beta milestone adds task organization. Released **28 October 2026**. See [release notes](RELEASE_NOTES.md), [audit results](docs/BUG_AUDIT_0.2.0.md) and the [release record](docs/RELEASE_0.2.0.md).
 
 ## Roadmap
 
@@ -30,7 +30,7 @@ See the [roadmap](ROADMAP.md) for the ten beta milestones, planned features and 
 
 Requirements: Fedora/KDE Plasma 6, **Python 3.10–3.14**, venv/pip support, network access to PyPI and the system Qt platform libraries. `notify-send` is needed for notifications. Other systems are not validated.
 
-Download an archive from the [0.1.1 Beta 1 release](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.1.1-beta.1), extract it and open a terminal in its folder:
+Download an archive from the [0.2.0 Beta 1 release](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.2.0-beta.1), extract it and open a terminal in its folder:
 
 ```bash
 python3 installieren.py

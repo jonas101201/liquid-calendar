@@ -1,6 +1,6 @@
 # Known issues and beta limitations
 
-Applies to the **Liquid Calendar 0.2.0-beta.1 preparation** (latest published beta: **0.1.1-beta.1**). Last updated: **2026-10-28**.
+Applies to **Liquid Calendar 0.2.0-beta.1**. Last updated: **2026-10-28**.
 
 This page distinguishes current limitations from issues fixed in earlier beta versions. It is not a guarantee that the beta is free of bugs.
 
