@@ -1,6 +1,7 @@
 """Calendar calculations. Local floating dates, compatible with the Plasma widget."""
 from __future__ import annotations
 import calendar
+import heapq
 import copy
 import datetime as dt
 import hashlib
@@ -114,26 +115,27 @@ def instances(events,start,days,kind='all',category=-1):
                 carry.update(date=(day+dt.timedelta(days=1)).isoformat(),time='00:00',start=0,end=v['start']+e['minutes']-1440,carry=True,segmentMinutes=v['start']+e['minutes']-1440)
                 result.append(carry)
     result.sort(key=lambda v:(v['date'],not v['allDay'],v['start'],v['title'].casefold()))
-    # Conflict intervals include events that cross midnight.
-    timed=[v for v in result if not v['allDay'] and not (v['task'] and v['done'])]
-    for i,a in enumerate(timed):
-        a0=dt.datetime.combine(parse(a['date']),dt.time())+dt.timedelta(minutes=a['start']); a1=a0+dt.timedelta(minutes=a['segmentMinutes'])
-        for b in timed[i+1:]:
-            b0=dt.datetime.combine(parse(b['date']),dt.time())+dt.timedelta(minutes=b['start']); b1=b0+dt.timedelta(minutes=b['segmentMinutes'])
-            if a0<b1 and b0<a1:a['conflict']=b['conflict']=True
-    for n in range(days):
-        daily=[v for v in timed if v['date']==(start+dt.timedelta(days=n)).isoformat()]
+    # Midnight continuations have already been split into same-day segments.
+    # Every interval in a connected overlap group of size > 1 has a conflict.
+    daily={}
+    for v in result:
+        if not v['allDay'] and not (v['task'] and v['done']):
+            daily.setdefault(v['date'],[]).append(v)
+    def assign(group):
+        active=[];available=[];lane_count=0
+        for v in group:
+            while active and active[0][0]<=v['start']:
+                _,lane=heapq.heappop(active);heapq.heappush(available,lane)
+            if available:lane=heapq.heappop(available)
+            else:lane=lane_count;lane_count+=1
+            v['lane']=lane;heapq.heappush(active,(v['end'],lane))
+        for v in group:
+            v['lanes']=max(1,lane_count);v['conflict']=len(group)>1
+    for entries in daily.values():
         group=[];group_end=-1
-        def assign(group):
-            ends=[]
-            for v in group:
-                lane=next((i for i,end in enumerate(ends) if end<=v['start']),len(ends))
-                if lane==len(ends):ends.append(v['end'])
-                else:ends[lane]=v['end']
-                v['lane']=lane
-            for v in group:v['lanes']=max(1,len(ends))
-        for v in daily:
-            if group and v['start']>=group_end:assign(group);group=[];group_end=-1
+        for v in entries:
+            if group and v['start']>=group_end:
+                assign(group);group=[];group_end=-1
             group.append(v);group_end=max(group_end,v['end'])
         assign(group)
     return result

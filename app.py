@@ -223,12 +223,36 @@ class Bridge(QObject):
                 if item['id']==ident:item.setdefault('exceptions',{})[date]={'cancelled':True}
             return self.commit(desired,label="Occurrence deleted") is not None
         except Exception as e:self.fail(e);return False
+    @Slot(str,str,str)
+    def toggleTaskSnapshot(self,ident,date,snapshot):
+        try:self.toggleTask(ident,date,fingerprint(json.loads(snapshot)))
+        except Exception as e:self.fail(e)
     @Slot(str)
-    def toggleTask(self,ident):
-        desired=copy.deepcopy(self._events)
-        for e in desired:
-            if e['id']==ident:e['done']=not e['done'];break
-        self.commit(desired,label="Task updated")
+    @Slot(str,str)
+    @Slot(str,str,str)
+    def toggleTask(self,ident,date='',expected=''):
+        try:
+            event=next(copy.deepcopy(e) for e in self._events if e['id']==ident)
+            if not event['task']:raise ValueError('This entry is not a task.')
+            if expected and fingerprint(event)!=expected:
+                raise ConflictError('The task has changed. Reopen it.')
+            desired=copy.deepcopy(self._events)
+            # Old versions could mark the entire parent series done. An explicit
+            # reopen of that legacy record reactivates the series without migration.
+            if event['repeat']=='none' or event['done']:
+                for e in desired:
+                    if e['id']==ident:e['done']=not e['done'];break
+            else:
+                day=parse(date) if date else representative(event,self._selected)
+                if day is None or not occurs(event,day):
+                    raise ConflictError('This task occurrence no longer exists.')
+                child=copy.deepcopy(event)
+                child.update(id=uuid.uuid4().hex,date=day.isoformat(),done=True,
+                             repeat='none',until='',exceptions={},occurrenceOf=ident,
+                             occurrenceDate=day.isoformat(),originHash=fingerprint(event))
+                desired.append(child)
+            self.commit(desired,label='Task updated',allow_occurrences=True)
+        except Exception as e:self.fail(e)
     @Slot(str,str,str,int,str)
     def move(self,ident,original,target,minute,expected,as_task=False):
         try:
@@ -326,7 +350,7 @@ class Bridge(QObject):
                 if trigger<=now<=start+dt.timedelta(minutes=5):
                     key=f'{v["id"]}|{v["date"]}|{v["time"]}|{lead}'
                     if not self.store.notified(key):
-                        result=subprocess.run(['notify-send','--app-name=Liquid Calendar','--icon='+str(BASE/'icons/calendar.svg'),v['title'],("All day today" if v['allDay'] else v['time'])+(' · '+v['location'] if v['location'] else '')],capture_output=True,timeout=8)
+                        result=subprocess.run(['notify-send','--app-name=Liquid Calendar','--icon='+str(BASE/'icons/calendar.svg'),v['title'],(("All day today" if start.date()==now.date() else "All day tomorrow" if start.date()==now.date()+dt.timedelta(days=1) else "All day on "+v["date"]) if v["allDay"] else v["time"])+(' · '+v['location'] if v['location'] else '')],capture_output=True,timeout=8)
                         if result.returncode==0:self.store.mark_notified(key)
         except Exception as e:self.fail("Could not deliver reminder: "+str(e))
 

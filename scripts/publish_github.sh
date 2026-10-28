@@ -22,7 +22,7 @@ else
         echo "Repository $release_repo already exists. Review and attach its origin explicitly before rerunning." >&2
         exit 1
     fi
-    gh repo create "$release_repo" --public --source . --remote origin --description 'Local calendar and task planner for Fedora/KDE Plasma. First public beta.' --push
+    gh repo create "$release_repo" --public --source . --remote origin --description 'Local calendar and task planner for Fedora/KDE Plasma. Public beta.' --push
 fi
 git push origin main
 git push origin "$release_tag"
@@ -30,5 +30,5 @@ if gh release view "$release_tag" --repo "$release_repo" >/dev/null 2>&1; then
     echo 'This release already exists; refusing to replace published assets.' >&2
     exit 1
 fi
-gh release create "$release_tag" --repo "$release_repo" --verify-tag --prerelease --title 'Liquid Calendar 0.1.0 Beta 1' --notes-file RELEASE_NOTES.md "dist/liquid-calendar-$release_version.tar.gz" "dist/liquid-calendar-$release_version.zip" dist/SHA256SUMS
+gh release create "$release_tag" --repo "$release_repo" --verify-tag --prerelease --title "Liquid Calendar ${release_version/-beta./ Beta }" --notes-file RELEASE_NOTES.md "dist/liquid-calendar-$release_version.tar.gz" "dist/liquid-calendar-$release_version.zip" dist/SHA256SUMS
 gh release view "$release_tag" --repo "$release_repo" --json url --jq .url

@@ -18,6 +18,7 @@ node tests/test-search.cjs
 node tests/test-undated.cjs
 node tests/test-widget-sharing.cjs
 node tests/test-english.cjs
+node tests/test-task-completion.cjs
 ```
 
 Development checks included storage conflict/undo tests, repeats and exceptions, tasks without dates, English relative/date search, availability rechecking, app/widget SQLite interoperability, and native QML interactions. Offscreen rendering covered 980×680 and 1280×860 in light and dark themes.
@@ -37,3 +38,11 @@ Development checks included storage conflict/undo tests, repeats and exceptions,
 The fresh-account installation check remains deliberately unperformed. No hosted CI run or public upload is claimed by these local results.
 
 The hosted Ubuntu CI runner requires Qt system libraries (including libegl1 and libopengl0) even for offscreen tests; these are installed explicitly in the workflow. This is automated test-environment setup, not the excluded fresh-account application-installation test.
+
+## Checks for 0.1.1-beta.1
+
+60 Python tests include per-occurrence task completion, legacy series reopening, stale/concurrent completion rejection, exact reminder text, deterministic connection closure, rollback and randomized overlap comparison. Six Node suites include compatible app/widget completion and transactional merge checks. Real QML regression handlers check the native task slot, hidden calendar fallback and visible app-wide group Undo.
+
+Audit clarification: the initial report overstated the reachability of the fallback Undo bug. The native app hides that action when persistence is attached; its visible global Undo already restored the complete group. The fallback implementation is now consistent as well.
+
+Fresh-account installation remains deliberately untested. Runtime-data tests use only temporary databases.

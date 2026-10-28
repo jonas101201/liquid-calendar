@@ -2,7 +2,7 @@
 
 A local desktop calendar and task planner for **Fedora Linux / KDE Plasma 6**. English interface, no account required.
 
-**First public beta: 0.1.0-beta.1** · **GPL-3.0-or-later**
+**Current beta: 0.1.1-beta.1** · **GPL-3.0-or-later**
 
 ![Today view with synthetic example data](docs/screenshots/today.png)
 

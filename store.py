@@ -4,6 +4,7 @@ import datetime as dt
 import json
 from pathlib import Path
 import sqlite3
+from contextlib import contextmanager, closing
 from logic import validate, fingerprint
 
 class ConflictError(ValueError):pass
@@ -17,7 +18,14 @@ class Store:
             c.execute('CREATE TABLE IF NOT EXISTS state (key TEXT PRIMARY KEY, value TEXT NOT NULL)')
             c.execute('CREATE TABLE IF NOT EXISTS planner_reminders (key TEXT PRIMARY KEY, sent TEXT NOT NULL)')
         self.read()
-    def connect(self):return sqlite3.connect(self.path,timeout=8)
+    @contextmanager
+    def connect(self):
+        connection=sqlite3.connect(self.path,timeout=8)
+        try:
+            with connection:
+                yield connection
+        finally:
+            connection.close()
     @staticmethod
     def read_conn(c):
         row=c.execute('SELECT value FROM state WHERE key=?',('events',)).fetchone()
@@ -29,7 +37,7 @@ class Store:
         self.backup_dir.mkdir(parents=True,exist_ok=True)
         target=self.backup_dir/('calendar-'+dt.date.today().strftime('%Y%m%d')+'.sqlite')
         if not target.exists():
-            with self.connect() as source,sqlite3.connect(target) as dest:source.backup(dest)
+            with self.connect() as source,closing(sqlite3.connect(target)) as dest:source.backup(dest)
         self._backup_date=dt.date.today()
         for old in sorted(self.backup_dir.glob('calendar-*.sqlite'))[:-14]:old.unlink()
     def merge(self,desired,base,allow_occurrences=False):

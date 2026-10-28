@@ -44,7 +44,7 @@ def build():
    archive.writestr(info,data)
  sums=''.join(hashlib.sha256((out/(stem+ext)).read_bytes()).hexdigest()+'  '+stem+ext+'\n' for ext in ['.tar.gz','.zip'])
  (out/'SHA256SUMS').write_text(sums)
- (out/'release.json').write_text(json.dumps({'version':version,'tag':'v'+version,'title':'Liquid Calendar 0.1.0 Beta 1','prerelease':True,'assets':[stem+'.tar.gz',stem+'.zip','SHA256SUMS'],'fresh_account_installation_test':'skipped at user request'},indent=2)+'\n')
+ (out/'release.json').write_text(json.dumps({'version':version,'tag':'v'+version,'title':'Liquid Calendar '+version.replace('-beta.',' Beta '),'prerelease':True,'assets':[stem+'.tar.gz',stem+'.zip','SHA256SUMS'],'fresh_account_installation_test':'skipped at user request'},indent=2)+'\n')
  print('Built',len(files),'source files in',out)
  print(sums,end='')
 

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.1-beta.1 — 2026-10-28
+
+- Completing a repeating task now completes only the selected occurrence. Reopening that completed occurrence preserves future repetitions. Legacy whole-series completions can still be explicitly reopened.
+- Calendar fallback Undo now restores detached occurrences with the parent series. The native app already hides the fallback action and uses its complete app-wide Undo.
+- All-day reminders sent one day early identify the event as tomorrow.
+- Agenda conflict detection uses daily interval groups instead of comparing every occurrence pair across the entire range.
+- SQLite transactions close their connections immediately, including rollback/error paths.
+- Added regression coverage for group restore, repeating-task completion, concurrent toggles, reminders, randomized overlaps and connection lifetime.
+
 ## 0.1.0-beta.1 — 2026-10-28
 
 First public beta. Earlier 1.x version numbers were internal development labels.

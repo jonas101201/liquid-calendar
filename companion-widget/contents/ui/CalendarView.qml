@@ -105,8 +105,9 @@ Item {
         categoryBox.currentIndex=e?e.category:0; editor.validation=""; editor.open(); titleField.forceActiveFocus();
     }
     function openNewTask(date) {openEvent(null,date);task.checked=true;scheduled.checked=false;}
-    function toggleTask(e) {
-        var next=events.map(function(v){ if(v.id!==e.id) return v; var c=Object.assign({},v); c.done=!c.done; return c; }); store(next);
+    function toggleTask(e,date) {
+        try {store(Cal.toggleTaskOccurrence(events,e.id,date||e.date));}
+        catch(problem) {error=String(problem);}
     }
     function dateText(d, format) { return d.toLocaleDateString(Qt.locale("en_GB"),format); }
     function dayCount(d) { return Cal.instances(events,d,1,"",categoryFilter,kindFilter).length; }
@@ -240,7 +241,7 @@ Item {
         RowLayout {
             anchors.fill:parent; anchors.margins:10; spacing:10
             Rectangle { Layout.preferredWidth:3; Layout.fillHeight:true; radius:2; color:root.colors[card.entry.event.category] }
-            GlassCheck { visible:card.entry.event.task; checked:card.entry.event.done; onClicked:root.toggleTask(card.entry.event); Accessible.name:"Task completed" }
+            GlassCheck { visible:card.entry.event.task; checked:card.entry.event.done; onClicked:root.toggleTask(card.entry.event,card.entry.date); Accessible.name:card.entry.event.repeat!=="none"&&card.entry.event.done?"Reopen completed series":"Task completed" }
             ColumnLayout {
                 Layout.fillWidth:true; Layout.minimumWidth:0; spacing:4
                 Label { Layout.fillWidth:true; textFormat:Text.PlainText; text:card.entry.event.title; color:root.ink; font.pixelSize:13; font.weight:Font.DemiBold; font.strikeout:card.entry.event.task&&card.entry.event.done; elide:Text.ElideRight }

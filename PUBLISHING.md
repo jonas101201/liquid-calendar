@@ -1,6 +1,6 @@
 # Publishing this beta
 
-The source package is prepared for a **public** GitHub repository named `liquid-calendar` and a GitHub **prerelease** tagged `v0.1.0-beta.1`.
+The source package is prepared for a **public** GitHub repository named `liquid-calendar` and a GitHub **prerelease** tagged `v0.1.1-beta.1`.
 
 ## Current status
 
@@ -28,7 +28,7 @@ The local seed commit uses a reserved, non-contact `maintainer@localhost.invalid
 
 1. Create an empty public repository named `liquid-calendar`, without adding a separate license/README.
 2. Push this repository's main branch and tag using the commands GitHub provides.
-3. Create release `v0.1.0-beta.1`, title **Liquid Calendar 0.1.0 Beta 1**.
+3. Create release `v0.1.1-beta.1`, title **Liquid Calendar 0.1.1 Beta 1**.
 4. Paste RELEASE_NOTES.md, attach the files listed in `dist/release.json`, and mark **This is a pre-release**.
 
 Do not upload the whole development workspace, installed runtime, real calendar database, logs or backups. The release builder uses an explicit source allowlist. See `dist/SHA256SUMS` for download checksums. Rebuild with `python3 scripts/build_release.py` after any source change.

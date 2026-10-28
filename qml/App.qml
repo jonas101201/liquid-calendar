@@ -79,7 +79,7 @@ ApplicationWindow {
         RowLayout {
             anchors.fill:parent;anchors.margins:12;spacing:10
             Rectangle {width:3;Layout.preferredHeight:26;Layout.alignment:Qt.AlignVCenter;radius:1;color:entry.record.conflict?win.danger:entry.record.color}
-            Action {visible:entry.record.task;text:entry.record.done?"✓":"○";Accessible.name:"Toggle task completion";onClicked:planner.toggleTask(entry.record.id)}
+            Action {visible:entry.record.task;text:entry.record.done?"✓":"○";Accessible.name:entry.record.repeated&&entry.record.done?"Reopen completed series":"Toggle task completion";onClicked:planner.toggleTask(entry.record.id,entry.record.occurrenceDate,entry.record.fingerprint)}
             ColumnLayout {
                 Layout.fillWidth:true;Layout.minimumWidth:0;spacing:5
                 Label {Layout.fillWidth:true;text:entry.record.title;textFormat:Text.PlainText;color:win.ink;font.pixelSize:14;font.weight:Font.DemiBold;font.strikeout:entry.record.done;elide:Text.ElideRight}
@@ -224,7 +224,7 @@ ApplicationWindow {
                                         Label {Layout.fillWidth:true;text:modelData.title;textFormat:Text.PlainText;color:win.ink;font.pixelSize:13;font.weight:Font.DemiBold;wrapMode:Text.Wrap;maximumLineCount:2;elide:Text.ElideRight}
                                         Label {Layout.fillWidth:true;text:modelData.unscheduled?"Undated · "+modelData.minutes+" min":modelData.date+" · "+modelData.time;color:win.muted;font.pixelSize:11;elide:Text.ElideRight}
                                         RowLayout {Layout.fillWidth:true
-                                            Action {text:"✓";Accessible.name:"Complete task";onClicked:planner.toggleTask(modelData.id)}
+                                            Action {text:"✓";Accessible.name:"Complete task";onClicked:planner.toggleTask(modelData.id,modelData.occurrenceDate,modelData.fingerprint)}
                                             Item {Layout.fillWidth:true}
                                             Action {text:"Schedule";onClicked:win.planTask(modelData)}
                                             Action {text:"↗";Accessible.name:"Edit task";onClicked:planner.edit(modelData.id,modelData.occurrenceDate,true)}

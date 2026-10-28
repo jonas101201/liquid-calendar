@@ -44,5 +44,20 @@ b.edit('today',today.isoformat(),False);settle()
 assert expr('editorSurface.review("titleField.text")')=='Besprechung mit Müller'
 assert expr('editorSurface.review("locationField.text")')=='Büro Köln'
 expr('editorSurface.review("saveButton.clicked()")');assert st.read()==before
+# Actual Qt-slot and calendar restore paths use only isolated synthetic data.
+source=e('series',repeat='weekly',task=True)
+b.commit([source]);b.selectDate(source['date']);b.setView('month');settle()
+expr('editorSurface.review('+json.dumps('toggleTask(events.filter(function(e){return e.id==="series";})[0],"2026-10-28")')+')');settle()
+parent=next(e for e in st.read() if e['id']=='series');assert not parent['done'];assert occurs(parent,parse('2026-11-04'));assert len(st.read())==2
+b.undo();assert st.read()==[source]
+b.move('series','2026-11-04','2026-11-05',600,fingerprint(source));before_group=st.read();assert len(before_group)==2
+b.edit('series',source['date'],False);settle()
+expr('editorSurface.review("deleteConfirm.accept()")');settle();assert st.read()==[]
+# This fallback is hidden in the native app; verify it without claiming a visible click.
+assert expr('editorSurface.review("deletedEntry!==null&&!root.persistence")') is False
+expr('editorSurface.review("undoDelete()")');settle();assert sorted(st.read(),key=lambda e:e['id'])==sorted(before_group,key=lambda e:e['id'])
+# The user-visible application-wide Undo must also restore the whole group.
+b.edit('series',source['date'],False);settle();expr('editorSurface.review("deleteConfirm.accept()")');settle();b.undo();assert sorted(st.read(),key=lambda e:e['id'])==sorted(before_group,key=lambda e:e['id'])
+print('Recurring task Qt slot, hidden calendar fallback and visible app-wide group Undo passed.')
 print('English dates/search; German aliases; non-ASCII data preserved; 14 small-window views rendered.')
 win.close();engine.deleteLater();settle();assert not logs,logs

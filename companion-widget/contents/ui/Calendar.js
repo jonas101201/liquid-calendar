@@ -184,8 +184,8 @@ function searchAll(events,query,category,kind,today) {
 
 // Apply only local edits to the latest shared database snapshot.
 function mergeEvents(base,desired,current) {
-    var before=Object.create(null),after=Object.create(null),remote=Object.create(null);
-    base.forEach(function(e){before[e.id]=e;});desired.forEach(function(e){after[e.id]=e;});current.forEach(function(e){remote[e.id]=e;});
+    var before=Object.create(null),after=Object.create(null),remote=Object.create(null),remoteBefore=Object.create(null);
+    base.forEach(function(e){before[e.id]=e;});desired.forEach(function(e){after[e.id]=e;});current.forEach(function(e){remote[e.id]=e;remoteBefore[e.id]=e;});
     var ids=Object.keys(before).concat(Object.keys(after)).filter(function(id,index,all){return all.indexOf(id)===index;});
     function stable(value) {
         return JSON.stringify(value,function(k,v){
@@ -198,6 +198,10 @@ function mergeEvents(base,desired,current) {
     function equal(a,b) { return stable(a)===stable(b); }
     ids.forEach(function(id){
         if(equal(before[id],after[id]))return;
+        if(!before[id]&&after[id]&&after[id].seriesId&&
+           !equal(remoteBefore[after[id].seriesId],before[after[id].seriesId])&&
+           !equal(remoteBefore[id],after[id]))
+            throw Error('The series has changed. Reopen this occurrence.');
         if(!equal(remote[id],before[id])&&!equal(remote[id],after[id]))throw Error("This entry was changed in the app. Reopen it; your edits have not been saved.");
         if(after[id]===undefined) {
             Object.keys(remote).forEach(function(child){
@@ -234,4 +238,20 @@ function lastOccurrence(e,until) {
         cursor=add(d,-1);
     }
     return null;
+}
+
+function toggleTaskOccurrence(events,ident,date) {
+    var source=events.filter(function(e){return e.id===ident;})[0];
+    if(!source||!source.task)throw Error('This task no longer exists.');
+    var next=events.map(function(e){return JSON.parse(JSON.stringify(e));});
+    var parent=next.filter(function(e){return e.id===ident;})[0];
+    if(source.repeat==='none'||source.done) {parent.done=!parent.done;return next;}
+    var day=parse(date);
+    if(!day||!occurs(source,day))throw Error('This task occurrence no longer exists.');
+    parent.exceptions=parent.exceptions||{};parent.exceptions[date]={cancelled:true};
+    var child=JSON.parse(JSON.stringify(source));
+    child.id=Date.now().toString(36)+'-'+Math.random().toString(36).slice(2);
+    child.date=date;child.repeat='none';child.until='';child.exceptions={};
+    child.done=true;child.seriesId=ident;child.originalDate=date;
+    next.push(child);return next;
 }
