@@ -2,7 +2,7 @@
 
 **0.3.6-beta.1** is the cumulative public release of the 0.3.x development work. Versions 0.3.0–0.3.5 below are unpublished historical snapshots. Patch numbers were assigned retrospectively on 28 October 2026, one per functional code patch after the initial 0.3.0 baseline. Source links identify the original implementation commits, which retain their original version strings. No commits or published tags were rewritten. Documentation-only commits are not numbered separately.
 
-## 0.3.7-beta.1 — Unreleased
+## 0.3.7-beta.1 — 2026-10-28
 
 - Exact ISO/DMY date and relative-day searches return actual occurrences only, excluding cancelled days and undated title matches. App and widget agree.
 - Planning suggestions and final validation advance past already-started minutes, including seconds/microseconds.

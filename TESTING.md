@@ -1,10 +1,10 @@
 # Testing
 
-## 0.3.7 development audit
+## Current release: 0.3.7-beta.1
 
-The targeted post-release audit adds exact-day search, elapsed-minute planning, atomic booking and date-boundary regressions. Checks use synthetic data only. See [the audit record](docs/BUG_AUDIT_0.3.7.md) for final counts and the independent review rounds.
+The targeted post-release audit adds exact-day search, elapsed-minute planning, atomic booking and date-boundary regressions. Checks use synthetic data only. See [the audit record](docs/BUG_AUDIT_0.3.7.md) for 131 Python tests, eight JavaScript suites, actual Qt checks, isolated widget editing, smoke launches and the two independent review rounds. Hosted checks are associated with the release commit.
 
-## Current release: 0.3.6-beta.1
+## Historical baseline: 0.3.6-beta.1
 
 The [current source tests](https://github.com/jonas101201/liquid-calendar/actions/runs/40774771194) passed on Python **3.10, 3.12 and 3.14**, including 122 Python tests, actual Qt checks, smoke launch and eight JavaScript suites. [Security analysis](https://github.com/jonas101201/liquid-calendar/actions/runs/40774765474) also passed. These results cover source snapshot [`ff0988d`](https://github.com/jonas101201/liquid-calendar/commit/ff0988d6478d9f260b5df96a2f1b85065ab7e908); final checks are associated with the release tag commit. Automated results do not certify every desktop environment.
 

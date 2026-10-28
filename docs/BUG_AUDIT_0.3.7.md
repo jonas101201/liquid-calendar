@@ -23,4 +23,4 @@ The primary agent reproduced and corrected findings 1–2. A separate read-only 
 - Temporary-database smoke launches passed.
 - The independent second reviewer confirmed the transaction race fix, unchanged future data, safe date endpoints, exact search and time rounding; it found no remaining actionable issue in the reviewed fixes.
 
-No release is published by this audit. The installed development build is 0.3.7-beta.1; application/widget files are backed up before replacement. Personal calendar records are not opened or rewritten by the updater. Reload the app and, when convenient, the active widget to load new code.
+The audit preceded publication of 0.3.7-beta.1. The installed version is 0.3.7-beta.1; application/widget files are backed up before replacement. Personal calendar records are not opened or rewritten by the updater. Reload the app and, when convenient, the active widget to load new code.
