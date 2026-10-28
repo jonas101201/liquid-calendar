@@ -9,6 +9,8 @@ import subprocess
 import sys
 import venv
 
+from scripts.sync_widget_sources import check_shared
+
 SOURCE=Path(__file__).resolve().parent
 FILES=['app.py','logic.py','store.py','launch.sh','README.md','VERSION','requirements.txt','LICENSE','NOTICE','THIRD_PARTY.md','CHANGELOG.md','KNOWN_ISSUES.md','ROADMAP.md','TESTING.md','CONTRIBUTING.md','PUBLISHING.md','RELEASE_NOTES.md','docs','qml','icons','companion-widget']
 
@@ -19,6 +21,7 @@ def desktop_quote(value):
 def install(with_widget=False):
     if not (3,10)<=sys.version_info[:2]<(3,15):
         raise SystemExit('Python 3.10–3.14 is required for this beta.')
+    check_shared(SOURCE)
     home=Path.home()
     data=home/'.local/share'
     target=data/'liquid-glass-planner'
@@ -65,6 +68,6 @@ def main():
     parser.add_argument('--with-widget',action='store_true',help='also install the optional Plasma widget; existing widgets are updated automatically')
     args=parser.parse_args()
     try:install(args.with_widget)
-    except (OSError,subprocess.CalledProcessError) as error:raise SystemExit('Installation failed: '+str(error)) from error
+    except (OSError,ValueError,subprocess.CalledProcessError) as error:raise SystemExit('Installation failed: '+str(error)) from error
 
 if __name__=='__main__':main()

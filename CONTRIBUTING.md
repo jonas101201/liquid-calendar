@@ -12,3 +12,7 @@ Report your OS, Plasma/Python versions, beta version and reproducible steps. Rem
 Contributions are made under GPL-3.0-or-later, the same license as this project. Do not submit code or assets you do not have permission to contribute.
 
 The current public beta is **0.3.7-beta.1**, including the audited fixes after 0.3.6. Read [KNOWN_ISSUES.md](KNOWN_ISSUES.md) before reporting a limitation and [ROADMAP.md](ROADMAP.md) before proposing planned features. Include your exact version when reporting bugs.
+
+## Shared app/widget sources
+
+Edit the common files listed in `scripts/sync_widget_sources.py` under `qml/` only, then run `python scripts/sync_widget_sources.py`. The widget keeps deployable copies because Plasma installs it independently of the app. `python scripts/sync_widget_sources.py --check` detects drift without writing; CI, the source builder and installer enforce it. Keep widget-specific `CalendarView.qml` separate. Current development version: **0.3.8-beta.1**.

@@ -22,6 +22,10 @@ The maintainer renewed release authorization on 28 October 2026. Version 0.3.6-b
 
 The maintainer requested publication of the audited bug-fix patch on 28 October 2026. See [the release record](docs/RELEASE_0.3.7.md) and [independent audit](docs/BUG_AUDIT_0.3.7.md). Existing published tags and assets remain unchanged.
 
+## Preparing 0.3.8-beta.1
+
+Targeted maintenance refactor on `refactor/0.3.8-beta.1`; no publication has been requested. Shared app/widget sources must pass `python scripts/sync_widget_sources.py --check` before packaging or installation. See [the refactor record](docs/REFACTOR_0.3.8.md).
+
 ## Preparing a future release
 
 1. Choose the next version using ROADMAP.md. Bug fixes increment the patch version; feature milestones increment the minor version.
