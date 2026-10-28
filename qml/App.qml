@@ -387,8 +387,16 @@ ApplicationWindow {
                             readonly property real gutter:48
                             readonly property real columnWidth:(contentWidth-gutter)/7
                             contentWidth:Math.max(width,gutter+7*Math.max(120,win.weekData.reduce(function(n,v){return Math.max(n,v.lanes*100);},0)));contentHeight:24*hourHeight
-                            ScrollBar.horizontal:ScrollBar {}
-                            Component.onCompleted:contentY=7.5*hourHeight
+                            readonly property string selectedDate:planner.selected
+                            function revealSelectedDay() {
+                                var index=planner.weekDays.findIndex(function(day){return day.date===selectedDate;});
+                                if(index>=0)contentX=Math.max(0,Math.min(contentWidth-width,gutter+(index+.5)*columnWidth-width/2));
+                            }
+                            onVisibleChanged:if(visible)Qt.callLater(revealSelectedDay)
+                            onSelectedDateChanged:if(visible)Qt.callLater(revealSelectedDay)
+                            onContentWidthChanged:if(visible)Qt.callLater(revealSelectedDay)
+                            ScrollBar.horizontal:ScrollBar {active:timeline.contentWidth>timeline.width}
+                            Component.onCompleted:{contentY=7.5*hourHeight;Qt.callLater(revealSelectedDay);}
                             boundsBehavior:Flickable.StopAtBounds
                             ScrollBar.vertical:ScrollBar {}
                             Item {

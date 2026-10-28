@@ -194,6 +194,7 @@ dense=[e('parallel-'+str(n),title='Parallel event '+str(n)) for n in range(5)]
 dense.extend([e('short-a',time='11:00',minutes=5),e('short-b',time='11:05',minutes=5)])
 b.commit(dense);b.selectDate(a['date']);b.setView('week');win.setWidth(980);win.setHeight(680);settle()
 assert expr('timeline.contentWidth>timeline.width')
+assert expr('timeline.contentX>0 && timeline.contentX<=timeline.gutter+2.5*timeline.columnWidth && timeline.contentX+timeline.width>=timeline.gutter+2.5*timeline.columnWidth')
 expr('timeline.contentX=300');settle()
 assert expr('weekHeader.x===timeline.gutter-timeline.contentX')
 expr('timeline.contentX=timeline.gutter+2*timeline.columnWidth;timeline.contentY=8*timeline.hourHeight');settle()
