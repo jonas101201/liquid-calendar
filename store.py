@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 import sqlite3
 from contextlib import contextmanager, closing
-from logic import validate, fingerprint, validate_templates
+from logic import validate, fingerprint, validate_templates, slot_available
 
 class ConflictError(ValueError):pass
 
@@ -40,12 +40,14 @@ class Store:
             with self.connect() as source,closing(sqlite3.connect(target)) as dest:source.backup(dest)
         self._backup_date=dt.date.today()
         for old in sorted(self.backup_dir.glob('calendar-*.sqlite'))[:-14]:old.unlink()
-    def merge(self,desired,base,allow_occurrences=False,project_name=None):
+    def merge(self,desired,base,allow_occurrences=False,project_name=None,planning_slot=None):
         validate(desired);validate(base);self.backup()
         desired_map={e['id']:copy.deepcopy(e) for e in desired};base_map={e['id']:e for e in base}
         with self.connect() as c:
             c.execute('BEGIN IMMEDIATE')
             before=self.read_conn(c);remote={e['id']:e for e in before}
+            if planning_slot is not None and not slot_available(before,*planning_slot):
+                raise ConflictError("This time slot is no longer available. Search again.")
             if project_name is not None:
                 members=lambda records:{i for i,e in records.items() if e['task'] and e.get('project','')==project_name}
                 if members(base_map)!=members(remote):raise ConflictError("Project membership has changed. Refresh and reopen the project; no tasks were renamed.")

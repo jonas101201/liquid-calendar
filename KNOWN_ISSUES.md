@@ -1,8 +1,12 @@
 # Known issues and beta limitations
 
-Applies to **Liquid Calendar 0.3.6-beta.1**. Last updated: **2026-10-28**.
+Applies to **Liquid Calendar 0.3.7-beta.1**. Last updated: **2026-10-28**.
 
 This page distinguishes current limitations from issues fixed in earlier beta versions. It is not a guarantee that the beta is free of bugs.
+
+## Fixed in 0.3.7-beta.1
+
+The public 0.3.6 beta can return an unrelated date for an exact search matching a cancelled series start, suggest a quarter-hour that has already begun, accept a competing booking inserted between availability check and save, and overflow when rendering or searching some dates at the maximum supported year. The 0.3.7 release corrects these; see the [audit record](docs/BUG_AUDIT_0.3.7.md).
 
 ## Current limitations
 

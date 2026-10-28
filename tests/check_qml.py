@@ -223,4 +223,12 @@ assert expr('editorSurface.review("templateButton.y")')==0
 QQuickWindow.grabWindow(win).save('/tmp/liquid-calendar-hidden-menu-fixed.png')
 expr('editorSurface.review("editorActions.close();editor.close()")');settle()
 print('Selected occurrences merge without changing future repeats; hidden menu rows take zero space.')
+# Supported date endpoints must not break week headers, navigation or QML loading.
+b.commit([]);b.setView('week');b.selectDate('9999-12-31');settle()
+assert len(b.weekDays)==7 and b.weekDays[-1]['date']==''
+assert b.weekItems==[]
+b.navigate(1);settle();assert b.selected=='9999-12-31'
+b.selectDate('1000-01-01');b.navigate(-1);settle();assert b.selected=='1000-01-01'
+assert expr('editorSurface.review("Cal.key(root.selected)")')=='1000-01-01'
+print('Date endpoints render without QML errors; week navigation stays in range.')
 win.close();engine.deleteLater();settle();assert not logs,logs

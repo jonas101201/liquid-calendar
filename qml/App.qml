@@ -409,6 +409,7 @@ ApplicationWindow {
                                         required property var modelData
                                         required property int index
                                         x:timeline.gutter+index*timeline.columnWidth;y:0;width:timeline.columnWidth;height:timeContent.height
+                                        enabled:!!modelData.date
                                         keys:["liquid-calendar-event"]
                                         Rectangle {anchors.left:parent.left;width:1;height:parent.height;color:win.line}
                                         Rectangle {anchors.fill:parent;color:parent.containsDrag?"#30b5a6ff":modelData.today?(win.light?"#0c7361ba":"#098a9bff"):"transparent"}
