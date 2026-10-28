@@ -9,7 +9,7 @@ It is a planning draft, not a delivery promise. Features and priorities may chan
 | Version | Focus | Planned features | Status |
 | --- | --- | --- | --- |
 | **0.1.0** | First public beta | Calendar, tasks, agenda and local storage | Released; current bug-fix beta: [`0.1.1-beta.1`](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.1.1-beta.1) |
-| **0.2.0** | Task organization | Priorities, checklists and projects | Planned |
+| **0.2.0** | Task organization | Priorities, checklists and projects | Implemented on preparation branch; release planned for 2026-10-29, 12:00 Europe/Berlin |
 | **0.3.0** | Faster event creation | Quick entry, improved date and time selection, and event templates | Planned |
 | **0.4.0** | Flexible daily planning | Custom working hours, breaks, and splitting tasks across multiple time blocks | Planned |
 | **0.5.0** | Multiple calendars | Show and hide separate personal, work and custom calendars | Planned |
@@ -23,7 +23,7 @@ English remains the primary interface language. The language milestone introduce
 
 ## Bug-fix releases and version naming
 
-The current release is **0.1.1-beta.1**, a bug-fix release within the **0.1.0** milestone. The next feature milestone remains **0.2.0**.
+The current release is **0.1.1-beta.1**, a bug-fix release within the **0.1.0** milestone. The next feature milestone is **0.2.0**, now in [release preparation](docs/RELEASE_0.2.0.md).
 
 Each beta milestone can receive bug-fix releases as needed. These do not count as additional milestones in the ten-beta roadmap.
 

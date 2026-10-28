@@ -69,7 +69,9 @@ ApplicationWindow {
         required property var record
         property bool showDate:false
         property bool compact:false
-        implicitHeight:82
+        property bool checklistExpanded:false
+        function toggleStep(stepId){planner.toggleChecklist(record.id,record.occurrenceDate,stepId,record.fingerprint)}
+        implicitHeight:82+(checklistExpanded?record.checklist.length*38+8:0)
         radius:10
         shadowStrength:0
         border.width:0
@@ -77,17 +79,31 @@ ApplicationWindow {
         HoverHandler {id:entryHover}
         Rectangle {x:12;y:parent.height-1;width:parent.width-24;height:1;color:win.line;opacity:.7}
         RowLayout {
-            anchors.fill:parent;anchors.margins:12;spacing:10
+            anchors.left:parent.left;anchors.right:parent.right;anchors.top:parent.top;anchors.margins:12;height:58;spacing:10
             Rectangle {width:3;Layout.preferredHeight:26;Layout.alignment:Qt.AlignVCenter;radius:1;color:entry.record.conflict?win.danger:entry.record.color}
             Action {visible:entry.record.task;text:entry.record.done?"✓":"○";Accessible.name:entry.record.repeated&&entry.record.done?"Reopen completed series":"Toggle task completion";onClicked:planner.toggleTask(entry.record.id,entry.record.occurrenceDate,entry.record.fingerprint)}
             ColumnLayout {
                 Layout.fillWidth:true;Layout.minimumWidth:0;spacing:5
                 Label {Layout.fillWidth:true;text:entry.record.title;textFormat:Text.PlainText;color:win.ink;font.pixelSize:14;font.weight:Font.DemiBold;font.strikeout:entry.record.done;elide:Text.ElideRight}
                 Label {Layout.fillWidth:true;text:entry.record.unscheduled?"Undated · "+entry.record.minutes+" min":(entry.showDate?entry.record.date+" · ":"")+(entry.record.allDay?"All day":(entry.record.carry?"Continued · ":"")+entry.record.time+" · "+entry.record.minutes+" min")+(entry.record.conflict?" · Overlap":"");color:entry.record.conflict?win.danger:win.muted;font.pixelSize:11;elide:Text.ElideRight}
+                Label {visible:entry.record.task&&(entry.record.priority>0||entry.record.project.length>0);Layout.fillWidth:true;text:(["","Low priority","Medium priority","High priority"])[entry.record.priority]+(entry.record.priority&&entry.record.project?" · ":"")+entry.record.project;textFormat:Text.PlainText;color:entry.record.priority===3?win.danger:win.accent;font.pixelSize:11;elide:Text.ElideRight}
             }
+            Action {visible:entry.record.task&&entry.record.checklist.length>0;text:entry.record.checklistDone+"/"+entry.record.checklist.length+(entry.checklistExpanded?" ▴":" ▾");Accessible.name:"Show checklist progress";onClicked:entry.checklistExpanded=!entry.checklistExpanded}
             Action {visible:entry.record.task&&!entry.record.done;text:entry.compact?"Plan":"Find time";onClicked:win.planTask(entry.record)}
             Action {visible:entry.record.repeated;text:"Series";onClicked:planner.edit(entry.record.id,entry.record.occurrenceDate,false);Accessible.name:"Edit entire series"}
             Action {text:"↗";Accessible.name:entry.record.task?"Edit task":"Edit event";ToolTip.visible:hovered;ToolTip.text:Accessible.name;onClicked:planner.edit(entry.record.id,entry.record.occurrenceDate,true)}
+        }
+        ColumnLayout {
+            visible:entry.checklistExpanded
+            anchors.left:parent.left;anchors.right:parent.right;anchors.top:parent.top;anchors.topMargin:82;anchors.leftMargin:26;anchors.rightMargin:18;spacing:0
+            Repeater {model:entry.checklistExpanded?entry.record.checklist:[]
+                delegate:RowLayout {
+                    required property var modelData
+                    Layout.fillWidth:true;Layout.preferredHeight:38
+                    Action {text:modelData.done?"✓":"○";Accessible.name:"Toggle checklist step "+modelData.title;onClicked:entry.toggleStep(modelData.id)}
+                    Label {Layout.fillWidth:true;text:modelData.title;textFormat:Text.PlainText;color:win.muted;font.pixelSize:12;font.strikeout:modelData.done;elide:Text.ElideRight}
+                }
+            }
         }
     }
     function dateValue(s){return new Date(Number(s.slice(0,4)),Number(s.slice(5,7))-1,Number(s.slice(8,10)),12);}
@@ -100,6 +116,22 @@ ApplicationWindow {
     Shortcut {sequence:"Ctrl+Z";enabled:!editorSurface.modalOpen&&planner.canUndo;onActivated:planner.undo()}
     Shortcut {sequence:"Ctrl+Q";onActivated:Qt.quit()}
 
+    Popup {
+        id:projectPopup;parent:Overlay.overlay;anchors.centerIn:parent;width:420;modal:true;focus:true
+        background:LiquidSurface {light:win.light;radius:18;glassOpacity:1}
+        contentItem:ColumnLayout {
+            spacing:12
+            Label {text:"Edit project";color:win.ink;font.pixelSize:20}
+            Label {text:"Rename to an existing project to merge them. Clearing the project keeps all tasks.";Layout.fillWidth:true;wrapMode:Text.Wrap;color:win.muted}
+            Field {id:renameProjectField;Layout.fillWidth:true;maximumLength:80;Accessible.name:"Project name"}
+            RowLayout {
+                Action {text:"Clear project";onClicked:{planner.renameProject(planner.projectFilter,"");projectPopup.close();}}
+                Item {Layout.fillWidth:true}
+                Action {text:"Cancel";onClicked:projectPopup.close()}
+                Action {text:"Save";primary:true;enabled:renameProjectField.text.trim().length>0&&renameProjectField.text.trim()!=="*";onClicked:{planner.renameProject(planner.projectFilter,renameProjectField.text);projectPopup.close();}}
+            }
+        }
+    }
     Canvas {
         id:liquidBackdrop
         x:-18;y:-18;width:win.width+36;height:win.height+36
@@ -335,7 +367,7 @@ ApplicationWindow {
                         anchors.fill:parent;anchors.margins:16;spacing:12
                         RowLayout {
                             Layout.fillWidth:true
-                            Field {id:globalSearch;Layout.fillWidth:true;placeholderText:"Title, location, notes or date …";maximumLength:200;text:planner.query;onTextEdited:planner.setQuery(text);Accessible.name:"Global search"}
+                            Field {id:globalSearch;Layout.fillWidth:true;placeholderText:"Title, project, checklist, notes or date …";maximumLength:200;text:planner.query;onTextEdited:planner.setQuery(text);Accessible.name:"Global search"}
                                                         Action {text:"All";primary:planner.kind==="all"||planner.kind==="tasks";onClicked:planner.setFilter(planner.view==="tasks"?"tasks":"all",planner.category)}
                             Action {text:"Open";primary:planner.kind==="open";onClicked:planner.setFilter("open",planner.category)}
                             Action {text:"Completed";primary:planner.kind==="done";onClicked:planner.setFilter("done",planner.category)}
@@ -352,13 +384,33 @@ ApplicationWindow {
                             Action {visible:planner.view==="tasks";text:"Sort ▾";onClicked:sortMenu.open()
                                 Menu {id:sortMenu
                                     MenuItem {text:"Default";checkable:true;checked:planner.taskOrder==="default";onTriggered:planner.setTaskOrder("default")}
+                                    MenuItem {text:"Priority: high first";checkable:true;checked:planner.taskOrder==="priority";onTriggered:planner.setTaskOrder("priority")}
+                                    MenuItem {text:"Project";checkable:true;checked:planner.taskOrder==="project";onTriggered:planner.setTaskOrder("project")}
                                     MenuItem {text:"Title A–Z";checkable:true;checked:planner.taskOrder==="title";onTriggered:planner.setTaskOrder("title")}
                                     MenuItem {text:"Scheduled first";checkable:true;checked:planner.taskOrder==="planned";onTriggered:planner.setTaskOrder("planned")}
                                     MenuItem {text:"Shortest duration first";checkable:true;checked:planner.taskOrder==="duration";onTriggered:planner.setTaskOrder("duration")}
                                 }
                             }
                             Item {Layout.fillWidth:true}
-                            Action {visible:planner.category>=0||planner.query.length>0||planner.planningFilter!=="all"||planner.taskOrder!=="default"||["all","tasks"].indexOf(planner.kind)<0;text:"Reset";onClicked:{planner.setTaskOrder("default");planner.setPlanningFilter("all");planner.setQuery("");planner.setFilter(planner.view==="tasks"?"tasks":"all",-1);}}
+                            Action {visible:planner.projectFilter!=="*"||planner.priorityFilter>=0||planner.category>=0||planner.query.length>0||planner.planningFilter!=="all"||planner.taskOrder!=="default"||["all","tasks"].indexOf(planner.kind)<0;text:"Reset";onClicked:{planner.setTaskFilters("*",-1);planner.setTaskOrder("default");planner.setPlanningFilter("all");planner.setQuery("");planner.setFilter(planner.view==="tasks"?"tasks":"all",-1);}}
+                        }
+                        RowLayout {
+                            visible:planner.view==="tasks";Layout.fillWidth:true;spacing:8
+                            Action {Layout.maximumWidth:240;text:(planner.projectFilter==="*"?"All projects":planner.projectFilter||"No project")+" ▾";onClicked:taskProjectMenu.open()
+                                Menu {id:taskProjectMenu
+                                    MenuItem {text:"All projects";onTriggered:planner.setTaskFilters("*",planner.priorityFilter)}
+                                    MenuItem {text:"No project";onTriggered:planner.setTaskFilters("",planner.priorityFilter)}
+                                    Repeater {model:planner.projects;delegate:MenuItem {required property var modelData;text:modelData.name+" · "+modelData.done+"/"+modelData.total;onTriggered:planner.setTaskFilters(modelData.name,planner.priorityFilter)}}
+                                }
+                            }
+                            Action {text:(["Any priority","No priority","Low","Medium","High"])[planner.priorityFilter+1]+" ▾";onClicked:taskPriorityMenu.open()
+                                Menu {id:taskPriorityMenu
+                                    Repeater {model:["Any priority","No priority","Low","Medium","High"];delegate:MenuItem {required property int index;required property string modelData;text:modelData;onTriggered:planner.setTaskFilters(planner.projectFilter,index-1)}}
+                                }
+                            }
+                            Action {visible:planner.projectFilter!=="*"&&planner.projectFilter!=="";text:"Edit project";onClicked:{renameProjectField.text=planner.projectFilter;projectPopup.open();}}
+                            Item {Layout.fillWidth:true}
+                            Label {text:planner.results.length+" tasks";color:win.muted;font.pixelSize:12}
                         }
                         RowLayout {visible:planner.view==="tasks";Layout.fillWidth:true
                             Action {text:"Any schedule";primary:planner.planningFilter==="all";onClicked:planner.setPlanningFilter("all")}
@@ -371,7 +423,7 @@ ApplicationWindow {
                             Repeater {model:planner.dateHints;delegate:Action {required property var modelData;text:modelData.label+" · "+modelData.date;onClicked:{planner.selectDate(modelData.date);planner.setView("today");}}}
                             Item {Layout.fillWidth:true}
                         }
-                        Label {text:planner.view==="tasks"?"Undated tasks stay here. Scheduled tasks also appear in the calendar.":"Search all months and years · title, location and notes";Layout.fillWidth:true;wrapMode:Text.Wrap;color:win.muted;font.pixelSize:11}
+                        Label {text:planner.view==="tasks"?"Undated tasks stay here. Scheduled tasks also appear in the calendar.":"Search all months and years · includes projects and checklist steps";Layout.fillWidth:true;wrapMode:Text.Wrap;color:win.muted;font.pixelSize:11}
                         ListView {id:resultList;Layout.fillWidth:true;Layout.fillHeight:true;clip:true;spacing:8;model:planner.view==="tasks"?planner.results.filter(function(e){return e.task;}):planner.results;delegate:Entry {required property var modelData;width:resultList.width;record:modelData;showDate:true} ScrollBar.vertical:ScrollBar {} Label {anchors.centerIn:parent;text:"No matching entries.";color:win.muted;visible:resultList.count===0}}
                     }
                 }

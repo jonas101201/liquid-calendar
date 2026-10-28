@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.0-beta.1 — Unreleased (planned 2026-10-29)
+
+- No/low/medium/high task priorities with filtering and sorting.
+- Editable checklists, inline completion and progress counters; per-occurrence progress for repeating tasks.
+- Projects with task counts, filtering, sorting, renaming, merging and clearing assignments without deleting tasks.
+- Global search includes project names and checklist steps across all dates.
+- JSON backup/import and companion-widget editing preserve the new optional task details. Existing records need no migration.
+- Added regression tests for validation, concurrent edits, recurrence, backups, scheduling, project operations and real QML editor Save/reopen behavior.
+
 ## 0.1.1-beta.1 — 2026-10-28
 
 - Completing a repeating task now completes only the selected occurrence. Reopening that completed occurrence preserves future repetitions. Legacy whole-series completions can still be explicitly reopened.

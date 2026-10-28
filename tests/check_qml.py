@@ -58,6 +58,29 @@ assert expr('editorSurface.review("deletedEntry!==null&&!root.persistence")') is
 expr('editorSurface.review("undoDelete()")');settle();assert sorted(st.read(),key=lambda e:e['id'])==sorted(before_group,key=lambda e:e['id'])
 # The user-visible application-wide Undo must also restore the whole group.
 b.edit('series',source['date'],False);settle();expr('editorSurface.review("deleteConfirm.accept()")');settle();b.undo();assert sorted(st.read(),key=lambda e:e['id'])==sorted(before_group,key=lambda e:e['id'])
+# Exercise actual 0.2 editor fields and Save; no personal data is touched.
+b.commit([]);b.setView('tasks');settle()
+expr('editorSurface.openNewTask(win.dateValue(planner.selected))');settle()
+expr('editorSurface.review('+json.dumps('titleField.text="Prepare release";priorityBox.currentIndex=3;projectField.text="Launch";editor.checklist=[{id:"verify",title:"Verify package",done:false}];saveButton.clicked()')+')');settle()
+saved=st.read()[0];assert saved['date']=='' and saved['priority']==3 and saved['project']=='Launch';assert len(saved['checklist'])==1
+b.setTaskFilters('Launch',3);assert len(b.results)==1
+expr('resultList.itemAtIndex(0).checklistExpanded=true');settle()
+expr('resultList.itemAtIndex(0).toggleStep("verify")');settle();assert st.read()[0]['checklist'][0]['done']
+b.undo();assert st.read()==[saved]
+for theme in ['dark','light']:
+ b.setTheme(theme)
+ for width,height in [(980,680),(1280,860)]:
+  win.setWidth(width);win.setHeight(height);settle()
+  QQuickWindow.grabWindow(win).save(str(out/f'{theme}-tasks-{width}.png'))
+b.edit(saved['id'],'',False);settle()
+assert expr('editorSurface.review("priorityBox.currentIndex")')==3
+assert expr('editorSurface.review("projectField.text")')=='Launch'
+# Invalid blank steps must block Save, then a valid edit is persisted.
+expr('editorSurface.review('+json.dumps('editor.checklist=[{id:"verify",title:"",done:false}];saveButton.clicked()')+')');assert st.read()==[saved]
+expr('editorSurface.review('+json.dumps('editor.checklist=[{id:"verify",title:"Verify package",done:true}];saveButton.clicked()')+')');settle()
+assert st.read()[0]['checklist'][0]['done']
+b.undo();assert st.read()==[saved]
+print('0.2 task editor Save/reopen/validation, project filters and checklist Undo passed.')
 print('Recurring task Qt slot, hidden calendar fallback and visible app-wide group Undo passed.')
 print('English dates/search; German aliases; non-ASCII data preserved; 14 small-window views rendered.')
 win.close();engine.deleteLater();settle();assert not logs,logs

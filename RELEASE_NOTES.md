@@ -1,25 +1,24 @@
-# Liquid Calendar 0.1.1 Beta 1
+# Liquid Calendar 0.2.0 Beta 1 — release preparation
 
-[Published release and downloads](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.1.1-beta.1) · [Full changelog](CHANGELOG.md)
+Planned for **29 October 2026, 12:00 Europe/Berlin**. This release has not been published yet. English interface, Fedora/KDE Plasma, GPL-3.0-or-later.
 
-Bug-fix prerelease for the first public beta. English interface, Fedora/KDE Plasma, GPL-3.0-or-later.
+## Task organization
 
-## Fixed
-
-- Completing a repeating task affects only the selected occurrence; future tasks remain open. Completed one-off occurrences can be reopened. Previously completed whole-series records can be explicitly reopened as a series.
-- Calendar fallback Undo restores the complete group, including detached occurrences. The native app already hides that internal fallback; its visible app-wide Undo remains the supported action.
-- Next-day all-day reminder text now says “All day tomorrow”.
-- Faster agenda calculation through daily overlap groups and heap-based lane assignment.
-- SQLite connections close immediately after transactions, including failures.
+- Choose no, low, medium or high priority; filter and sort tasks by priority.
+- Add, edit, remove and complete up to 100 checklist steps per task. Expand progress directly in the Tasks view.
+- Organize tasks into named projects. Combine project, priority, status, category and scheduling filters. Project menus display completed/total task records.
+- Rename or merge projects, or clear their assignments while preserving every task. Undo restores the previous state.
+- Search project names and checklist text across all dates, alongside titles, locations and notes.
+- Repeating-task inline checklist progress belongs to the selected occurrence. Future occurrences keep the template's state. Marking all steps complete does not automatically complete the parent task.
 
 ## Install or update
 
-Extract the source archive and run `python3 installieren.py`. Add `--with-widget` for a new optional Plasma widget. Existing widgets are updated automatically; reload an active widget when convenient to use the corrected completion behavior. Quit the app with Ctrl+Q before restarting it after the update.
+Extract the source archive and run `python3 installieren.py`. Use `--with-widget` for a new optional widget. The installer also updates an already installed widget. Quit the old app with **Ctrl+Q**, then reopen it. Reload the desktop widget when convenient to use its new task editor.
 
-The installer downloads pinned Qt dependencies from PyPI. Event data and existing stored completion states are not automatically migrated or rewritten. This release introduces no new database format. See README.md, KNOWN_ISSUES.md and TESTING.md.
+New task details are optional fields in the existing local records, preserved by JSON backup/import. No existing entries are automatically rewritten; no database migration is required. Both app and widget support the fields. Keep a JSON backup before testing a beta.
 
-Regression checks use synthetic, isolated data. The fresh-account installation test remains excluded at the maintainer's request.
+Reminders still require the app or tray process. ICS exports events only; cloud sync and ICS import remain future milestones. See [known issues](KNOWN_ISSUES.md).
 
 ## Verification
 
-60 Python tests, six JavaScript suites and real QML regression interactions pass. [Hosted release checks passed on Python 3.10, 3.12 and 3.14](https://github.com/jonas101201/liquid-calendar/actions/runs/40712199654). See [TESTING.md](TESTING.md) for the exact scope.
+The preparation is covered by 71 Python tests, seven JavaScript suites, real offscreen QML editor interactions and a smoke launch. Hosted CI must pass for the final release commit before publication. Fresh-account installation validation remains excluded at the maintainer's request. See [TESTING.md](TESTING.md) and the [release checklist](docs/RELEASE_0.2.0.md).

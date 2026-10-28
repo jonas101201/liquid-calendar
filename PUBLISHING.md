@@ -10,6 +10,10 @@
 
 The release includes source ZIP and TAR archives plus SHA256SUMS. It is marked as a prerelease. Published tags and assets identify fixed snapshots; documentation updates on main do not replace an existing release archive.
 
+## Preparing 0.2.0-beta.1
+
+The preparation branch is `prepare/0.2.0-beta.1`. Publication is scheduled for **29 October 2026 at 12:00 Europe/Berlin**, conditional on successful final checks. Follow [the release checklist](docs/RELEASE_0.2.0.md). Do not publish it early.
+
 ## Preparing a future release
 
 1. Choose the next version using ROADMAP.md. Bug fixes increment the patch version; feature milestones increment the minor version.

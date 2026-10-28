@@ -1,14 +1,14 @@
 # Testing
 
-## Current beta: 0.1.1-beta.1
+## Preparing 0.2.0-beta.1
 
-The [published release CI run](https://github.com/jonas101201/liquid-calendar/actions/runs/40712199654) passed on Python **3.10, 3.12 and 3.14**. It runs the Python suite, real offscreen QML checks, an application smoke launch and the JavaScript suites. This verifies automated behavior; it does not certify every desktop environment.
+The previous [0.1.1 release CI run](https://github.com/jonas101201/liquid-calendar/actions/runs/40712199654) passed on Python **3.10, 3.12 and 3.14**. It runs the Python suite, real offscreen QML checks, an application smoke launch and the JavaScript suites. This verifies automated behavior; it does not certify every desktop environment.
 
-Current coverage:
+0.2.0 local coverage (hosted CI must pass before publication):
 
-- **60 Python tests:** storage conflicts and undo, repeats/exceptions, undated tasks, English date search, free-slot checks, per-occurrence task completion, legacy series reopening, stale/concurrent completion rejection, reminder text, deterministic SQLite closure and rollback, and randomized interval comparisons.
-- **Six JavaScript suites:** calendar calculations, date/search behavior, undated tasks, shared-store merging, English aliases and task-occurrence completion.
-- **14 offscreen QML views:** seven views at 980×680 in light and dark themes, plus actual task-slot dispatch, Unicode save checks, grouped deletion and both native app Undo and the hidden calendar fallback.
+- **71 Python tests:** task priorities, projects, checklist validation, project rename/merge/clear, atomic conflict rejection, JSON round trips, occurrence-specific checklist progress and scheduling preservation, plus storage conflicts and undo, repeats/exceptions, undated tasks, English date search, free-slot checks, per-occurrence task completion, legacy series reopening, stale/concurrent completion rejection, reminder text, deterministic SQLite closure and rollback, and randomized interval comparisons.
+- **Seven JavaScript suites:** task-detail validation and backup/search preservation in app and widget, plus calendar calculations, date/search behavior, undated tasks, shared-store merging, English aliases and task-occurrence completion.
+- **14 offscreen QML views:** seven views at 980×680 in light and dark themes, plus four additional task renders at 980×680 and 1280×860, editor Save/reopen/invalid-step rejection and checklist Undo, actual task-slot dispatch, Unicode save checks, grouped deletion and both native app Undo and the hidden calendar fallback.
 - Independent review additionally compared overlap results against a simple pairwise reference and checked concurrent completion, midnight occurrence dates, connection lifetime and undo alongside unrelated edits.
 
 The 840-occurrence agenda benchmark improved from about 1.55 seconds before the fix to about 0.02 seconds on the development machine. Timings depend on hardware; randomized correctness and operation-count regression checks complement the benchmark.
@@ -34,6 +34,7 @@ node tests/test-undated.cjs
 node tests/test-widget-sharing.cjs
 node tests/test-english.cjs
 node tests/test-task-completion.cjs
+node tests/test-task-organization.cjs
 ```
 
 ## Graphics dependencies and screenshots
