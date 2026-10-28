@@ -15,6 +15,10 @@ A local desktop calendar and task planner for **Fedora Linux / KDE Plasma 6**. E
 - Conflict-aware local storage, undo, daily backups and optional Plasma widget.
 - JSON backup/import and ICS event export.
 
+## Roadmap
+
+See the [roadmap](ROADMAP.md) for the ten beta milestones, planned features and bug-fix versioning rules.
+
 ## Install
 
 Requirements: Fedora/KDE Plasma 6, **Python 3.10–3.14**, venv/pip support, network access to PyPI and the system Qt platform libraries. `notify-send` is needed for notifications. Other systems are not validated.
