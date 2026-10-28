@@ -1,6 +1,6 @@
 # Known issues and beta limitations
 
-Applies to **Liquid Calendar 0.3.0-beta.1**. Last updated: **2026-10-28**.
+Applies to the **0.3.0-beta.1 preparation**; latest published beta is **0.2.0-beta.1**. Last updated: **2026-10-28**.
 
 This page distinguishes current limitations from issues fixed in earlier beta versions. It is not a guarantee that the beta is free of bugs.
 
@@ -15,6 +15,10 @@ This page distinguishes current limitations from issues fixed in earlier beta ve
 - **Import and export:** JSON import adds new IDs and preserves existing IDs. ICS export includes events, not tasks. ICS import is not implemented.
 - **Shared storage:** app and widget use the same local Plasma database. If an incompatible active widget is detected, editing is blocked until **Connect** reloads it. This briefly refreshes the desktop and panels.
 - **Undo:** app-wide Undo covers the last local app change and refuses to overwrite a newer edit of the same entry. It is not an unlimited history or backup restoration tool.
+
+## Event merge scope
+
+Desktop **More → Merge with another event…** combines saved, independent events on the same date. Both must be timed or both all-day. Tasks, series and detached occurrences are excluded. Unsaved editor changes are not merged; save first. One combined event has one category (the first event's) and one reminder (the largest enabled offset relative to the combined start). Undo restores both entries. Length/duration limits block the operation without truncation.
 
 ## Weekly repeat compatibility
 

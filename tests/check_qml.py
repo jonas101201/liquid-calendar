@@ -179,4 +179,24 @@ print('0.3 quick preview, event/time pickers, template save/use and new IDs pass
 print('0.2 task editor Save/reopen/validation, project filters and checklist Undo passed.')
 print('Recurring task Qt slot, hidden calendar fallback and visible app-wide group Undo passed.')
 print('English dates/search; German aliases; non-ASCII data preserved; 14 small-window views rendered.')
+# Real merge dialog preview, save, conflict rejection and Undo on synthetic records.
+a=e('merge-a',title='Design review',notes='First note');c=e('merge-b',title='Planning',time='09:30',notes='Second note')
+b.commit([a,c]);b.edit(a['id'],a['date'],False);settle()
+expr('editorSurface.review("mergeButton.triggered()")');settle()
+assert expr('editorSurface.review("mergeDialog.visible")') is True
+assert expr('editorSurface.review("mergeDialog.preview.event.minutes")')==90
+QQuickWindow.grabWindow(win).save('/tmp/liquid-calendar-merge-preview.png')
+expr('editorSurface.review("confirmMerge.clicked()")');settle()
+assert len(st.read())==1 and st.read()[0]['notes']=='First note\n\nSecond note'
+b.undo();assert sorted(st.read(),key=lambda e:e['id'])==[a,c]
+# Dense lanes, short neighboring entries and horizontally aligned week headings.
+dense=[e('parallel-'+str(n),title='Parallel event '+str(n)) for n in range(5)]
+dense.extend([e('short-a',time='11:00',minutes=5),e('short-b',time='11:05',minutes=5)])
+b.commit(dense);b.selectDate(a['date']);b.setView('week');win.setWidth(980);win.setHeight(680);settle()
+assert expr('timeline.contentWidth>timeline.width')
+expr('timeline.contentX=300');settle()
+assert expr('weekHeader.x===timeline.gutter-timeline.contentX')
+expr('timeline.contentX=timeline.gutter+2*timeline.columnWidth;timeline.contentY=8*timeline.hourHeight');settle()
+QQuickWindow.grabWindow(win).save('/tmp/liquid-calendar-overlap-preview.png')
+print('Merge dialog preview/save/Undo and dense week layout with aligned scrolling passed.')
 win.close();engine.deleteLater();settle();assert not logs,logs

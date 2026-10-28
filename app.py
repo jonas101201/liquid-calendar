@@ -276,6 +276,26 @@ class Bridge(QObject):
     @Slot(str,int)
     def setFilter(self,kind,category):
         if kind in ['all','events','tasks','open','done'] and -1<=category<=3:self._kind=kind;self._category=category;self.changed.emit()
+    @Slot(str,str,result='QVariantMap')
+    def mergePreview(self,first_snapshot,second_snapshot):
+        try:
+            event=merge_events(json.loads(first_snapshot),json.loads(second_snapshot))
+            return {'event':event,'error':''}
+        except Exception as e:return {'error':str(e)}
+    @Slot(str,str,result=bool)
+    def mergeEvents(self,first_snapshot,second_snapshot):
+        try:
+            first,second=json.loads(first_snapshot),json.loads(second_snapshot)
+            merged=merge_events(first,second)
+            base=copy.deepcopy(self._events)
+            if any(e.get("seriesId") in (first["id"],second["id"]) for e in base):
+                raise ValueError("Events linked to series occurrences cannot be merged.")
+            for source in (first,second):
+                if next((e for e in base if e['id']==source['id']),None)!=source:
+                    raise ConflictError("An event has changed. Reopen both events before merging.")
+            desired=[e for e in base if e['id'] not in (first['id'],second['id'])]+[merged]
+            return self.commit(desired,base,label="Events merged · Undo restores both") is not None
+        except Exception as e:self.fail(e);return False
     @Slot(str,str,bool)
     def edit(self,ident,date,single=True):
         try:

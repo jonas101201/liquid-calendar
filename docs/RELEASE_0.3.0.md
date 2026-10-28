@@ -1,30 +1,36 @@
-# 0.3.0-beta.1 release record
+# 0.3.0-beta.1 preparation
 
-Release date: **28 October 2026**, published at the maintainer's request.
+Branch: `prepare/0.3.0-beta.1`. Not published; no release date scheduled. Current public release: 0.2.0-beta.1.
 
-[Release and downloads](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.3.0-beta.1) · [Release notes](../RELEASE_NOTES.md) · [Known issues](../KNOWN_ISSUES.md)
+## Scope
 
-## Included features
+- [x] Multiple selected weekdays for weekly repeats, matching calendar/search/reminder behavior and JSON/ICS export; legacy defaults and per-occurrence changes preserved.
+- [x] Existing main layout retained, with Tools and editor More dropdowns for additional functions.
+- [x] Deterministic quick-entry parser with English/German dates, times, durations and a reviewable draft.
+- [x] Date/month/year grid and time selection, including repeat-end dates, in desktop and widget editors.
+- [x] Desktop event-template save/use/rename/delete with date-independent defaults and fresh IDs.
+- [x] Transactional template state, validation/caps and snapshot-based concurrent-edit rejection.
+- [x] Existing calendar data left unchanged; templates are in a separate database key.
+- [x] Python, JavaScript and actual offscreen QML interaction checks.
+- [x] [Hosted tests](https://github.com/jonas101201/liquid-calendar/actions/runs/40749293714) and [security analysis](https://github.com/jonas101201/liquid-calendar/actions/runs/40749289194) passed for implementation commit `5492bc9` on Python 3.10, 3.12 and 3.14.
+- [ ] Publication requested; final metadata, source archives/tag and prerelease published.
 
-- Weekly repeats with a nonempty selection of weekdays, matching calendar/search/reminder behavior and JSON/ICS BYDAY export. Legacy defaults and per-occurrence changes are preserved.
-- The main layout is retained, with additional functions under Tools and editor More dropdowns. Task filters are grouped in a compact adaptive toolbar.
-- Quick entry with documented English/German dates, times, durations and an editable preview before saving.
-- Date/month/year and start-time pickers, including repeat-end dates, in desktop and widget editors.
-- Desktop event-template save/use/rename/delete, with date-independent defaults and fresh event IDs. Template state has validation, caps and transactional stale-edit protection.
-- Widget editor restores existing priority/project/checklist data; its dialog sizing loop is corrected.
+The [draft preparation PR](https://github.com/jonas101201/liquid-calendar/pull/2) contains the latest source and check status. The local development app/widget were updated with program-file backups; installed-app smoke launch passed without opening personal calendar data.
 
-## Verification evidence
+## Event merging and overlapping entries
 
-The final feature snapshot [`cee2068`](https://github.com/jonas101201/liquid-calendar/commit/cee206891d22d9520aeffe7538c977dd8dc506aa) passed [hosted tests](https://github.com/jonas101201/liquid-calendar/actions/runs/40753058768) on Python 3.10, 3.12 and 3.14 and [security analysis](https://github.com/jonas101201/liquid-calendar/actions/runs/40753054074).
+Open a saved independent event and choose **More ▾ → Merge with another event…**. Select another event on the same date and review the preview before confirming. Titles, locations and notes are combined without truncation; timed entries cover the union of both ranges, including gaps. The first event keeps its identity/category, and the largest enabled reminder offset is used relative to the new start. Undo restores both entries. Concurrent edits are rejected transactionally.
 
-Coverage includes 102 Python tests, eight JavaScript suites, actual Qt dropdown/keyboard, preview/editor, date/time/typed-year, template CRUD and weekday-button flows. The isolated widget editor uses a temporary offline database and stubs only the Kirigami theme lookup. The [release PR](https://github.com/jonas101201/liquid-calendar/pull/2) records the source history and later publication checks.
+Merging supports two independent events, either both timed or both all-day. Tasks, repeat series and detached series occurrences are excluded. Save editor changes before merging. Limit violations block the merge rather than dropping content.
 
-The release tag identifies the exact checked commit used to build the source ZIP and TAR. Uploaded assets and digests are visible on GitHub; SHA256SUMS covers the custom source archives and each archive contains MANIFEST.sha256. Existing published tags and assets are not overwritten.
+The week view gives simultaneous entries separate readable lanes, expands entries into available lanes and scrolls horizontally when needed. Headings follow horizontal scrolling. Short neighboring entries use visual spacing without receiving false time-conflict badges; midnight continuations are included.
 
-## Compatibility and limits
+## Verification scope
 
-Existing calendar records are not automatically rewritten. Selected-weekday schedules require sharing protocol 3; reload an active older widget through Connect before editing. Older clients may misinterpret such schedules, so retain backups before downgrading.
+116 Python tests and eight JavaScript suites, plus actual Qt preview/review, calendar/time picker, template Save/Use/Rename/Delete and final event Save/reopen behavior. Test databases and screenshots use synthetic data. Offscreen rendering covers the existing small-window/theme views; it does not establish live Plasma compatibility on every system. Fresh-account installation testing remains excluded.
 
-Quick entry is a limited parser, not arbitrary natural language. Templates exclude dates/repeats/series identity and are separate from event Undo and event JSON export; automatic SQLite backups include them. Task templates are not implemented.
+## Publication steps
 
-All test databases and screenshots use synthetic data. The local development app/widget were updated with program-file backups and an installed-app smoke launch without opening personal calendar data. Offscreen checks do not establish live Plasma compatibility on every system; fresh-account installation testing remains excluded. Existing reminder, synchronization and platform limitations remain applicable.
+When publication is explicitly requested: inspect current branch and CI, finalize VERSION/widget metadata and English documentation, update roadmap/changelog/current-version links, merge the verified preparation into main, require final CI, build and verify source archives/manifests, tag that exact commit and publish a prerelease with ZIP/TAR/SHA256SUMS. Never overwrite existing published tags or assets.
+
+The limited quick-entry grammar and template backup/Undo scope are documented in README.md and KNOWN_ISSUES.md. Template storage remains separate from events. Selected-weekday repeats require sharing protocol 3; reload an active older widget with Connect before editing.

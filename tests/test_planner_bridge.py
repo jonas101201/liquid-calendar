@@ -59,4 +59,27 @@ class TestBridge(unittest.TestCase):
   self.assertEqual(next(v for v in rows if v['id']=='c')['lanes'],1);self.assertEqual(rows[0]['lanes'],2)
  def test_autostart_opt_in_test_path(self):
   self.assertFalse(self.bridge.autoStart);self.bridge.setAutoStart(True);self.assertTrue(self.bridge.autoStart);self.bridge.setAutoStart(False);self.assertFalse(self.bridge.autoStart)
+
+class TestMergeBridge(unittest.TestCase):
+ setUp=TestBridge.setUp
+ tearDown=TestBridge.tearDown
+ def test_merge_undo_and_concurrent_edit(self):
+  a=event();b=event(id='b',title='Second',time='09:30');self.store.merge([a,b],[]);self.bridge.reload()
+  snapshots=[json.dumps(a),json.dumps(b)]
+  self.assertTrue(self.bridge.mergeEvents(*snapshots));self.assertEqual(len(self.store.read()),1)
+  self.bridge.undo();self.assertEqual(sorted(self.store.read(),key=lambda e:e['id']),[a,b])
+  newer=copy.deepcopy(b);newer['notes']='Another client edit';self.store.merge([a,newer],[a,b])
+  self.assertFalse(self.bridge.mergeEvents(*snapshots));self.assertEqual(len(self.store.read()),2)
+  self.assertEqual(next(e for e in self.store.read() if e['id']=='b')['notes'],newer['notes'])
+ def test_stale_snapshot_after_reload(self):
+  a=event();b=event(id='b');self.store.merge([a,b],[]);self.bridge.reload()
+  newer=copy.deepcopy(a);newer['title']='Changed';self.store.merge([newer,b],[a,b]);self.bridge.reload()
+  self.assertFalse(self.bridge.mergeEvents(json.dumps(a),json.dumps(b)))
+
+ def test_former_series_with_children_rejected(self):
+  a=event();b=event(id='b');child=event(id='child',seriesId='b',date='2026-11-04')
+  self.store.merge([a,b,child],[]);self.bridge.reload()
+  self.assertFalse(self.bridge.mergeEvents(json.dumps(a),json.dumps(b)))
+  self.assertEqual(len(self.store.read()),3)
+
 if __name__=='__main__':unittest.main(verbosity=2)

@@ -1,6 +1,7 @@
 """Calendar calculations. Local floating dates, compatible with the Plasma widget."""
 from __future__ import annotations
 import calendar
+import bisect
 import heapq
 import copy
 import datetime as dt
@@ -127,11 +128,13 @@ def instances(events,start,days,kind='all',category=-1):
                 carry.update(date=(day+dt.timedelta(days=1)).isoformat(),time='00:00',start=0,end=v['start']+e['minutes']-1440,carry=True,segmentMinutes=v['start']+e['minutes']-1440)
                 result.append(carry)
     result.sort(key=lambda v:(v['date'],not v['allDay'],v['start'],v['title'].casefold()))
-    # Midnight continuations have already been split into same-day segments.
-    # Every interval in a connected overlap group of size > 1 has a conflict.
+    # Visual intervals include the minimum card height (20px + 4px gap at 66px/hour).
+    # Conflict badges still describe real time overlaps, not visual padding.
     daily={}
     for v in result:
+        v['laneSpan']=1
         if not v['allDay'] and not (v['task'] and v['done']):
+            v['layoutEnd']=min(1440,max(v['end'],v['start']+24))
             daily.setdefault(v['date'],[]).append(v)
     def assign(group):
         active=[];available=[];lane_count=0
@@ -140,15 +143,25 @@ def instances(events,start,days,kind='all',category=-1):
                 _,lane=heapq.heappop(active);heapq.heappush(available,lane)
             if available:lane=heapq.heappop(available)
             else:lane=lane_count;lane_count+=1
-            v['lane']=lane;heapq.heappush(active,(v['end'],lane))
-        for v in group:
-            v['lanes']=max(1,lane_count);v['conflict']=len(group)>1
+            v['lane']=lane;heapq.heappush(active,(v['layoutEnd'],lane))
+        lanes=[[] for _ in range(lane_count)]
+        for v in group:lanes[v['lane']].append(v)
+        starts=[[v['start'] for v in lane] for lane in lanes]
+        previous_end=-1
+        for index,v in enumerate(group):
+            v['lanes']=max(1,lane_count)
+            v['conflict']=previous_end>v['start'] or (index+1<len(group) and group[index+1]['start']<v['end'])
+            previous_end=max(previous_end,v['end'])
+            for lane in range(v['lane']+1,lane_count):
+                last=bisect.bisect_left(starts[lane],v['layoutEnd'])-1
+                if last>=0 and lanes[lane][last]['layoutEnd']>v['start']:break
+                v['laneSpan']+=1
     for entries in daily.values():
         group=[];group_end=-1
         for v in entries:
             if group and v['start']>=group_end:
                 assign(group);group=[];group_end=-1
-            group.append(v);group_end=max(group_end,v['end'])
+            group.append(v);group_end=max(group_end,v['layoutEnd'])
         assign(group)
     return result
 
@@ -337,3 +350,25 @@ def validate_templates(templates):
         if not isinstance(t['event'],dict) or set(t['event'])!=set(TEMPLATE_FIELDS):raise ValueError('Invalid template fields.')
         event_from_template(t,dt.date(2000,1,1))
     return templates
+
+
+def merge_events(first,second):
+    """Combine two independent saved events, retaining first's identity and style."""
+    validate([first,second])
+    if any(e['task'] or e['repeat']!='none' or any(e.get(k) for k in ('seriesId','occurrenceOf')) for e in (first,second)):
+        raise ValueError("Merge supports independent, non-repeating events only.")
+    if first['date']!=second['date'] or first['allDay']!=second['allDay']:
+        raise ValueError("Choose two events on the same date, both timed or both all-day.")
+    result=copy.deepcopy(first)
+    start=lambda e:int(e['time'][:2])*60+int(e['time'][3:])
+    if not first['allDay']:
+        minute=min(start(first),start(second));end=max(start(first)+first['minutes'],start(second)+second['minutes'])
+        result.update(time=f'{minute//60:02}:{minute%60:02}',minutes=end-minute)
+    def combine(key,separator):
+        return separator.join(dict.fromkeys(e[key] for e in (first,second) if e[key]))
+    result.update(title=combine('title',' / '),location=combine('location',' · '),notes=combine('notes','\n\n'))
+    # One combined event has one reminder. Keep the earlier enabled offset.
+    reminders=[e.get('reminder',-1) for e in (first,second) if e.get('reminder',-1)>=0]
+    result['reminder']=max(reminders,default=-1)
+    validate([result]) # Never truncate user content or silently exceed duration limits.
+    return result

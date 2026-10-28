@@ -32,7 +32,7 @@ Item {
     readonly property var results: Cal.searchAll(events,query,categoryFilter,kindFilter,today)
     readonly property var suggestions: searching?Cal.dateSuggestions(query,today):[]
     property var deletedEntry: null
-    readonly property bool modalOpen: editor.visible||transfer.visible||options.visible||filters.visible||dateJump.visible||deleteConfirm.visible
+    readonly property bool modalOpen: editor.visible||transfer.visible||options.visible||filters.visible||dateJump.visible||deleteConfirm.visible||mergeDialog.visible
     property string error: ""
     property real glassOpacity: 0.80
     readonly property real minimumOpacity: light ? 0.92 : 0.76
@@ -629,6 +629,7 @@ Item {
                 GlassButton {id:editorToolsButton;visible:editor.eventId!==""|| (!!root.persistence&&!task.checked);text:"More ▾";Accessible.name:"Entry actions";onClicked:editorActions.open()
                     ActionMenu {id:editorActions;parent:editorToolsButton;light:root.light;y:editorToolsButton.height+4
                         ActionMenuItem {id:duplicateButton;light:root.light;visible:editor.eventId!=="";text:"Duplicate";onTriggered:{editor.eventId="";editor.draftOriginal=null;titleField.text=Array.from(titleField.text+" – Copy").slice(0,200).join("");}}
+                        ActionMenuItem {id:mergeButton;objectName:"mergeEventsAction";light:root.light;text:"Merge with another event…";visible:!!root.persistence&&!!editor.draftOriginal&&!editor.draftOriginal.task&&editor.draftOriginal.repeat==="none"&&!editor.draftOriginal.seriesId&&!editor.draftOriginal.occurrenceOf&&!root.events.some(function(child){return child.seriesId===editor.eventId;});onTriggered:root.openMerge()}
                         ActionMenuItem {id:templateButton;light:root.light;visible:!!root.persistence&&!task.checked;text:"Save template…";onTriggered:{templateNameField.text=titleField.text;templateNamePopup.error="";templateNamePopup.open();}}
                     }
                 }
@@ -655,6 +656,40 @@ Item {
                         if(root.store(next)) { if(e.date)root.select(Cal.parse(e.date));else{searchInput.clear();kindBox.currentIndex=3;} editor.close(); } else editor.validation=root.error;
                     }
                 }
+            }
+        }
+    }
+    function openMerge() {
+        mergeDialog.first=JSON.stringify(editor.draftOriginal);
+        var source=editor.draftOriginal;
+        mergeDialog.choices=events.filter(function(e){return e.id!==source.id&&!e.task&&e.repeat==="none"&&!e.seriesId&&!e.occurrenceOf&&!events.some(function(child){return child.seriesId===e.id;})&&e.date===source.date&&e.allDay===source.allDay;});
+        mergeChoice.currentIndex=mergeDialog.choices.length?0:-1;
+        mergeDialog.message="";mergeDialog.open();
+    }
+    Dialog {
+        id:mergeDialog;objectName:"mergeEventsDialog";parent:root;anchors.centerIn:parent;modal:true
+        width:Math.max(280,Math.min(root.width-20,500));height:Math.min(root.height-20,520)
+        property string first:""
+        property var choices:[]
+        property string message:""
+        readonly property string second:mergeChoice.currentIndex>=0&&mergeChoice.currentIndex<choices.length?JSON.stringify(choices[mergeChoice.currentIndex]):""
+        readonly property var preview:second&&root.persistence?root.persistence.mergePreview(first,second):({error:"No compatible events. Choose two independent events on the same day."})
+        background:LiquidSurface {light:root.light;motionEnabled:root.motionEnabled;radius:18;glassOpacity:1}
+        contentItem:ColumnLayout {
+            spacing:12
+            Label {text:"Merge events";color:root.ink;font.pixelSize:20}
+            Label {text:"Uses saved entries. Save any edits before merging. Choose a second event on the same date.";color:root.muted;Layout.fillWidth:true;wrapMode:Text.Wrap}
+            GlassCombo {id:mergeChoice;objectName:"mergeEventChoice";Layout.fillWidth:true;model:mergeDialog.choices.map(function(e){return (e.allDay?"All day":e.time)+" · "+e.title;});Accessible.name:"Event to merge"}
+            ScrollView {
+                Layout.fillWidth:true;Layout.fillHeight:true;contentWidth:availableWidth;clip:true
+                Label {width:parent.width;textFormat:Text.PlainText;wrapMode:Text.Wrap;color:root.ink;text:mergeDialog.preview.event?mergeDialog.preview.event.title+"\n\n"+mergeDialog.preview.event.date+" · "+(mergeDialog.preview.event.allDay?"All day":mergeDialog.preview.event.time+" · "+mergeDialog.preview.event.minutes+" min")+"\n\n"+mergeDialog.preview.event.location+"\n"+mergeDialog.preview.event.notes:mergeDialog.preview.error}
+            }
+            Label {text:"Keeps this event's category. Combines titles, locations and notes; covers both time ranges (including gaps). Uses the earliest enabled reminder. Undo restores both entries.";color:root.muted;Layout.fillWidth:true;wrapMode:Text.Wrap;font.pixelSize:11}
+            Label {text:mergeDialog.message;color:root.danger;visible:text!=="";Layout.fillWidth:true;wrapMode:Text.Wrap}
+            RowLayout {
+                GlassButton {text:"Cancel";onClicked:mergeDialog.close()}
+                Item {Layout.fillWidth:true}
+                GlassButton {id:confirmMerge;objectName:"confirmMerge";text:"Merge two events";highlighted:true;enabled:!!mergeDialog.preview.event;onClicked:{if(root.persistence.mergeEvents(mergeDialog.first,mergeDialog.second)){mergeDialog.close();editor.close();}else mergeDialog.message=root.persistence.error;}}
             }
         }
     }

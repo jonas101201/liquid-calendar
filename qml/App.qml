@@ -367,9 +367,11 @@ ApplicationWindow {
                     anchors.fill:parent;visible:planner.view==="week"
                     ColumnLayout {
                         anchors.fill:parent;anchors.margins:10;spacing:6
-                        RowLayout {
-                            Layout.fillWidth:true;Layout.leftMargin:48;spacing:0
-                            Repeater {model:planner.weekDays;delegate:Item {required property var modelData;Layout.fillWidth:true;implicitHeight:46;Column {anchors.centerIn:parent;spacing:3;Label {anchors.horizontalCenter:parent.horizontalCenter;text:modelData.name;font.pixelSize:10;color:win.muted} Label {anchors.horizontalCenter:parent.horizontalCenter;text:modelData.number;color:modelData.today?win.accent:win.ink;font.pixelSize:20;font.bold:modelData.today}}}}
+                        Item {
+                            Layout.fillWidth:true;Layout.preferredHeight:46;clip:true
+                            Row {id:weekHeader;x:timeline.gutter-timeline.contentX;width:timeline.contentWidth-timeline.gutter;spacing:0
+                            Repeater {model:planner.weekDays;delegate:Item {required property var modelData;width:timeline.columnWidth;height:46;Column {anchors.centerIn:parent;spacing:3;Label {anchors.horizontalCenter:parent.horizontalCenter;text:modelData.name;font.pixelSize:10;color:win.muted} Label {anchors.horizontalCenter:parent.horizontalCenter;text:modelData.number;color:modelData.today?win.accent:win.ink;font.pixelSize:20;font.bold:modelData.today}}}}
+                            }
                         }
                         ListView {
                             id:allDayList;visible:count>0;Layout.fillWidth:true;Layout.preferredHeight:34;orientation:ListView.Horizontal;spacing:6;clip:true
@@ -383,8 +385,9 @@ ApplicationWindow {
                             Layout.fillWidth:true;Layout.fillHeight:true;clip:true
                             readonly property real hourHeight:66
                             readonly property real gutter:48
-                            readonly property real columnWidth:(width-gutter)/7
-                            contentWidth:width;contentHeight:24*hourHeight
+                            readonly property real columnWidth:(contentWidth-gutter)/7
+                            contentWidth:Math.max(width,gutter+7*Math.max(120,win.weekData.reduce(function(n,v){return Math.max(n,v.lanes*100);},0)));contentHeight:24*hourHeight
+                            ScrollBar.horizontal:ScrollBar {}
                             Component.onCompleted:contentY=7.5*hourHeight
                             boundsBehavior:Flickable.StopAtBounds
                             ScrollBar.vertical:ScrollBar {}
@@ -412,7 +415,7 @@ ApplicationWindow {
                                         property var record:modelData
                                         readonly property real homeX:timeline.gutter+record.dayIndex*timeline.columnWidth+record.lane*timeline.columnWidth/record.lanes+3
                                         readonly property real homeY:record.start/60*timeline.hourHeight+2
-                                        x:homeX;y:homeY;width:Math.max(24,timeline.columnWidth/record.lanes-6);height:Math.max(20,record.segmentMinutes/60*timeline.hourHeight-4)
+                                        x:homeX;y:homeY;width:Math.max(1,timeline.columnWidth*(record.laneSpan||1)/record.lanes-6);height:Math.min(1440*timeline.hourHeight/60-homeY,Math.max(20,record.segmentMinutes/60*timeline.hourHeight-4))
                                         readonly property color eventTint:record.conflict?win.danger:record.color
                                         radius:7;border.width:dragMouse.drag.active?1:0;border.color:eventTint;clip:true
                                         color:Qt.rgba(eventTint.r,eventTint.g,eventTint.b,win.light?.15:.16)
@@ -420,9 +423,9 @@ ApplicationWindow {
                                         z:dragMouse.drag.active?20:3
                                         Drag.active:dragMouse.drag.active;Drag.keys:["liquid-calendar-event"];Drag.source:eventBlock;Drag.hotSpot.x:width/2;Drag.hotSpot.y:8
                                         Column {
-                                            anchors.fill:parent;anchors.margins:6;spacing:3
-                                            Label {width:parent.width;text:(eventBlock.record.carry?"↳ ":"")+eventBlock.record.time;color:win.ink;font.pixelSize:10;elide:Text.ElideRight}
-                                            Label {visible:eventBlock.height>38;width:parent.width;text:eventBlock.record.title;textFormat:Text.PlainText;color:win.ink;font.pixelSize:11;font.bold:true;wrapMode:Text.Wrap;maximumLineCount:3;elide:Text.ElideRight}
+                                            anchors.fill:parent;anchors.margins:eventBlock.height<38?2:6;anchors.leftMargin:6;spacing:3
+                                            Label {width:parent.width;visible:eventBlock.height>38;text:(eventBlock.record.carry?"↳ ":"")+eventBlock.record.time;color:win.ink;font.pixelSize:10;elide:Text.ElideRight}
+                                            Label {visible:true;width:parent.width;text:eventBlock.record.title;textFormat:Text.PlainText;color:win.ink;font.pixelSize:11;font.bold:true;wrapMode:Text.Wrap;maximumLineCount:eventBlock.height<38?1:3;elide:Text.ElideRight}
                                             Label {visible:eventBlock.height>95&&eventBlock.record.conflict;width:parent.width;text:"Overlap";color:win.danger;font.pixelSize:9;elide:Text.ElideRight}
                                         }
                                         MouseArea {

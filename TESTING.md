@@ -1,10 +1,10 @@
 # Testing
 
-## Release 0.3.0-beta.1
+## Preparing 0.3.0-beta.1
 
-The [complete 0.3.0 preparation tests](https://github.com/jonas101201/liquid-calendar/actions/runs/40753058768) passed on Python **3.10, 3.12 and 3.14** for [`cee2068`](https://github.com/jonas101201/liquid-calendar/commit/cee206891d22d9520aeffe7538c977dd8dc506aa), including selected-weekday recurrence and the isolated widget editor. [Security analysis](https://github.com/jonas101201/liquid-calendar/actions/runs/40753054074) also passed. These links record the final feature snapshot; the release tag identifies the exact source commit with its final publication checks. Automated checks do not certify every desktop environment.
+The [0.3.0 preparation tests](https://github.com/jonas101201/liquid-calendar/actions/runs/40749293714) passed on Python **3.10, 3.12 and 3.14**, including all 92 Python tests, the actual QML checks, smoke launch and seven JavaScript suites. [Security analysis](https://github.com/jonas101201/liquid-calendar/actions/runs/40749289194) also passed. These results cover implementation snapshot [`5492bc9`](https://github.com/jonas101201/liquid-calendar/commit/5492bc9494d806be7edda4056d7786aa1fc472d2); check the preparation PR for later documentation updates and final release checks. Automated results do not certify every desktop environment.
 
-0.3.0 release coverage:
+0.3.0 preparation coverage:
 
 - **102 Python tests:** all 127 weekly-day subsets, legacy defaults, bounds, exclusions, search, reminders, per-occurrence changes and matching ICS DTSTART/BYDAY export, plus quick-entry defaults, English/German dates and explicit times, am/pm, ambiguity and invalid input, template field allowlists, fresh identity, persistence, caps and concurrent stale changes, plus task priorities, projects, checklist validation, project rename/merge/clear, atomic conflict and membership rejection, project Undo filter context, single-pass project aggregation, Unicode code-point limits, JSON round trips, occurrence-specific checklist progress and scheduling preservation, plus storage conflicts and undo, repeats/exceptions, undated tasks, English date search, free-slot checks, per-occurrence task completion, legacy series reopening, stale/concurrent completion rejection, reminder text, deterministic SQLite closure and rollback, and randomized interval comparisons.
 - **Eight JavaScript suites:** weekly-day validation, next/last occurrence, export and backup preservation, plus task-detail validation and backup/search preservation in app and widget, plus calendar calculations, date/search behavior, undated tasks, shared-store merging, English aliases and task-occurrence completion.
@@ -66,3 +66,7 @@ The first public beta had 48 Python tests and five JavaScript suites. Its hosted
 A separate agent reproduced Unicode validation differences, inline checklist collapse and concurrent project membership changes, then reviewed the corrections. Additional reproductions covered project Undo filtering and quadratic project summaries. See [the audit record](docs/BUG_AUDIT_0.2.0.md) for scope and limits.
 
 Selected-weekday checks also exercise the actual day buttons, the last-day guard and save/reopen behavior. `check_widget_editor.py` loads the real widget editor against a temporary offline database with only the unavailable Kirigami theme lookup stubbed; it verifies weekday editing and preservation of existing priority/project/checklist values. This does not constitute live Plasma testing. Sharing protocol tests reject old version 2 and accept version 3.
+
+## Additional 0.3 pre-release scan
+
+116 Python tests include merge content/limits, stale edits before and after reload, atomic writes and Undo, ten simultaneous entries, short neighboring entries, midnight carry-in and 80 deterministic randomized layout scenarios checked against an overlap oracle. Actual Qt tests exercise the merge dialog preview/confirmation/Undo and synchronized horizontal week scrolling. Eight JavaScript suites, the isolated widget editor and temporary-database smoke launch remain required. These checks use synthetic data and do not establish that all bugs are absent. Publication remains stopped.
