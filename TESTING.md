@@ -6,8 +6,8 @@ The [0.3.0 preparation tests](https://github.com/jonas101201/liquid-calendar/act
 
 0.3.0 preparation coverage:
 
-- **92 Python tests:** quick-entry defaults, English/German dates and explicit times, am/pm, ambiguity and invalid input, template field allowlists, fresh identity, persistence, caps and concurrent stale changes, plus task priorities, projects, checklist validation, project rename/merge/clear, atomic conflict and membership rejection, project Undo filter context, single-pass project aggregation, Unicode code-point limits, JSON round trips, occurrence-specific checklist progress and scheduling preservation, plus storage conflicts and undo, repeats/exceptions, undated tasks, English date search, free-slot checks, per-occurrence task completion, legacy series reopening, stale/concurrent completion rejection, reminder text, deterministic SQLite closure and rollback, and randomized interval comparisons.
-- **Seven JavaScript suites:** task-detail validation and backup/search preservation in app and widget, plus calendar calculations, date/search behavior, undated tasks, shared-store merging, English aliases and task-occurrence completion.
+- **102 Python tests:** all 127 weekly-day subsets, legacy defaults, bounds, exclusions, search, reminders, per-occurrence changes and matching ICS DTSTART/BYDAY export, plus quick-entry defaults, English/German dates and explicit times, am/pm, ambiguity and invalid input, template field allowlists, fresh identity, persistence, caps and concurrent stale changes, plus task priorities, projects, checklist validation, project rename/merge/clear, atomic conflict and membership rejection, project Undo filter context, single-pass project aggregation, Unicode code-point limits, JSON round trips, occurrence-specific checklist progress and scheduling preservation, plus storage conflicts and undo, repeats/exceptions, undated tasks, English date search, free-slot checks, per-occurrence task completion, legacy series reopening, stale/concurrent completion rejection, reminder text, deterministic SQLite closure and rollback, and randomized interval comparisons.
+- **Eight JavaScript suites:** weekly-day validation, next/last occurrence, export and backup preservation, plus task-detail validation and backup/search preservation in app and widget, plus calendar calculations, date/search behavior, undated tasks, shared-store merging, English aliases and task-occurrence completion.
 - **14 offscreen QML views:** seven views at 980×680 in light and dark themes, plus four additional task renders at 980×680 and 1280×860, editor Save/reopen/invalid-step rejection, real keyboard input into new steps, draft retention after adding/removing steps, editor checkbox persistence, preserved expansion after edits/detachment, long emoji-field round trips and checklist Undo, actual dropdown mouse click and focus, quick-preview-to-editor flow, calendar/time picker signals, template Save/Use/Rename/Delete without accidental event writes, actual task-slot dispatch, Unicode save checks, grouped deletion and both native app Undo and the hidden calendar fallback.
 - Independent review additionally compared overlap results against a simple pairwise reference and checked concurrent completion, midnight occurrence dates, connection lifetime and undo alongside unrelated edits.
 
@@ -20,6 +20,7 @@ From the repository root with requirements installed in a virtual environment:
 ```bash
 python -m unittest discover -s tests -p 'test_*.py' -v
 QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software python tests/check_qml.py
+python tests/check_widget_editor.py
 python app.py --smoke-test
 ```
 
@@ -35,6 +36,7 @@ node tests/test-widget-sharing.cjs
 node tests/test-english.cjs
 node tests/test-task-completion.cjs
 node tests/test-task-organization.cjs
+node tests/test-weekdays.cjs
 ```
 
 ## Graphics dependencies and screenshots
@@ -62,3 +64,5 @@ The first public beta had 48 Python tests and five JavaScript suites. Its hosted
 ## 0.2.0 follow-up audit
 
 A separate agent reproduced Unicode validation differences, inline checklist collapse and concurrent project membership changes, then reviewed the corrections. Additional reproductions covered project Undo filtering and quadratic project summaries. See [the audit record](docs/BUG_AUDIT_0.2.0.md) for scope and limits.
+
+Selected-weekday checks also exercise the actual day buttons, the last-day guard and save/reopen behavior. `check_widget_editor.py` loads the real widget editor against a temporary offline database with only the unavailable Kirigami theme lookup stubbed; it verifies weekday editing and preservation of existing priority/project/checklist values. This does not constitute live Plasma testing. Sharing protocol tests reject old version 2 and accept version 3.

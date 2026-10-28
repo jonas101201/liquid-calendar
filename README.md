@@ -15,7 +15,7 @@ A local desktop calendar and task planner for **Fedora Linux / KDE Plasma 6**. E
 - Task priorities, editable checklists and projects, with combined filters and sorting.
 - Search across years using titles, projects, checklist steps, locations, notes, dates and partial month/day names.
 - Quick event drafts, calendar/time pickers and a reusable event-template library.
-- Repeats, individual occurrences, reminders and available-time suggestions.
+- Repeats with selectable weekly weekdays, individual occurrences, reminders and available-time suggestions.
 - Conflict-aware local storage, undo, daily backups and optional Plasma widget.
 - JSON backup/import and ICS event export.
 
@@ -45,7 +45,7 @@ python3 installieren.py --with-widget
 
 No sudo is needed. The installer creates a per-user virtual environment with pinned Qt dependencies and an application-menu entry **Liquid Calendar Beta**. It backs up existing program files and never opens or modifies the event database. The download contains source code, not bundled third-party runtime binaries.
 
-After an update, quit the old app using **Ctrl+Q** and reopen it. Add **Liquid Glass Calendar (Beta)** through Plasma's widget picker if installed. If an old widget is active, use **Connect** when prompted; this briefly reloads the desktop and panels.
+After an update, quit the old app using **Ctrl+Q** and reopen it. Add **Liquid Glass Calendar (Beta)** through Plasma's widget picker if installed. An active widget must support sharing protocol 3 for selected-weekday repeats. If an old widget is active, use **Connect** when prompted; this briefly reloads the desktop and panels.
 
 **Beta scope:** Fedora/KDE Plasma is the target. See [known limitations](KNOWN_ISSUES.md) and [testing details](TESTING.md) for supported behavior and validation scope.
 
@@ -66,6 +66,8 @@ Use **Pick…** beside Date or Time for the month/year grid or hour/minute contr
 **More ▾ → Save template…** in the event editor stores title, time, duration, category, reminder, location and notes. **Tools ▾ → Event templates → Use** creates a fresh draft on the selected day. Dates, repeats, completion states, task details and series identities are never copied. Templates currently support events only. The library supports up to 50 templates with names of 1–80 characters; manage a template to rename or delete it. Existing events are unaffected by template deletion. Template changes are separate from event Undo.
 
 ![Quick event preview with synthetic data](docs/screenshots/quick-add.png)
+
+For **Repeat → Weekly**, select one or more days under **Repeats on** (e.g. Mon/Wed/Fri). The start date is the earliest allowed date; only selected weekdays occur. At least one day stays selected. Existing weekly series without an explicit day selection retain their original weekday until edited. JSON backups and ICS `BYDAY` exports preserve the selection. Editing, moving or completing one occurrence does not change the other days.
 
 Search `today`, `tomorrow`, `day after tomorrow`, `wed`, `nov`, `2027-03-15` or `15.03.2027`. Dates use English names and 24-hour time. German query aliases remain supported, but there is no language selector. Slash-based US dates are not supported.
 

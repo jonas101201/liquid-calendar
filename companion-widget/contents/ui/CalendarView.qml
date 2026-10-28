@@ -95,6 +95,9 @@ Item {
         else select(Cal.add(selected,n*(mode===1?7:30)));
     }
     function openEvent(e, date) {
+        editor.selectedWeekdays=e&&e.weekdays?e.weekdays.slice():[];
+        editor.checklist=JSON.parse(JSON.stringify(e&&e.checklist?e.checklist:[]));
+        priorityBox.currentIndex=e&&e.priority?e.priority:0;projectField.text=e&&e.project?e.project:"";
         editor.original=e||null;
         editor.eventId=e?e.id:"";
         titleField.text=e?e.title:""; dateField.text=e&&e.date?e.date:Cal.key(date||selected);
@@ -127,7 +130,7 @@ Item {
                 if(prefs.rows.length) { var p=JSON.parse(prefs.rows.item(0).value); glassOpacity=Math.max(.2,Math.min(.98,p.opacity||.80)); accent=p.accent||'#a498ff'; }
             });
             dataReady=true;
-            db.transaction(function(tx){tx.executeSql('INSERT OR REPLACE INTO state VALUES (?,?)',['planner-protocol',JSON.stringify({version:2,readyAt:new Date().toISOString()})]);});
+            db.transaction(function(tx){tx.executeSql('INSERT OR REPLACE INTO state VALUES (?,?)',['planner-protocol',JSON.stringify({version:3,readyAt:new Date().toISOString()})]);});
         } catch(e) { error="Could not load calendar data: "+e; }
     }
     Timer { id:undoExpiry; interval:60000; onTriggered:root.deletedEntry=null }
@@ -495,6 +498,14 @@ Item {
         DatePicker {id:untilPicker;parent:editor.contentItem;anchors.centerIn:parent;light:root.light;onPicked:function(value){untilField.text=value;}}
         DatePicker {id:datePicker;parent:editor.contentItem;anchors.centerIn:parent;light:root.light;onPicked:function(value){dateField.text=value;}}
         TimePicker {id:timePicker;parent:editor.contentItem;anchors.centerIn:parent;light:root.light;onPicked:function(value){timeField.text=value;}}
+        property var checklist:[]
+        property var selectedWeekdays:[]
+        function weeklyDays(){var date=Cal.parse(dateField.text);return selectedWeekdays.length?selectedWeekdays:[Cal.isoWeekday(date||new Date())];}
+        function toggleWeekday(day){
+            var days=weeklyDays().slice();var index=days.indexOf(day);
+            if(index>=0){if(days.length===1){validation="Choose at least one weekday.";return;}days.splice(index,1);}else days.push(day);
+            selectedWeekdays=days.sort(function(a,b){return a-b;});validation="";
+        }
         property string eventId:""
         property var original:null
         property string validation:""
@@ -573,6 +584,16 @@ Item {
                     GlassCombo { id:categoryBox; Accessible.name:"Category"; Layout.fillWidth:true; model:root.categories }
                     Label { visible:!task.checked||scheduled.checked; text:"Repeat"; color:root.muted }
                     GlassCombo { visible:!task.checked||scheduled.checked; id:repeatBox; Accessible.name:"Repeat"; Layout.fillWidth:true; model:["Once","Daily","Weekly","Monthly","Yearly"] }
+                    ColumnLayout {
+                        visible:(!task.checked||scheduled.checked)&&repeatBox.currentIndex===2;Layout.fillWidth:true;spacing:6
+                        Label {text:"Repeats on";color:root.muted}
+                        Flow {Layout.fillWidth:true;Layout.preferredHeight:childrenRect.height;spacing:4
+                            Repeater {id:repeatDays;model:["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]
+                                delegate:GlassButton {required property int index;required property string modelData;text:modelData;highlighted:editor.weeklyDays().indexOf(index)>=0;tint:highlighted?root.accentInk:root.ink;Accessible.name:"Repeat on "+modelData;onClicked:editor.toggleWeekday(index)}
+                            }
+                        }
+                        Label {text:"Every week from the start date, on the selected days.";color:root.muted;font.pixelSize:10;Layout.fillWidth:true;wrapMode:Text.Wrap}
+                    }
                     Label { visible:(!task.checked||scheduled.checked)&&repeatBox.currentIndex>0; text:"Repeat until · YYYY-MM-DD (blank = no end)"; color:root.muted; font.pixelSize:11 }
                     GlassField { id:untilField; Accessible.name:"Repeat end date"; visible:(!task.checked||scheduled.checked)&&repeatBox.currentIndex>0; Layout.fillWidth:true; maximumLength:10; selectByMouse:true }
                     GlassButton {visible:(!task.checked||scheduled.checked)&&repeatBox.currentIndex>0;text:"Choose repeat end…";onClicked:untilPicker.openFor(untilField.text||dateField.text)}
@@ -600,6 +621,8 @@ Item {
                         var previous=editor.original||root.events.filter(function(e){return e.id===editor.eventId;})[0];
                         var undated=task.checked&&!scheduled.checked;
                         var e=Object.assign({},previous||{},{id:editor.eventId||Date.now().toString(36)+'-'+Math.random().toString(36).slice(2),title:titleField.text.trim(),date:undated?"":dateField.text,time:undated?"":timeField.text,minutes:durationField.value,allDay:undated?false:allDay.checked,task:task.checked,done:previous?previous.done:false,repeat:undated?"none":["none","daily","weekly","monthly","yearly"][repeatBox.currentIndex],until:!undated&&repeatBox.currentIndex>0?untilField.text:"",category:categoryBox.currentIndex,location:locationField.text,notes:notesField.text});
+                        if(e.repeat==="weekly")e.weekdays=editor.weeklyDays().slice();else delete e.weekdays;
+                        if(e.repeat==="weekly"&&e.until&&Cal.valid(e)&&!Cal.unskippedNext(e,Cal.parse(e.date))){editor.validation="No selected weekdays fall within this date range.";return;}
                         if(undated){e.exceptions={};e.reminder=-1;}
                         if(task.checked) {
                             if(priorityBox.currentIndex||(previous&&previous.priority!==undefined))e.priority=priorityBox.currentIndex;
@@ -618,7 +641,8 @@ Item {
     }
     Dialog {
         id:deleteConfirm; parent:root; anchors.centerIn:parent; modal:true; title:"Delete entry"
-        width:Math.min(root.width-20,420)
+        width:Math.max(300,Math.min(root.width-20,420))
+        height:header.implicitHeight+contentItem.implicitHeight+footer.implicitHeight+topPadding+bottomPadding
         contentItem:Label { text:repeatBox.currentIndex>0?"The entire series will be deleted. You can restore it for 60 seconds afterwards.":"This entry will be deleted. You can restore it for 60 seconds afterwards."; color:root.ink; wrapMode:Text.Wrap }
         background:Rectangle { radius:20; color:root.panel; border.color:root.line }
         header:Label { text:deleteConfirm.title; color:root.ink; font.pixelSize:18; font.weight:Font.DemiBold; padding:14; wrapMode:Text.Wrap }

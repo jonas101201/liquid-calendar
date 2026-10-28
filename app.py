@@ -88,7 +88,7 @@ class Bridge(QObject):
         if not self._need_widget:return True
         try:
             with self.store.connect() as c:row=c.execute('SELECT value FROM state WHERE key=?',('planner-protocol',)).fetchone()
-            return bool(row and json.loads(row[0]).get('version')==2)
+            return bool(row and json.loads(row[0]).get('version')==3)
         except Exception:return False
     @Property(bool,notify=changed)
     def widgetCompatible(self):return self._compatible
@@ -284,6 +284,7 @@ class Bridge(QObject):
                 if not occurs(e,parse(date)):raise ValueError("This occurrence no longer exists.")
                 draft=copy.deepcopy(e);draft.update(id=uuid.uuid4().hex,date=date,repeat='none',until='',exceptions={},occurrenceOf=e['id'],occurrenceDate=date,originHash=fingerprint(e))
             else:draft=e
+            if draft['repeat']=='none':draft.pop('weekdays',None)
             self.editRequested.emit(draft)
         except Exception as e:self.fail(e)
     @Slot(str,str,str,result=bool)
@@ -323,6 +324,7 @@ class Bridge(QObject):
                 child.update(id=uuid.uuid4().hex,date=day.isoformat(),done=True,
                              repeat='none',until='',exceptions={},occurrenceOf=ident,
                              occurrenceDate=day.isoformat(),originHash=fingerprint(event))
+                child.pop('weekdays',None)
                 desired.append(child)
             self.commit(desired,label='Task updated',allow_occurrences=True)
         except Exception as e:self.fail(e)
@@ -338,6 +340,7 @@ class Bridge(QObject):
                 day=parse(date)
                 if not occurs(event,day):raise ConflictError('This occurrence no longer exists.')
                 event.update(id=uuid.uuid4().hex,date=date,repeat='none',until='',exceptions={},occurrenceOf=ident,occurrenceDate=date,originHash=expected)
+                event.pop('weekdays',None)
                 desired.append(event)
             else:desired=[event if e['id']==ident else e for e in desired]
             self.commit(desired,label='Checklist updated',allow_occurrences=True)
@@ -354,7 +357,7 @@ class Bridge(QObject):
                     if item['id']==ident:item.update(date=target,time=time,allDay=False if as_task else item['allDay'])
             else:
                 if not occurs(e,parse(original)):raise ConflictError("This occurrence no longer exists.")
-                child=copy.deepcopy(e);child.update(id=uuid.uuid4().hex,date=target,time=time,allDay=False if as_task else e['allDay'],repeat='none',until='',exceptions={},occurrenceOf=ident,occurrenceDate=original,originHash=fingerprint(e));desired.append(child)
+                child=copy.deepcopy(e);child.update(id=uuid.uuid4().hex,date=target,time=time,allDay=False if as_task else e['allDay'],repeat='none',until='',exceptions={},occurrenceOf=ident,occurrenceDate=original,originHash=fingerprint(e));child.pop('weekdays',None);desired.append(child)
             self.commit(desired,label="Event rescheduled · overlaps are highlighted in red",allow_occurrences=True)
         except Exception as e:self.fail(e)
     @Slot(str,str,result='QVariantList')

@@ -23,6 +23,8 @@ class TestBridge(unittest.TestCase):
   try:
    self.assertFalse(bridge.widgetCompatible);self.assertIsNone(bridge.commit([event()]));self.assertEqual(self.store.read(),[])
    with self.store.connect() as c:c.execute('INSERT OR REPLACE INTO state VALUES (?,?)',('planner-protocol',json.dumps({'version':2})))
+   bridge.reload();self.assertFalse(bridge.widgetCompatible)
+   with self.store.connect() as c:c.execute('INSERT OR REPLACE INTO state VALUES (?,?)',('planner-protocol',json.dumps({'version':3})))
    bridge.reload();self.assertTrue(bridge.widgetCompatible)
   finally:bridge.reload_timer.stop();bridge.reminder_timer.stop()
  def test_notification_once(self):

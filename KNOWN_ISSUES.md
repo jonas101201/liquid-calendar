@@ -16,6 +16,10 @@ This page distinguishes current limitations from issues fixed in earlier beta ve
 - **Shared storage:** app and widget use the same local Plasma database. If an incompatible active widget is detected, editing is blocked until **Connect** reloads it. This briefly refreshes the desktop and panels.
 - **Undo:** app-wide Undo covers the last local app change and refuses to overwrite a newer edit of the same entry. It is not an unlimited history or backup restoration tool.
 
+## Weekly repeat compatibility
+
+Selected weekdays are supported for weekly repeats; monthly/yearly positional weekday rules are not implemented. Old weekly records keep their original weekday if no selection is stored. An active older widget must be reloaded using Connect before editing with sharing protocol 3. Downgrading to a client without weekday support can misinterpret the schedule; retain backups. No existing events are automatically rewritten.
+
 ## Creation scope in 0.3.0
 
 - Quick entry recognizes documented date/time/duration syntax. It does not infer recurring schedules, locations, timezones or arbitrary natural language. Date-like words in a title can be interpreted as scheduling input; review the preview and edit the title if needed.

@@ -161,6 +161,20 @@ expr('templateRename.text="Renamed visit";renameTemplateButton.clicked()');settl
 expr('templateList.itemAtIndex(0).children[2].clicked()');settle();expr('deleteTemplateButton.clicked()');settle()
 assert b.templates==[] and len(st.read())==2
 expr('templateLibrary.close()')
+# Actual weekly weekday controls, save/reopen, last-day guard and rule removal.
+b.commit([]);expr('editorSurface.openEvent(null,win.dateValue("2026-10-27"))');settle()
+expr('editorSurface.review('+json.dumps('titleField.text="Weekly lesson";dateField.text="2026-10-27";repeatBox.currentIndex=2;editor.detailsExpanded=true')+')');settle()
+assert expr('editorSurface.review("repeatDays.itemAt(1).highlighted")') is True
+expr('editorSurface.review("repeatDays.itemAt(0).clicked();repeatDays.itemAt(1).clicked();repeatDays.itemAt(2).clicked();repeatDays.itemAt(4).clicked();saveButton.clicked()")');settle()
+weekly_entry=st.read()[0];assert weekly_entry['weekdays']==[0,2,4]
+b.edit(weekly_entry['id'],'2026-10-28',False);settle()
+assert expr('editorSurface.review("JSON.stringify(editor.weeklyDays())")')=='[0,2,4]'
+expr('editorSurface.review("repeatDays.itemAt(0).clicked();repeatDays.itemAt(2).clicked();repeatDays.itemAt(4).clicked()")')
+assert expr('editorSurface.review("JSON.stringify(editor.weeklyDays())")')=='[4]'
+assert expr('editorSurface.review("editor.validation")')=='Choose at least one weekday.'
+expr('editorSurface.review("repeatBox.currentIndex=0;saveButton.clicked()")');settle()
+assert 'weekdays' not in st.read()[0]
+print('Weekly day buttons, legacy default, save/reopen and last-day guard passed.')
 print('0.3 quick preview, event/time pickers, template save/use and new IDs passed.')
 print('0.2 task editor Save/reopen/validation, project filters and checklist Undo passed.')
 print('Recurring task Qt slot, hidden calendar fallback and visible app-wide group Undo passed.')

@@ -47,6 +47,9 @@ def validate(events):
             if not isinstance(e.get('time'),str) or len(e['time'])!=5 or dt.time.fromisoformat(e['time']).isoformat(timespec='minutes')!=e['time']:raise ValueError("Invalid time.")
         if type(e.get('minutes')) is not int or not 5<=e['minutes']<=1440:raise ValueError('Duration must be between 5 and 1440 minutes.')
         if e.get('repeat') not in ['none','daily','weekly','monthly','yearly']:raise ValueError("Invalid repeat setting.")
+        if 'weekdays' in e:
+            days=e['weekdays']
+            if e['repeat']!='weekly' or not isinstance(days,list) or not 1<=len(days)<=7 or any(type(day) is not int or not 0<=day<=6 for day in days) or len(set(days))!=len(days):raise ValueError("Choose at least one valid weekday for a weekly repeat.")
         if not isinstance(e.get('until'),str) or (e['until'] and (len(e['until'])!=10 or parse(e['until']).isoformat()!=e['until'] or parse(e['until'])<parse(e['date']))):raise ValueError("Invalid repeat end date.")
         if any(type(e.get(k)) is not bool for k in ('allDay','task','done')):raise ValueError("Invalid event status.")
         if type(e.get('category')) is not int or not 0<=e['category']<4:raise ValueError("Invalid category.")
@@ -73,7 +76,7 @@ def occurs(e,day):
     s=day.isoformat(); start=parse(e['date'])
     if s<e['date'] or e['until'] and s>e['until'] or e.get('exceptions',{}).get(s,{}).get('cancelled'):return False
     repeat=e['repeat']
-    return (s==e['date'] if repeat=='none' else True if repeat=='daily' else day.weekday()==start.weekday() if repeat=='weekly' else day.day==start.day if repeat=='monthly' else (day.month,day.day)==(start.month,start.day))
+    return (s==e['date'] if repeat=='none' else True if repeat=='daily' else day.weekday() in e.get('weekdays',[start.weekday()]) if repeat=='weekly' else day.day==start.day if repeat=='monthly' else (day.month,day.day)==(start.month,start.day))
 
 def next_occurrence(e,day):
     if is_undated(e):return None
@@ -238,11 +241,15 @@ def export_ics(events):
     lines=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Liquid Calendar//EN','CALSCALE:GREGORIAN']
     for e in events:
         if e['task']:continue
-        start=dt.datetime.combine(parse(e['date']),dt.time.fromisoformat(e['time']));end=start+dt.timedelta(minutes=e['minutes'])
+        first=parse(e['date'])
+        if e['repeat']=='weekly' and 'weekdays' in e:
+            first+=dt.timedelta(days=min((day-first.weekday())%7 for day in e['weekdays']))
+            if e['until'] and first.isoformat()>e['until']:continue
+        start=dt.datetime.combine(first,dt.time.fromisoformat(e['time']));end=start+dt.timedelta(minutes=e['minutes'])
         lines+=['BEGIN:VEVENT','UID:'+e['id']+'@liquid-glass-calendar','DTSTAMP:'+dt.datetime.now(dt.timezone.utc).strftime('%Y%m%dT%H%M%SZ')]
         if e['allDay']:lines+=['DTSTART;VALUE=DATE:'+start.strftime('%Y%m%d'),'DTEND;VALUE=DATE:'+(start+dt.timedelta(days=1)).strftime('%Y%m%d')]
         else:lines+=['DTSTART:'+start.strftime('%Y%m%dT%H%M%S'),'DTEND:'+end.strftime('%Y%m%dT%H%M%S')]
-        if e['repeat']!='none':lines+=['RRULE:FREQ='+e['repeat'].upper()+(';UNTIL='+e['until'].replace('-','')+('' if e['allDay'] else 'T235959') if e['until'] else '')]
+        if e['repeat']!='none':lines+=['RRULE:FREQ='+e['repeat'].upper()+(';BYDAY='+','.join(['MO','TU','WE','TH','FR','SA','SU'][day] for day in sorted(e['weekdays'])) if e['repeat']=='weekly' and 'weekdays' in e else '')+(';UNTIL='+e['until'].replace('-','')+('' if e['allDay'] else 'T235959') if e['until'] else '')]
         for date in e.get('exceptions',{}):
             lines.append(('EXDATE;VALUE=DATE:'+date.replace('-','')) if e['allDay'] else 'EXDATE:'+date.replace('-','')+'T'+e['time'].replace(':','')+'00')
         lines+=['SUMMARY:'+escape_ics(e['title']),'LOCATION:'+escape_ics(e['location']),'DESCRIPTION:'+escape_ics(e['notes']),'END:VEVENT']

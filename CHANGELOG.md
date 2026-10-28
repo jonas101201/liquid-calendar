@@ -2,6 +2,10 @@
 
 ## 0.3.0-beta.1 — Unreleased
 
+- Weekly repeats can select multiple weekdays in app and widget editors. Calendar, search, reminders, exceptions, per-occurrence changes and JSON/ICS export honor the selected days; legacy weekly records retain their original behavior.
+- Sharing protocol 3 prevents editing against an active widget without weekday support until it is reloaded with Connect.
+- Widget editor restores existing task priority/project/checklist fields and avoids a delete-dialog sizing loop.
+
 - Offline quick entry with English/German dates, explicit times, am/pm, all-day input, durations and an editable preview before saving.
 - Extra creation functions are grouped into Tools and editor More dropdowns, preserving the existing main layout.
 - Calendar month/year grid, Today/Tomorrow shortcuts, start-time controls and repeat-end picking in app and widget editors.
