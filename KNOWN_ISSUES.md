@@ -18,7 +18,7 @@ This page distinguishes current limitations from issues fixed in earlier beta ve
 
 ## Event merge scope
 
-Desktop **More → Merge with another event…** combines saved, independent events on the same date. Both must be timed or both all-day. Tasks, series and detached occurrences are excluded. Unsaved editor changes are not merged; save first. One combined event has one category (the first event's) and one reminder (the largest enabled offset relative to the combined start). Undo restores both entries. Length/duration limits block the operation without truncation.
+Desktop **More → Merge with another event…** combines saved events or selected occurrences on the same date. Both must be timed or both all-day. For repeats, open the individual occurrence first. Only the selected occurrences are cancelled in their source series; future repeats remain unchanged, and the result is a standalone event. Tasks, whole-series edits and already detached occurrences are excluded. Unsaved editor changes are not merged; save first. One combined event has one category (the first event's) and one reminder (the largest enabled offset relative to the combined start). Undo restores both entries. Length/duration limits block the operation without truncation.
 
 ## Weekly repeat compatibility
 

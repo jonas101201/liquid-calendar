@@ -82,4 +82,50 @@ class TestMergeBridge(unittest.TestCase):
   self.assertFalse(self.bridge.mergeEvents(json.dumps(a),json.dumps(b)))
   self.assertEqual(len(self.store.read()),3)
 
+class TestOccurrenceMergeBridge(unittest.TestCase):
+ setUp=TestBridge.setUp
+ tearDown=TestBridge.tearDown
+ def seed(self):
+  self.a=event(repeat='weekly',weekdays=[2,4]);self.b=event(id='b',title='Second',repeat='daily',time='09:30')
+  self.store.merge([self.a,self.b],[]);self.bridge.reload()
+  return occurrence_draft(self.a,'2026-10-28'),occurrence_draft(self.b,'2026-10-28')
+ def test_two_series_keep_future_and_undo(self):
+  a,b=self.seed();self.assertTrue(self.bridge.mergeEvents(json.dumps(a),json.dumps(b)))
+  saved=self.store.read();self.assertEqual(len(saved),3)
+  for source in (self.a,self.b):
+   parent=next(e for e in saved if e['id']==source['id'])
+   self.assertFalse(occurs(parent,parse('2026-10-28')));self.assertTrue(occurs(parent,parse('2026-11-04')))
+  merged=next(e for e in saved if e['id']==a['id']);self.assertEqual(merged['minutes'],90)
+  self.assertNotIn('occurrenceOf',merged)
+  self.bridge.undo();self.assertEqual(sorted(self.store.read(),key=lambda e:e['id']),[self.a,self.b])
+ def test_choices_exclude_self_and_cancelled_occurrences(self):
+  a,b=self.seed();choices=self.bridge.mergeChoices(json.dumps(a))
+  self.assertEqual(len(choices),1);self.assertEqual(choices[0]['occurrenceOf'],'b')
+  cancelled=copy.deepcopy(self.b);cancelled['exceptions']={'2026-10-28':{'cancelled':True}}
+  self.store.merge([self.a,cancelled],[self.a,self.b]);self.bridge.reload()
+  self.assertEqual(self.bridge.mergeChoices(json.dumps(a)),[])
+ def test_normal_and_occurrence_both_orders(self):
+  for reverse in (False,True):
+   self.store.merge([],self.store.read());self.bridge.reload()
+   normal=event(id='normal');series=event(id='series',repeat='weekly')
+   self.store.merge([normal,series],[]);self.bridge.reload()
+   pair=[normal,occurrence_draft(series,'2026-10-28')]
+   if reverse:pair.reverse()
+   self.assertTrue(self.bridge.mergeEvents(*(json.dumps(e) for e in pair)))
+   saved=self.store.read();self.assertEqual(len(saved),2)
+   self.assertTrue(occurs(next(e for e in saved if e['id']=='series'),parse('2026-11-04')))
+   self.bridge.undo();self.assertEqual(sorted(self.store.read(),key=lambda e:e['id']),[normal,series])
+ def test_concurrent_series_edit_rejected_atomically(self):
+  a,b=self.seed();updated=copy.deepcopy(self.b);updated['notes']='Remote change'
+  self.store.merge([self.a,updated],[self.a,self.b])
+  self.assertFalse(self.bridge.mergeEvents(json.dumps(a),json.dumps(b)))
+  self.assertEqual(sorted(self.store.read(),key=lambda e:e['id']),[self.a,updated])
+ def test_forged_or_stale_drafts_rejected(self):
+  a,b=self.seed();a['title']='Unsaved change'
+  self.assertFalse(self.bridge.mergeEvents(json.dumps(a),json.dumps(b)))
+  a=occurrence_draft(self.a,'2026-10-28')
+  a['originHash']='stale'
+  self.assertFalse(self.bridge.mergeEvents(json.dumps(a),json.dumps(b)))
+  self.assertEqual(len(self.store.read()),2)
+
 if __name__=='__main__':unittest.main(verbosity=2)

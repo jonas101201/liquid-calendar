@@ -276,24 +276,57 @@ class Bridge(QObject):
     @Slot(str,int)
     def setFilter(self,kind,category):
         if kind in ['all','events','tasks','open','done'] and -1<=category<=3:self._kind=kind;self._category=category;self.changed.emit()
+    def merge_source(self,snapshot,base):
+        validate([snapshot])
+        if snapshot.get('occurrenceOf'):
+            parent=next((e for e in base if e['id']==snapshot['occurrenceOf']),None)
+            if not parent or snapshot['id'] in {e['id'] for e in base} or fingerprint(parent)!=snapshot.get('originHash'):
+                raise ConflictError("The series has changed. Reopen this occurrence.")
+            expected=occurrence_draft(parent,snapshot.get('occurrenceDate',''),snapshot['id'])
+            if expected!=snapshot:raise ConflictError("This occurrence has changed. Reopen it before merging.")
+        else:
+            if next((e for e in base if e['id']==snapshot['id']),None)!=snapshot:
+                raise ConflictError("An event has changed. Reopen both events before merging.")
+            if any(e.get('seriesId')==snapshot['id'] for e in base):
+                raise ValueError("Events linked to series occurrences cannot be merged.")
+        return snapshot
+    @Slot(str,result='QVariantList')
+    def mergeChoices(self,first_snapshot):
+        try:
+            first=self.merge_source(json.loads(first_snapshot),self._events)
+            choices=[]
+            for e in self._events:
+                if e['task'] or e.get('seriesId') or e['allDay']!=first['allDay'] or not occurs(e,parse(first['date'])):continue
+                if e['repeat']!='none':
+                    if e['id']==first.get('occurrenceOf'):continue
+                    candidate=occurrence_draft(e,first['date'])
+                else:
+                    if e['id']==first['id'] or any(child.get('seriesId')==e['id'] for child in self._events):continue
+                    candidate=copy.deepcopy(e)
+                choices.append(candidate)
+            return sorted(choices,key=lambda e:(e['time'],e['title'].casefold(),e['id']))
+        except Exception as e:self.fail(e);return []
     @Slot(str,str,result='QVariantMap')
     def mergePreview(self,first_snapshot,second_snapshot):
         try:
-            event=merge_events(json.loads(first_snapshot),json.loads(second_snapshot))
-            return {'event':event,'error':''}
+            first=self.merge_source(json.loads(first_snapshot),self._events)
+            second=self.merge_source(json.loads(second_snapshot),self._events)
+            return {'event':merge_events(first,second),'error':''}
         except Exception as e:return {'error':str(e)}
     @Slot(str,str,result=bool)
     def mergeEvents(self,first_snapshot,second_snapshot):
         try:
-            first,second=json.loads(first_snapshot),json.loads(second_snapshot)
-            merged=merge_events(first,second)
             base=copy.deepcopy(self._events)
-            if any(e.get("seriesId") in (first["id"],second["id"]) for e in base):
-                raise ValueError("Events linked to series occurrences cannot be merged.")
+            first=self.merge_source(json.loads(first_snapshot),base)
+            second=self.merge_source(json.loads(second_snapshot),base)
+            merged=merge_events(first,second)
+            removed={e['id'] for e in (first,second) if not e.get('occurrenceOf')}
+            desired=[copy.deepcopy(e) for e in base if e['id'] not in removed]
             for source in (first,second):
-                if next((e for e in base if e['id']==source['id']),None)!=source:
-                    raise ConflictError("An event has changed. Reopen both events before merging.")
-            desired=[e for e in base if e['id'] not in (first['id'],second['id'])]+[merged]
+                if source.get('occurrenceOf'):
+                    parent=next(e for e in desired if e['id']==source['occurrenceOf'])
+                    parent.setdefault('exceptions',{})[source['occurrenceDate']]={'cancelled':True}
+            desired.append(merged)
             return self.commit(desired,base,label="Events merged · Undo restores both") is not None
         except Exception as e:self.fail(e);return False
     @Slot(str,str,bool)
@@ -301,8 +334,7 @@ class Bridge(QObject):
         try:
             self.reload();e=next(copy.deepcopy(e) for e in self._events if e['id']==ident)
             if single and e['repeat']!='none':
-                if not occurs(e,parse(date)):raise ValueError("This occurrence no longer exists.")
-                draft=copy.deepcopy(e);draft.update(id=uuid.uuid4().hex,date=date,repeat='none',until='',exceptions={},occurrenceOf=e['id'],occurrenceDate=date,originHash=fingerprint(e))
+                draft=occurrence_draft(e,date)
             else:draft=e
             if draft['repeat']=='none':draft.pop('weekdays',None)
             self.editRequested.emit(draft)

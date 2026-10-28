@@ -58,3 +58,13 @@ class LayoutTests(unittest.TestCase):
     for b in rows:
      if a is not b and a['start']<b['layoutEnd'] and b['start']<a['layoutEnd']:
       self.assertTrue(a['lane']+a['laneSpan']<=b['lane'] or b['lane']+b['laneSpan']<=a['lane'])
+
+class OccurrenceMergeTests(unittest.TestCase):
+ def test_pure_merge_drops_pending_commands(self):
+  from logic import occurrence_draft
+  a=occurrence_draft(event(repeat='weekly',weekdays=[2]),'2026-10-28')
+  b=occurrence_draft(event('b',repeat='daily'),'2026-10-28')
+  m=merge_events(a,b)
+  self.assertEqual(m['repeat'],'none');self.assertEqual(m['exceptions'],{})
+  self.assertFalse(any(k in m for k in ('occurrenceOf','occurrenceDate','originHash','weekdays')))
+  with self.assertRaises(ValueError):merge_events(a,dict(a,id='different-draft-id'))

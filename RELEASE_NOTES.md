@@ -12,9 +12,9 @@ This milestone is **not published yet**. The current public beta remains 0.2.0-b
 
 ## Event merging and overlapping entries
 
-Open a saved independent event and choose **More ▾ → Merge with another event…**. Select another event on the same date and review the preview before confirming. Titles, locations and notes are combined without truncation; timed entries cover the union of both ranges, including gaps. The first event keeps its identity/category, and the largest enabled reminder offset is used relative to the new start. Undo restores both entries. Concurrent edits are rejected transactionally.
+Open a saved event or individual occurrence and choose **More ▾ → Merge with another event…**. Select another event on the same date and review the preview before confirming. Titles, locations and notes are combined without truncation; timed entries cover the union of both ranges, including gaps. The first event keeps its identity/category, and the largest enabled reminder offset is used relative to the new start. Undo restores both entries. Concurrent edits are rejected transactionally.
 
-Merging supports two independent events, either both timed or both all-day. Tasks, repeat series and detached series occurrences are excluded. Save editor changes before merging. Limit violations block the merge rather than dropping content.
+Merging supports independent events and selected occurrences from repeat series, either both timed or both all-day. Open an individual occurrence before merging: only the selected occurrences become exceptions, while future repeats and other exceptions remain unchanged. The merged result is a standalone event. Tasks, whole-series edits and already detached series occurrences are excluded. Save editor changes before merging. Limit violations block the merge rather than dropping content.
 
 The week view gives simultaneous entries separate readable lanes, expands entries into available lanes and scrolls horizontally when needed. Headings follow horizontal scrolling. Short neighboring entries use visual spacing without receiving false time-conflict badges; midnight continuations are included.
 
@@ -28,4 +28,4 @@ Templates retain title, time, duration, category, reminder, location and notes. 
 
 The source installer and optional widget installer retain their existing workflow. Existing events need no migration. An active older widget must be reloaded via **Connect** for sharing protocol 3 before app editing is enabled. Fully quit with Ctrl+Q before reopening after an update.
 
-116 Python tests, eight JavaScript suites, real offscreen QML creation interactions and a temporary-database smoke launch form the preparation checks. [Hosted preparation tests](https://github.com/jonas101201/liquid-calendar/actions/runs/40749293714) passed on Python 3.10, 3.12 and 3.14. Final release CI must pass again before publication. Fresh-account installation testing remains excluded. See [testing details](TESTING.md), [known issues](KNOWN_ISSUES.md) and [the preparation checklist](docs/RELEASE_0.3.0.md).
+122 Python tests, eight JavaScript suites, real offscreen QML creation interactions and a temporary-database smoke launch form the preparation checks. [Hosted preparation tests](https://github.com/jonas101201/liquid-calendar/actions/runs/40749293714) passed on Python 3.10, 3.12 and 3.14. Final release CI must pass again before publication. Fresh-account installation testing remains excluded. See [testing details](TESTING.md), [known issues](KNOWN_ISSUES.md) and [the preparation checklist](docs/RELEASE_0.3.0.md).

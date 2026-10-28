@@ -200,4 +200,27 @@ assert expr('weekHeader.x===timeline.gutter-timeline.contentX')
 expr('timeline.contentX=timeline.gutter+2*timeline.columnWidth;timeline.contentY=8*timeline.hourHeight');settle()
 QQuickWindow.grabWindow(win).save('/tmp/liquid-calendar-overlap-preview.png')
 print('Merge dialog preview/save/Undo and dense week layout with aligned scrolling passed.')
+# Reproduce screenshot: a selected recurring occurrence must expose Merge.
+series_a=e('weekly-merge',repeat='weekly',weekdays=[2,4]);series_b=e('daily-merge',repeat='daily',title='Daily planning',time='09:30')
+b.commit([series_a,series_b]);b.edit(series_a['id'],series_a['date'],True);settle()
+expr('editorSurface.review("editorToolsButton.clicked()")');settle()
+assert expr('editorSurface.review("mergeButton.visible")') is True
+QQuickWindow.grabWindow(win).save('/tmp/liquid-calendar-occurrence-menu-fixed.png')
+expr('editorSurface.review("mergeButton.triggered();editorActions.close()")');settle()
+assert expr('editorSurface.review("mergeDialog.choices.length")')==1
+assert expr('editorSurface.review("mergeDialog.preview.event.minutes")')==90
+expr('editorSurface.review("confirmMerge.clicked()")');settle()
+assert len(st.read())==3
+for source in (series_a,series_b):
+ parent=next(e for e in st.read() if e['id']==source['id'])
+ assert not occurs(parent,parse(source['date'])) and occurs(parent,parse('2026-11-04'))
+b.undo();assert sorted(st.read(),key=lambda e:e['id'])==sorted([series_a,series_b],key=lambda e:e['id'])
+expr('editorSurface.openEvent(null,win.dateValue("2026-10-28"))');settle()
+expr('editorSurface.review("editorToolsButton.clicked()")');settle()
+assert expr('editorSurface.review("duplicateButton.height")')==0
+assert expr('editorSurface.review("mergeButton.height")')==0
+assert expr('editorSurface.review("templateButton.y")')==0
+QQuickWindow.grabWindow(win).save('/tmp/liquid-calendar-hidden-menu-fixed.png')
+expr('editorSurface.review("editorActions.close();editor.close()")');settle()
+print('Selected occurrences merge without changing future repeats; hidden menu rows take zero space.')
 win.close();engine.deleteLater();settle();assert not logs,logs

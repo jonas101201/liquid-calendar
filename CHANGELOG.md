@@ -2,7 +2,8 @@
 
 ## 0.3.0-beta.1 — Unreleased
 
-- Add desktop event merge with preview, combined content, transactional stale-edit rejection and Undo.
+- Add desktop event merge with preview, combined content, transactional stale-edit rejection and Undo. Individual repeat occurrences can be merged without changing future repeats; the merged result is a standalone event.
+- Hidden dropdown actions no longer leave empty menu rows in app and widget controls.
 - Fix dense overlap cards exceeding their lanes and short cards obscuring adjacent entries; add available-lane expansion, readable horizontal scrolling and synchronized week headings.
 
 - Weekly repeats can select multiple weekdays in app and widget editors. Calendar, search, reminders, exceptions, per-occurrence changes and JSON/ICS export honor the selected days; legacy weekly records retain their original behavior.

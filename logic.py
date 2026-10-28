@@ -352,14 +352,28 @@ def validate_templates(templates):
     return templates
 
 
+def occurrence_draft(event,date,ident=None):
+    if event['repeat']=='none' or not occurs(event,parse(date)):
+        raise ValueError("This occurrence no longer exists.")
+    draft=copy.deepcopy(event)
+    draft.update(id=ident or uuid.uuid4().hex,date=date,repeat='none',until='',exceptions={},occurrenceOf=event['id'],occurrenceDate=date,originHash=fingerprint(event))
+    draft.pop('weekdays',None)
+    return draft
+
+
 def merge_events(first,second):
-    """Combine two independent saved events, retaining first's identity and style."""
+    """Combine concrete events; occurrence commands are resolved by the bridge."""
     validate([first,second])
-    if any(e['task'] or e['repeat']!='none' or any(e.get(k) for k in ('seriesId','occurrenceOf')) for e in (first,second)):
-        raise ValueError("Merge supports independent, non-repeating events only.")
+    if any(e['task'] or e['repeat']!='none' or e.get('seriesId') for e in (first,second)):
+        raise ValueError("Choose independent events or individual occurrences, not entire series or tasks.")
     if first['date']!=second['date'] or first['allDay']!=second['allDay']:
         raise ValueError("Choose two events on the same date, both timed or both all-day.")
+    if first.get('occurrenceOf') and (first['occurrenceOf'],first.get('occurrenceDate'))==(second.get('occurrenceOf'),second.get('occurrenceDate')):
+        raise ValueError("Choose two different event occurrences.")
     result=copy.deepcopy(first)
+    for key in ('occurrenceOf','occurrenceDate','originHash','seriesId','originalDate','weekdays'):
+        result.pop(key,None)
+    result['exceptions']={}
     start=lambda e:int(e['time'][:2])*60+int(e['time'][3:])
     if not first['allDay']:
         minute=min(start(first),start(second));end=max(start(first)+first['minutes'],start(second)+second['minutes'])
