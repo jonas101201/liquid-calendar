@@ -11,6 +11,15 @@ Planned for **29 October 2026, 12:00 Europe/Berlin**. This release has not been 
 - Search project names and checklist text across all dates, alongside titles, locations and notes.
 - Repeating-task inline checklist progress belongs to the selected occurrence. Future occurrences keep the template's state. Marking all steps complete does not automatically complete the parent task.
 
+## Corrections included in the preparation
+
+- Typed checklist steps and editor checkboxes are saved correctly; adding another step keeps earlier input.
+- Expanded checklists stay open after a click, including recurring-occurrence edits.
+- Undo after renaming or clearing a project restores the appropriate filter.
+- Parallel changes to project membership reject the rename atomically; refresh and retry includes the new tasks.
+- App and widget agree on Unicode character limits, and valid emoji text survives editing and duplication.
+- Project summaries aggregate tasks in one pass to avoid slowdowns with many projects.
+
 ## Install or update
 
 Extract the source archive and run `python3 installieren.py`. Use `--with-widget` for a new optional widget. The installer also updates an already installed widget. Quit the old app with **Ctrl+Q**, then reopen it. Reload the desktop widget when convenient to use its new task editor.
@@ -21,4 +30,4 @@ Reminders still require the app or tray process. ICS exports events only; cloud 
 
 ## Verification
 
-The preparation is covered by 77 Python tests, seven JavaScript suites, real offscreen QML editor interactions and a smoke launch. Hosted CI must pass for the final release commit before publication. Fresh-account installation validation remains excluded at the maintainer's request. See [TESTING.md](TESTING.md) and the [release checklist](docs/RELEASE_0.2.0.md).
+The preparation is covered by 77 Python tests, seven JavaScript suites, real offscreen QML editor interactions and a smoke launch. [Preparation CI passed on Python 3.10, 3.12 and 3.14](https://github.com/jonas101201/liquid-calendar/actions/runs/40734583186). A separate agent reproduced the audit findings and rechecked the corrections. Hosted CI must pass again for the final release commit before publication. Fresh-account installation validation remains excluded at the maintainer's request. See [TESTING.md](TESTING.md) and the [release checklist](docs/RELEASE_0.2.0.md).

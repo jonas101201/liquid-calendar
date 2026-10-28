@@ -2,9 +2,9 @@
 
 ## Preparing 0.2.0-beta.1
 
-The previous [0.1.1 release CI run](https://github.com/jonas101201/liquid-calendar/actions/runs/40712199654) passed on Python **3.10, 3.12 and 3.14**. It runs the Python suite, real offscreen QML checks, an application smoke launch and the JavaScript suites. This verifies automated behavior; it does not certify every desktop environment.
+The [0.2.0 preparation CI run](https://github.com/jonas101201/liquid-calendar/actions/runs/40734583186) passed on Python **3.10, 3.12 and 3.14** for source commit [`fee524e`](https://github.com/jonas101201/liquid-calendar/commit/fee524ee31f0de11a8d4efd3d2a8090c84de3346). It runs the Python suite, real offscreen QML checks, application smoke launch and all seven JavaScript suites. [Security analysis also passed](https://github.com/jonas101201/liquid-calendar/actions/runs/40734571556). These are preparation results; CI must pass again after the final publication metadata is committed. Automated checks do not certify every desktop environment.
 
-0.2.0 local coverage (hosted CI must pass before publication):
+0.2.0 preparation coverage:
 
 - **77 Python tests:** task priorities, projects, checklist validation, project rename/merge/clear, atomic conflict and membership rejection, project Undo filter context, single-pass project aggregation, Unicode code-point limits, JSON round trips, occurrence-specific checklist progress and scheduling preservation, plus storage conflicts and undo, repeats/exceptions, undated tasks, English date search, free-slot checks, per-occurrence task completion, legacy series reopening, stale/concurrent completion rejection, reminder text, deterministic SQLite closure and rollback, and randomized interval comparisons.
 - **Seven JavaScript suites:** task-detail validation and backup/search preservation in app and widget, plus calendar calculations, date/search behavior, undated tasks, shared-store merging, English aliases and task-occurrence completion.

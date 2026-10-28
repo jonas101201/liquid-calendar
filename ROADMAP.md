@@ -2,7 +2,7 @@
 
 This roadmap outlines ten beta milestones, from **0.1.0** through **0.10.0**, followed by release candidates and the first stable release.
 
-It is a planning draft, not a delivery promise. Features and priorities may change based on feedback, testing and contributor availability. No fixed release dates have been set.
+It is a planning draft, not a delivery promise. Features and priorities may change based on feedback, testing and contributor availability. The 0.2.0 publication target shown below is subject to successful final verification; later milestones have no set release dates.
 
 ## Beta milestones
 

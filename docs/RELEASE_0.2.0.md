@@ -10,10 +10,27 @@ Branch: `prepare/0.2.0-beta.1`. Public release: not published yet.
 - [x] Projects: assignment, combined filtering, sorting, completed/total counts, rename/merge/clear and Undo.
 - [x] Cross-date project/checklist search, JSON preservation and matching widget validation/editor.
 - [x] Updated VERSION, widget metadata, English documentation and synthetic screenshots.
-- [x] Local Python, JavaScript, real offscreen QML and smoke checks.
+- [x] 77 Python tests, seven JavaScript suites, real offscreen QML keyboard/interactions and a temporary-database smoke launch.
+- [x] Follow-up bug fixes independently reproduced and rechecked by a separate agent.
+- [x] Preparation CI passed on Python 3.10, 3.12 and 3.14; CodeQL completed successfully.
+- [x] Corrected app/widget program files installed locally with a backup; installed-app smoke check passed without opening personal calendar data.
+- [x] Preparation archives built and their source manifest verified; final release archives still need rebuilding after publication metadata changes.
 - [ ] Hosted CI passed for the final release commit.
 - [ ] Final publication metadata updated and source archives rebuilt from the exact release commit.
 - [ ] Tag, GitHub prerelease and three matching assets published and verified.
+
+## Verified preparation snapshot
+
+Code reviewed: [`fee524e`](https://github.com/jonas101201/liquid-calendar/commit/fee524ee31f0de11a8d4efd3d2a8090c84de3346).
+
+- [Successful preparation test run](https://github.com/jonas101201/liquid-calendar/actions/runs/40734583186)
+- [Successful security analysis](https://github.com/jonas101201/liquid-calendar/actions/runs/40734571556)
+- [Preparation pull request](https://github.com/jonas101201/liquid-calendar/pull/1)
+- [Five-issue audit and regression evidence](https://github.com/jonas101201/liquid-calendar/blob/fee524ee31f0de11a8d4efd3d2a8090c84de3346/docs/BUG_AUDIT_0.2.0.md)
+
+Resolved: stale project filters after Undo, quadratic project summaries, mismatched Unicode limits, inline checklists collapsing after each click, and partial project renames during concurrent edits. The earlier typed-step input correction is included too. See [release notes](https://github.com/jonas101201/liquid-calendar/blob/prepare/0.2.0-beta.1/RELEASE_NOTES.md) and [testing scope](https://github.com/jonas101201/liquid-calendar/blob/prepare/0.2.0-beta.1/TESTING.md).
+
+The feature and audit work is complete for this preparation. The remaining unchecked items are publication steps, not additional feature promises. This does not establish that the beta is free of bugs. Long-term everyday usage, live desktop reminder delivery and complete installation behavior are not fully validated; the fresh-account installation test remains excluded.
 
 ## Publication procedure
 
