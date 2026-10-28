@@ -4,7 +4,7 @@
 
 ## 0.3.8.1 — 2026-10-28
 
-Beta prerelease, using the maintainer-requested version. The 0.3.8-beta.1 preparation was not published separately.
+Beta prerelease, The 0.3.8-beta.1 
 
 - Share identical text-field, checkbox and editable-number controls between editors and date/time pickers, preserving their palette bindings and interaction behavior.
 - Treat qml/ as the canonical source for shared controls/calendar JavaScript. Synchronize standalone widget copies with scripts/sync_widget_sources.py and reject drift in CI, source packaging and installation before changing installed files.
