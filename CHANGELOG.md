@@ -1,8 +1,8 @@
 # Changelog
 
-The 0.3.x entries below are **unpublished development snapshots**. Patch numbers were assigned retrospectively on 28 October 2026, one per functional code patch after the original 0.3.0 baseline. The source links identify the original implementation commits, which still contain their original version strings. No commits or published tags were rewritten. Documentation-only commits are not numbered separately. Current development build: **0.3.6-beta.1**. Publication remains paused.
+**0.3.6-beta.1** is the cumulative public release of the 0.3.x development work. Versions 0.3.0–0.3.5 below are unpublished historical snapshots. Patch numbers were assigned retrospectively on 28 October 2026, one per functional code patch after the initial 0.3.0 baseline. Source links identify the original implementation commits, which retain their original version strings. No commits or published tags were rewritten. Documentation-only commits are not numbered separately.
 
-## 0.3.6-beta.1 — Unreleased
+## 0.3.6-beta.1 — 2026-10-28
 
 Source: [`144d3e5`](https://github.com/jonas101201/liquid-calendar/commit/144d3e518c02163168491443a376711228a1908f).
 

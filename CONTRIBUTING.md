@@ -11,4 +11,4 @@ Report your OS, Plasma/Python versions, beta version and reproducible steps. Rem
 
 Contributions are made under GPL-3.0-or-later, the same license as this project. Do not submit code or assets you do not have permission to contribute.
 
-The current public beta is **0.2.0-beta.1**. Work on **0.3.6-beta.1** is in `prepare/0.3.0-beta.1`. Read [KNOWN_ISSUES.md](KNOWN_ISSUES.md) before reporting a limitation and [ROADMAP.md](ROADMAP.md) before proposing planned features. Include your exact version when reporting bugs.
+The current public beta is **0.3.6-beta.1**, including all six development patches after the initial 0.3.0 baseline. Read [KNOWN_ISSUES.md](KNOWN_ISSUES.md) before reporting a limitation and [ROADMAP.md](ROADMAP.md) before proposing planned features. Include your exact version when reporting bugs.

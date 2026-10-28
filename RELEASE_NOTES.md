@@ -1,8 +1,10 @@
-# Liquid Calendar 0.3.6 Beta 1 — release preparation
+# Liquid Calendar 0.3.6 Beta 1
 
-This milestone is **not published yet**. The current public beta remains 0.2.0-beta.1. English interface, Fedora/KDE Plasma, GPL-3.0-or-later.
+Released **28 October 2026**. English interface, Fedora/KDE Plasma, GPL-3.0-or-later.
 
-Current development version: **0.3.6-beta.1**. The six functional patches since the 0.3.0 baseline are numbered separately in the [changelog](CHANGELOG.md); these are unpublished development snapshots, not past public releases.
+This is the first published 0.3.x beta and includes the initial 0.3.0 milestone plus six development patches. Versions 0.3.0–0.3.5 were not published separately. See the [per-patch changelog](CHANGELOG.md).
+
+[Release and downloads](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.3.6-beta.1).
 
 ## Faster creation
 
@@ -30,4 +32,4 @@ Templates retain title, time, duration, category, reminder, location and notes. 
 
 The source installer and optional widget installer retain their existing workflow. Existing events need no migration. An active older widget must be reloaded via **Connect** for sharing protocol 3 before app editing is enabled. Fully quit with Ctrl+Q before reopening after an update.
 
-122 Python tests, eight JavaScript suites, real offscreen QML creation interactions and a temporary-database smoke launch form the preparation checks. [Hosted preparation tests](https://github.com/jonas101201/liquid-calendar/actions/runs/40749293714) passed on Python 3.10, 3.12 and 3.14. Final release CI must pass again before publication. Fresh-account installation testing remains excluded. See [testing details](TESTING.md), [known issues](KNOWN_ISSUES.md) and [the preparation checklist](docs/RELEASE_0.3.0.md).
+122 Python tests, eight JavaScript suites, actual offscreen Qt creation/merge/menu interactions, the isolated widget editor and temporary-database smoke launches passed. The [tested source snapshot](https://github.com/jonas101201/liquid-calendar/commit/ff0988d6478d9f260b5df96a2f1b85065ab7e908) passed [hosted tests](https://github.com/jonas101201/liquid-calendar/actions/runs/40774771194) on Python 3.10, 3.12 and 3.14 and [security analysis](https://github.com/jonas101201/liquid-calendar/actions/runs/40774765474). Final release checks are recorded on the tagged commit. Fresh-account installation testing remains excluded. See [testing details](TESTING.md), [known issues](KNOWN_ISSUES.md) and [the release record](docs/RELEASE_0.3.6.md).
