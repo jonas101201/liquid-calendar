@@ -1,12 +1,39 @@
-# Beta limitations
+# Known issues and beta limitations
 
-- Target: Fedora Linux with KDE Plasma 6. Windows/macOS and other Linux desktops are not validated.
-- The installer requires network access to PyPI and Python 3.10–3.14 with venv/pip support; it is not an offline installer. Linux Qt platform libraries must be available from the operating system.
-- The interface is English only. No language selector or complete localization framework yet. German date-query aliases are retained as input compatibility.
-- Local storage only: no account sync, mobile app or collaborative calendars.
-- Reminders require the app to stay open or run in the system tray. System notifications use notify-send. Closing the window may keep reminders running; Ctrl+Q fully quits.
-- Time suggestions cover 09:00–18:00 and use local floating times; no timezone-aware invitations or travel-time planning.
-- JSON import adds new IDs and preserves existing IDs. ICS export contains events, not tasks; ICS import is not implemented.
-- App and widget share the existing Plasma database. When an old active widget is detected, editing is blocked until Connect reloads it. Reloading Plasma briefly refreshes the desktop and panels.
-- Undo covers the last local app change and refuses to overwrite a newer edit of the same entry.
-- Back up important data before using a beta. See the README for storage and backup locations.
+Applies to **Liquid Calendar 0.1.1-beta.1**. Last updated: **2026-10-28**.
+
+This page distinguishes current limitations from issues fixed in earlier beta versions. It is not a guarantee that the beta is free of bugs.
+
+## Current limitations
+
+- **Platform support:** the target is Fedora Linux with KDE Plasma 6. Windows, macOS and other Linux desktops are not validated. Successful offscreen CI checks do not establish full desktop compatibility.
+- **Installation:** Python 3.10–3.14, venv/pip support and network access to PyPI are required. The installer is not an offline installer; Qt platform libraries must be supplied by the operating system.
+- **Language:** the interface is English only. There is no language selector or complete localization framework yet. German date-query aliases remain available as input compatibility.
+- **Synchronization:** data is stored locally. Account sync, mobile apps and collaborative calendars are not implemented.
+- **Reminders:** the app must remain open or run in the system tray. Notifications use `notify-send`. Closing the window may keep reminders running; **Ctrl+Q** fully quits.
+- **Planning:** time suggestions cover 09:00–18:00. Times are local floating times; timezone-aware invitations and travel-time planning are not supported.
+- **Import and export:** JSON import adds new IDs and preserves existing IDs. ICS export includes events, not tasks. ICS import is not implemented.
+- **Shared storage:** app and widget use the same local Plasma database. If an incompatible active widget is detected, editing is blocked until **Connect** reloads it. This briefly refreshes the desktop and panels.
+- **Undo:** app-wide Undo covers the last local app change and refuses to overwrite a newer edit of the same entry. It is not an unlimited history or backup restoration tool.
+
+## Updating from 0.1.0-beta.1
+
+- Fully quit the running app with **Ctrl+Q** and reopen it after updating. Reload an active desktop widget to activate its corrected task-completion behavior.
+- Existing stored completion states are not automatically rewritten. If an older version marked a whole recurring task series completed, explicitly reopen that series to make its future occurrences available again.
+- The update does not introduce a new database format or automatically reconstruct previously missing records. Keep backups of important calendar data; see the [README](README.md#data-and-privacy).
+
+## Fixed in 0.1.1-beta.1
+
+The following audited issues are fixed and should not be treated as current limitations:
+
+- Completing a recurring task now affects the selected occurrence rather than all future repetitions. Reopening a completed occurrence does not create duplicates; stale concurrent completion attempts are rejected.
+- Calendar fallback Undo restores detached occurrences together with the parent series. **Audit clarification:** this internal fallback was already hidden in the native app; the visible app-wide Undo already supported complete group restoration.
+- A next-day all-day reminder identifies the event as tomorrow instead of saying “All day today”.
+- Agenda conflict calculation uses daily overlap groups rather than comparing every occurrence pair across the entire date range.
+- SQLite connections close immediately after transactions, including error and rollback paths.
+
+See the [changelog](CHANGELOG.md), [testing details](TESTING.md) and [roadmap](ROADMAP.md) for release history, validation scope and planned features.
+
+## Reporting a new issue
+
+Use [GitHub Issues](https://github.com/jonas101201/liquid-calendar/issues) and include your app version, OS/Plasma/Python versions, reproduction steps, and expected versus actual behavior. Use synthetic examples or redact private information; do not upload personal calendar databases.
