@@ -18,4 +18,4 @@ Templates retain title, time, duration, category, reminder, location and notes. 
 
 The source installer and optional widget installer retain their existing workflow. Existing events need no migration. Fully quit with Ctrl+Q before reopening after an update.
 
-92 Python tests, seven JavaScript suites, real offscreen QML creation interactions and a temporary-database smoke launch form the preparation checks. Hosted CI must pass before a public release. Fresh-account installation testing remains excluded. See [testing details](TESTING.md), [known issues](KNOWN_ISSUES.md) and [the preparation checklist](docs/RELEASE_0.3.0.md).
+92 Python tests, seven JavaScript suites, real offscreen QML creation interactions and a temporary-database smoke launch form the preparation checks. [Hosted preparation tests](https://github.com/jonas101201/liquid-calendar/actions/runs/40749293714) passed on Python 3.10, 3.12 and 3.14. Final release CI must pass again before publication. Fresh-account installation testing remains excluded. See [testing details](TESTING.md), [known issues](KNOWN_ISSUES.md) and [the preparation checklist](docs/RELEASE_0.3.0.md).

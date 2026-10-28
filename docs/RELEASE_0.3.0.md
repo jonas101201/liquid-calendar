@@ -10,8 +10,10 @@ Branch: `prepare/0.3.0-beta.1`. Not published; no release date scheduled. Curren
 - [x] Transactional template state, validation/caps and snapshot-based concurrent-edit rejection.
 - [x] Existing calendar data left unchanged; templates are in a separate database key.
 - [x] Python, JavaScript and actual offscreen QML interaction checks.
-- [ ] Hosted CI verified for the preparation commit.
+- [x] [Hosted tests](https://github.com/jonas101201/liquid-calendar/actions/runs/40749293714) and [security analysis](https://github.com/jonas101201/liquid-calendar/actions/runs/40749289194) passed for implementation commit `5492bc9` on Python 3.10, 3.12 and 3.14.
 - [ ] Publication requested; final metadata, source archives/tag and prerelease published.
+
+The [draft preparation PR](https://github.com/jonas101201/liquid-calendar/pull/2) contains the latest source and check status. The local development app/widget were updated with program-file backups; installed-app smoke launch passed without opening personal calendar data.
 
 ## Verification scope
 
