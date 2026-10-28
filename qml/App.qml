@@ -440,58 +440,59 @@ ApplicationWindow {
                 Surface {
                     anchors.fill:parent;visible:planner.view==="tasks"||planner.view==="search"
                     ColumnLayout {
-                        anchors.fill:parent;anchors.margins:16;spacing:12
+                        anchors.fill:parent;anchors.margins:16;spacing:8
                         RowLayout {
                             Layout.fillWidth:true
                             Field {id:globalSearch;Layout.fillWidth:true;placeholderText:"Title, project, checklist, notes or date …";maximumLength:200;text:planner.query;onTextEdited:planner.setQuery(text);Accessible.name:"Global search"}
-                                                        Action {text:"All";primary:planner.kind==="all"||planner.kind==="tasks";onClicked:planner.setFilter(planner.view==="tasks"?"tasks":"all",planner.category)}
+                            Action {text:"All";primary:planner.kind==="all"||planner.kind==="tasks";onClicked:planner.setFilter(planner.view==="tasks"?"tasks":"all",planner.category)}
                             Action {text:"Open";primary:planner.kind==="open";onClicked:planner.setFilter("open",planner.category)}
                             Action {text:"Completed";primary:planner.kind==="done";onClicked:planner.setFilter("done",planner.category)}
-                        }
-                        RowLayout {
-                            Layout.fillWidth:true;spacing:8
-                            Action {visible:planner.view==="search";text:"Events only";primary:planner.kind==="events";onClicked:planner.setFilter("events",planner.category)}
-                            Action {visible:planner.view==="search";text:"Tasks only";primary:planner.kind==="tasks";onClicked:planner.setFilter("tasks",planner.category)}
-                            Action {text:(["All categories","Personal","Work","Important","Leisure"])[planner.category+1]+" ▾";onClicked:categoryMenu.open()
-                                Menu {id:categoryMenu
-                                    Repeater {model:["All categories","Personal","Work","Important","Leisure"];delegate:MenuItem {required property int index;required property string modelData;text:modelData;onTriggered:planner.setFilter(planner.kind,index-1)}}
-                                }
-                            }
-                            Action {visible:planner.view==="tasks";text:"Sort ▾";onClicked:sortMenu.open()
-                                Menu {id:sortMenu
-                                    MenuItem {text:"Default";checkable:true;checked:planner.taskOrder==="default";onTriggered:planner.setTaskOrder("default")}
-                                    MenuItem {text:"Priority: high first";checkable:true;checked:planner.taskOrder==="priority";onTriggered:planner.setTaskOrder("priority")}
-                                    MenuItem {text:"Project";checkable:true;checked:planner.taskOrder==="project";onTriggered:planner.setTaskOrder("project")}
-                                    MenuItem {text:"Title A–Z";checkable:true;checked:planner.taskOrder==="title";onTriggered:planner.setTaskOrder("title")}
-                                    MenuItem {text:"Scheduled first";checkable:true;checked:planner.taskOrder==="planned";onTriggered:planner.setTaskOrder("planned")}
-                                    MenuItem {text:"Shortest duration first";checkable:true;checked:planner.taskOrder==="duration";onTriggered:planner.setTaskOrder("duration")}
-                                }
-                            }
-                            Item {Layout.fillWidth:true}
                             Action {visible:planner.projectFilter!=="*"||planner.priorityFilter>=0||planner.category>=0||planner.query.length>0||planner.planningFilter!=="all"||planner.taskOrder!=="default"||["all","tasks"].indexOf(planner.kind)<0;text:"Reset";onClicked:{planner.setTaskFilters("*",-1);planner.setTaskOrder("default");planner.setPlanningFilter("all");planner.setQuery("");planner.setFilter(planner.view==="tasks"?"tasks":"all",-1);}}
                         }
                         RowLayout {
-                            visible:planner.view==="tasks";Layout.fillWidth:true;spacing:8
-                            Action {Layout.maximumWidth:240;text:(planner.projectFilter==="*"?"All projects":planner.projectFilter||"No project")+" ▾";onClicked:taskProjectMenu.open()
-                                Menu {id:taskProjectMenu
-                                    MenuItem {text:"All projects";onTriggered:planner.setTaskFilters("*",planner.priorityFilter)}
-                                    MenuItem {text:"No project";onTriggered:planner.setTaskFilters("",planner.priorityFilter)}
-                                    Repeater {model:planner.projects;delegate:MenuItem {required property var modelData;text:modelData.name+" · "+modelData.done+"/"+modelData.total;onTriggered:planner.setTaskFilters(modelData.name,planner.priorityFilter)}}
+                            Layout.fillWidth:true;spacing:12
+                            Flow {
+                                id:taskFilterFlow;Layout.fillWidth:true;Layout.preferredHeight:childrenRect.height;spacing:4
+                                Action {primary:planner.category>=0;text:(["All categories","Personal","Work","Important","Leisure"])[planner.category+1]+" ▾";onClicked:categoryMenu.open()
+                                    Menu {id:categoryMenu
+                                        Repeater {model:["All categories","Personal","Work","Important","Leisure"];delegate:MenuItem {required property int index;required property string modelData;text:modelData;onTriggered:planner.setFilter(planner.kind,index-1)}}
+                                    }
                                 }
-                            }
-                            Action {text:(["Any priority","No priority","Low","Medium","High"])[planner.priorityFilter+1]+" ▾";onClicked:taskPriorityMenu.open()
-                                Menu {id:taskPriorityMenu
-                                    Repeater {model:["Any priority","No priority","Low","Medium","High"];delegate:MenuItem {required property int index;required property string modelData;text:modelData;onTriggered:planner.setTaskFilters(planner.projectFilter,index-1)}}
+                                Action {visible:planner.view==="tasks";width:Math.min(180,implicitWidth);primary:planner.projectFilter!=="*";text:(planner.projectFilter==="*"?"All projects":planner.projectFilter||"No project")+" ▾";onClicked:taskProjectMenu.open()
+                                    Menu {id:taskProjectMenu
+                                        MenuItem {text:"All projects";onTriggered:planner.setTaskFilters("*",planner.priorityFilter)}
+                                        MenuItem {text:"No project";onTriggered:planner.setTaskFilters("",planner.priorityFilter)}
+                                        MenuItem {visible:planner.projectFilter!=="*"&&planner.projectFilter!=="";text:"Edit selected project…";onTriggered:{renameProjectField.text=planner.projectFilter;projectPopup.open();}}
+                                        Repeater {model:planner.projects;delegate:MenuItem {required property var modelData;text:modelData.name+" · "+modelData.done+"/"+modelData.total;onTriggered:planner.setTaskFilters(modelData.name,planner.priorityFilter)}}
+                                    }
                                 }
+                                Action {visible:planner.view==="tasks";primary:planner.priorityFilter>=0;text:(["Any priority","No priority","Low","Medium","High"])[planner.priorityFilter+1]+" ▾";onClicked:taskPriorityMenu.open()
+                                    Menu {id:taskPriorityMenu
+                                        Repeater {model:["Any priority","No priority","Low","Medium","High"];delegate:MenuItem {required property int index;required property string modelData;text:modelData;onTriggered:planner.setTaskFilters(planner.projectFilter,index-1)}}
+                                    }
+                                }
+                                Action {visible:planner.view==="tasks";primary:planner.planningFilter!=="all";text:(["Any schedule","Undated","Scheduled"])[["all","undated","planned"].indexOf(planner.planningFilter)]+" ▾";onClicked:scheduleMenu.open()
+                                    ActionMenu {id:scheduleMenu;light:win.light
+                                        Repeater {model:[{id:"all",label:"Any schedule"},{id:"undated",label:"Undated"},{id:"planned",label:"Scheduled"}];delegate:ActionMenuItem {required property var modelData;light:win.light;text:modelData.label;onTriggered:planner.setPlanningFilter(modelData.id)}}
+                                    }
+                                }
+                                Action {visible:planner.view==="search";text:"Events only";primary:planner.kind==="events";onClicked:planner.setFilter("events",planner.category)}
+                                Action {visible:planner.view==="search";text:"Tasks only";primary:planner.kind==="tasks";onClicked:planner.setFilter("tasks",planner.category)}
                             }
-                            Action {visible:planner.projectFilter!=="*"&&planner.projectFilter!=="";text:"Edit project";onClicked:{renameProjectField.text=planner.projectFilter;projectPopup.open();}}
-                            Item {Layout.fillWidth:true}
-                            Label {text:planner.results.length+" tasks";color:win.muted;font.pixelSize:12}
-                        }
-                        RowLayout {visible:planner.view==="tasks";Layout.fillWidth:true
-                            Action {text:"Any schedule";primary:planner.planningFilter==="all";onClicked:planner.setPlanningFilter("all")}
-                            Action {text:"Undated";primary:planner.planningFilter==="undated";onClicked:planner.setPlanningFilter("undated")}
-                            Action {text:"Scheduled";primary:planner.planningFilter==="planned";onClicked:planner.setPlanningFilter("planned")}
+                            RowLayout {
+                                Layout.alignment:Qt.AlignTop;spacing:4
+                                Action {visible:planner.view==="tasks";text:"Sort ▾";onClicked:sortMenu.open()
+                                    Menu {id:sortMenu
+                                        MenuItem {text:"Default";checkable:true;checked:planner.taskOrder==="default";onTriggered:planner.setTaskOrder("default")}
+                                        MenuItem {text:"Priority: high first";checkable:true;checked:planner.taskOrder==="priority";onTriggered:planner.setTaskOrder("priority")}
+                                        MenuItem {text:"Project";checkable:true;checked:planner.taskOrder==="project";onTriggered:planner.setTaskOrder("project")}
+                                        MenuItem {text:"Title A–Z";checkable:true;checked:planner.taskOrder==="title";onTriggered:planner.setTaskOrder("title")}
+                                        MenuItem {text:"Scheduled first";checkable:true;checked:planner.taskOrder==="planned";onTriggered:planner.setTaskOrder("planned")}
+                                        MenuItem {text:"Shortest duration first";checkable:true;checked:planner.taskOrder==="duration";onTriggered:planner.setTaskOrder("duration")}
+                                    }
+                                }
+                                Label {text:planner.results.length+(planner.view==="tasks"?" tasks":" results");color:win.muted;font.pixelSize:12;leftPadding:6}
+                            }
                         }
                         RowLayout {
                             visible:planner.dateHints.length>0
