@@ -4,12 +4,14 @@ A local desktop calendar and task planner for **Fedora Linux / KDE Plasma 6**. E
 
 **Current beta: 0.1.1-beta.1** · **GPL-3.0-or-later**
 
+[Download 0.1.1 Beta 1](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.1.1-beta.1) · [Release notes](RELEASE_NOTES.md) · [Known issues](KNOWN_ISSUES.md) · [Roadmap](ROADMAP.md)
+
 ![Today view with synthetic example data](docs/screenshots/today.png)
 
 ## Features
 
 - Today overview, 24-hour weekly timeline, month and 7/14/30-day agenda views.
-- Undated tasks with optional scheduling, categories, filters and sorting.
+- Undated tasks with optional scheduling, categories, filters and sorting. Complete individual occurrences of repeating tasks while keeping future repetitions open.
 - Search across years using titles, locations, notes, dates and partial month/day names.
 - Repeats, individual occurrences, reminders and available-time suggestions.
 - Conflict-aware local storage, undo, daily backups and optional Plasma widget.
@@ -23,7 +25,7 @@ See the [roadmap](ROADMAP.md) for the ten beta milestones, planned features and 
 
 Requirements: Fedora/KDE Plasma 6, **Python 3.10–3.14**, venv/pip support, network access to PyPI and the system Qt platform libraries. `notify-send` is needed for notifications. Other systems are not validated.
 
-Extract the release archive and open a terminal in its folder:
+Download an archive from the [0.1.1 Beta 1 release](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.1.1-beta.1), extract it and open a terminal in its folder:
 
 ```bash
 python3 installieren.py
@@ -39,13 +41,15 @@ No sudo is needed. The installer creates a per-user virtual environment with pin
 
 After an update, quit the old app using **Ctrl+Q** and reopen it. Add **Liquid Glass Calendar (Beta)** through Plasma's widget picker if installed. If an old widget is active, use **Connect** when prompted; this briefly reloads the desktop and panels.
 
-**Beta note:** installation on a fresh user account was explicitly not tested. See [known limitations](KNOWN_ISSUES.md) and [testing details](TESTING.md).
+**Beta scope:** Fedora/KDE Plasma is the target. See [known limitations](KNOWN_ISSUES.md) and [testing details](TESTING.md) for supported behavior and validation scope.
 
 ## Use
 
 Create **+ Event** or **+ Task**. Tasks are undated by default. **Schedule in calendar** or **Find time** assigns a date explicitly; suggestions cover 09:00–18:00. More options reveals categories, repeats, reminders, locations and notes. Dragging a repeating event moves only that occurrence; use **Series** to edit the whole series.
 
 Search `today`, `tomorrow`, `day after tomorrow`, `wed`, `nov`, `2027-03-15` or `15.03.2027`. Dates use English names and 24-hour time. German query aliases remain supported, but there is no language selector. Slash-based US dates are not supported.
+
+When completing a repeating task, only the selected occurrence is completed. You can reopen that occurrence without creating a duplicate. If an older beta marked a whole series completed, explicitly reopen that legacy series to make future occurrences available again. Updating does not automatically rewrite stored completion states.
 
 Reminders require the app to be open or running in the tray. Closing the window may keep it running. **Ctrl+Q** fully quits. Optional login startup is disabled by default.
 

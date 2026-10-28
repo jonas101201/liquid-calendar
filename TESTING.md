@@ -1,6 +1,21 @@
 # Testing
 
-From the repository root, with requirements installed in a virtual environment:
+## Current beta: 0.1.1-beta.1
+
+The [published release CI run](https://github.com/jonas101201/liquid-calendar/actions/runs/40712199654) passed on Python **3.10, 3.12 and 3.14**. It runs the Python suite, real offscreen QML checks, an application smoke launch and the JavaScript suites. This verifies automated behavior; it does not certify every desktop environment.
+
+Current coverage:
+
+- **60 Python tests:** storage conflicts and undo, repeats/exceptions, undated tasks, English date search, free-slot checks, per-occurrence task completion, legacy series reopening, stale/concurrent completion rejection, reminder text, deterministic SQLite closure and rollback, and randomized interval comparisons.
+- **Six JavaScript suites:** calendar calculations, date/search behavior, undated tasks, shared-store merging, English aliases and task-occurrence completion.
+- **14 offscreen QML views:** seven views at 980×680 in light and dark themes, plus actual task-slot dispatch, Unicode save checks, grouped deletion and both native app Undo and the hidden calendar fallback.
+- Independent review additionally compared overlap results against a simple pairwise reference and checked concurrent completion, midnight occurrence dates, connection lifetime and undo alongside unrelated edits.
+
+The 840-occurrence agenda benchmark improved from about 1.55 seconds before the fix to about 0.02 seconds on the development machine. Timings depend on hardware; randomized correctness and operation-count regression checks complement the benchmark.
+
+## Run the checks
+
+From the repository root with requirements installed in a virtual environment:
 
 ```bash
 python -m unittest discover -s tests -p 'test_*.py' -v
@@ -8,9 +23,9 @@ QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software python tests/check_qml.py
 python app.py --smoke-test
 ```
 
-The smoke test automatically uses a temporary database. Never point test commands at your personal calendar. The QML check uses its own temporary database and includes both themes, language checks and lossless handling of synthetic Unicode content.
+The smoke test automatically uses a temporary database. The QML check also creates an isolated database. Never point test commands at your personal calendar.
 
-For widget logic, Node.js is optional:
+For widget logic, install Node.js and run:
 
 ```bash
 node tests/test-calendar.cjs
@@ -21,28 +36,24 @@ node tests/test-english.cjs
 node tests/test-task-completion.cjs
 ```
 
-Development checks included storage conflict/undo tests, repeats and exceptions, tasks without dates, English relative/date search, availability rechecking, app/widget SQLite interoperability, and native QML interactions. Offscreen rendering covered 980×680 and 1280×860 in light and dark themes.
+## Graphics dependencies and screenshots
 
-**Not performed for this public beta:** fresh-user-account installation validation (explicitly excluded by the maintainer). Automated CI is provided but a hosted CI run is only verified after publication. Live desktop compatibility beyond the development machine is not certified.
+Hosted Ubuntu CI installs Qt system libraries including libegl1 and libopengl0, even for offscreen checks. This is automated test-environment setup.
 
-## Checks completed for 0.1.0-beta.1
+To render public screenshots from synthetic data:
 
-- 48 Python functional tests passed from the release repository.
-- Five Node.js calendar/widget suites passed.
-- 14 real offscreen QML views at 980×680 passed in both themes, including Unicode data preservation on save.
-- Source app smoke launch and `--version` passed using the existing development Qt runtime.
-- Independent packaging review found a temporary screenshot-output path bug; fixed and rerun successfully.
-- Installer and publishing script were reviewed without installing or contacting a remote repository.
-- Release archives were checked for excluded data/binaries, internal manifest hashes and deterministic rebuilds.
+```bash
+python scripts/screenshots.py
+```
 
-The fresh-account installation check remains deliberately unperformed. No hosted CI run or public upload is claimed by these local results.
+Screenshots show the VERSION of the checked-out source. They do not use a personal calendar.
 
-The hosted Ubuntu CI runner requires Qt system libraries (including libegl1 and libopengl0) even for offscreen tests; these are installed explicitly in the workflow. This is automated test-environment setup, not the excluded fresh-account application-installation test.
+## Validation limits and audit clarification
 
-## Checks for 0.1.1-beta.1
+Fresh-user-account application-installation validation remains deliberately unperformed at the maintainer's request. Offscreen checks and CI do not replace live desktop testing across supported systems.
 
-60 Python tests include per-occurrence task completion, legacy series reopening, stale/concurrent completion rejection, exact reminder text, deterministic connection closure, rollback and randomized overlap comparison. Six Node suites include compatible app/widget completion and transactional merge checks. Real QML regression handlers check the native task slot, hidden calendar fallback and visible app-wide group Undo.
+The initial audit overstated the reachability of the calendar fallback Undo issue. The native app already hid that action when persistence was attached; its visible global Undo already restored full groups. The internal fallback is now corrected and explicitly tested too.
 
-Audit clarification: the initial report overstated the reachability of the fallback Undo bug. The native app hides that action when persistence is attached; its visible global Undo already restored the complete group. The fallback implementation is now consistent as well.
+## Historical baseline: 0.1.0-beta.1
 
-Fresh-account installation remains deliberately untested. Runtime-data tests use only temporary databases.
+The first public beta had 48 Python tests and five JavaScript suites. Its hosted CI result is preserved [here](https://github.com/jonas101201/liquid-calendar/actions/runs/40687586088). Those historical counts do not describe the current beta.

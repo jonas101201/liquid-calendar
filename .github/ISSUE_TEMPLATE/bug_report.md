@@ -5,6 +5,8 @@ title: ''
 labels: bug
 ---
 
+Check [known issues](https://github.com/jonas101201/liquid-calendar/blob/main/KNOWN_ISSUES.md) before reporting. Include your exact beta version (current release: `0.1.1-beta.1`).
+
 **Version / OS / Plasma / Python**
 
 **Steps to reproduce**

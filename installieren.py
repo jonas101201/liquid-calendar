@@ -10,7 +10,7 @@ import sys
 import venv
 
 SOURCE=Path(__file__).resolve().parent
-FILES=['app.py','logic.py','store.py','launch.sh','README.md','VERSION','requirements.txt','LICENSE','NOTICE','THIRD_PARTY.md','CHANGELOG.md','KNOWN_ISSUES.md','qml','icons','companion-widget']
+FILES=['app.py','logic.py','store.py','launch.sh','README.md','VERSION','requirements.txt','LICENSE','NOTICE','THIRD_PARTY.md','CHANGELOG.md','KNOWN_ISSUES.md','ROADMAP.md','TESTING.md','CONTRIBUTING.md','PUBLISHING.md','RELEASE_NOTES.md','docs','qml','icons','companion-widget']
 
 def desktop_quote(value):
     # Desktop Entry Exec quoting is distinct from shell quoting.
