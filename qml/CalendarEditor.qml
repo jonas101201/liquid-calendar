@@ -150,57 +150,9 @@ Item {
         contentItem: Text { textFormat:Text.PlainText; clip:true; text:control.text; opacity:control.enabled?1:.5; color:control.tint; font.pixelSize:12; font.weight:Font.Medium; horizontalAlignment:Text.AlignHCenter; verticalAlignment:Text.AlignVCenter; elide:Text.ElideRight }
         background:LiquidSurface {light:root.light;motionEnabled:root.motionEnabled;radius:9;shadowStrength:0;glassOpacity:root.light?(control.hovered?.9:.6):(control.hovered?.45:.2);border.color:control.activeFocus||control.highlighted?root.accent:root.line}
     }
-    component GlassField: TextField {
-        opacity:enabled?1:.5
-        selectionColor:root.accent; selectedTextColor:"#111a2b"
-        color: root.ink
-        placeholderTextColor: root.muted
-        font.pixelSize: 12
-        leftPadding: 10; rightPadding: 10; topPadding: 8; bottomPadding: 8
-        implicitHeight: 36
-        background: Rectangle { radius: 10; color: root.field; border.color: parent.activeFocus ? root.accent : root.line }
-    }
-    component GlassCheck: CheckBox {
-        id: check
-        padding:0; spacing:8; implicitHeight:32
-        contentItem:Text { text:check.text; textFormat:Text.PlainText; color:root.ink; font.pixelSize:12; leftPadding:28; verticalAlignment:Text.AlignVCenter }
-        indicator:Rectangle {
-            x:0; y:(check.height-height)/2; width:20; height:20; radius:6
-            color:check.checked?root.accent:root.field
-            border.color:check.activeFocus?root.accent:root.line
-            Text { anchors.centerIn:parent; visible:check.checked; text:"✓"; font.pixelSize:14; font.bold:true; color:"#111a2b" }
-        }
-    }
-    component GlassSpin: SpinBox {
-        id:spin
-        opacity:enabled?1:.5
-        implicitWidth:150; implicitHeight:36
-        leftPadding:36; rightPadding:36; editable:true
-        font.pixelSize:12
-        contentItem:TextInput {
-            text:spin.textFromValue(spin.value,spin.locale)
-            font:spin.font; color:root.ink; selectionColor:root.accent; selectedTextColor:"#111a2b"
-            horizontalAlignment:Text.AlignHCenter; verticalAlignment:Text.AlignVCenter
-            readOnly:!spin.editable; validator:spin.validator
-            inputMethodHints:Qt.ImhDigitsOnly; selectByMouse:true
-            onEditingFinished: {
-                var parsed=spin.valueFromText(text,spin.locale);
-                if(Number.isFinite(parsed)) spin.value=Math.max(spin.from,Math.min(spin.to,Math.round(parsed)));
-                text=Qt.binding(function(){return spin.textFromValue(spin.value,spin.locale);});
-            }
-        }
-        up.indicator:Rectangle {
-            x:spin.width-width; width:32; height:spin.height; radius:9
-            color:spin.up.pressed?Qt.rgba(root.accent.r,root.accent.g,root.accent.b,.25):root.field
-            Text { anchors.centerIn:parent; text:"+"; color:root.ink; font.pixelSize:18 }
-        }
-        down.indicator:Rectangle {
-            width:32; height:spin.height; radius:9
-            color:spin.down.pressed?Qt.rgba(root.accent.r,root.accent.g,root.accent.b,.25):root.field
-            Text { anchors.centerIn:parent; text:"−"; color:root.ink; font.pixelSize:18 }
-        }
-        background:Rectangle { radius:10; color:root.field; border.color:spin.activeFocus?root.accent:root.line }
-    }
+    component GlassField: GlassTextField { inkColor:root.ink; accentColor:root.accent; fieldColor:root.field; lineColor:root.line; mutedColor:root.muted }
+    component GlassCheck: GlassCheckBox { inkColor:root.ink; accentColor:root.accent; fieldColor:root.field; lineColor:root.line }
+    component GlassSpin: GlassSpinBox { inkColor:root.ink; accentColor:root.accent; fieldColor:root.field; lineColor:root.line }
     component GlassArea: TextArea {
         color:root.ink; placeholderTextColor:root.muted; textFormat:TextEdit.PlainText
         selectionColor:root.accent; selectedTextColor:"#111a2b"

@@ -8,11 +8,14 @@ from pathlib import Path
 import tarfile
 import zipfile
 
+from sync_widget_sources import check_shared
+
 ROOT=Path(__file__).resolve().parents[1]
 TOP=['VERSION','app.py','logic.py','store.py','launch.sh','installieren.py','requirements.txt','README.md','ROADMAP.md','LICENSE','NOTICE','THIRD_PARTY.md','CHANGELOG.md','RELEASE_NOTES.md','KNOWN_ISSUES.md','TESTING.md','CONTRIBUTING.md','PUBLISHING.md','.gitignore','.github','qml','icons','companion-widget','tests','scripts','docs']
 EPOCH=1793145600  # 2026-10-28 UTC; normalized archive metadata, not file creation times.
 
 def build():
+ check_shared(ROOT)
  version=(ROOT/'VERSION').read_text().strip()
  if not version or any(c not in '0123456789abcdefghijklmnopqrstuvwxyz.-' for c in version):raise ValueError('Invalid version')
  stem='liquid-calendar-'+version

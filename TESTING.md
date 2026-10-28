@@ -1,6 +1,10 @@
 # Testing
 
-## Current release: 0.3.7-beta.1
+## Current release: 0.3.8.1 maintenance refactor
+
+133 Python tests, all eight JavaScript suites, actual app/widget QML checks and synthetic before/after screenshots cover the extracted controls and occurrence-helper reuse. Two distribution checks verify that stale widget copies are rejected and synchronization preserves widget-specific files. See [the refactor record](docs/REFACTOR_0.3.8.md). The release version is 0.3.8.1, marked as a beta prerelease.
+
+## Historical baseline: 0.3.7-beta.1
 
 The targeted post-release audit adds exact-day search, elapsed-minute planning, atomic booking and date-boundary regressions. Checks use synthetic data only. See [the audit record](docs/BUG_AUDIT_0.3.7.md) for 131 Python tests, eight JavaScript suites, actual Qt checks, isolated widget editing, smoke launches and the two independent review rounds. Hosted checks are associated with the release commit.
 

@@ -9,15 +9,33 @@ import os
 from pathlib import Path
 import subprocess
 import sys
-import uuid
 
-from PySide6.QtCore import QObject,Signal,Slot,Property,QTimer,QUrl,Qt,QLockFile,QLocale
-from PySide6.QtGui import QIcon,QAction
+from PySide6.QtCore import QObject,Signal,Slot,Property,QTimer,QUrl,QLocale
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication,QSystemTrayIcon,QMenu,QMessageBox
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtNetwork import QLocalServer,QLocalSocket
 from PySide6.QtQuick import QQuickWindow
-from logic import *
+from logic import (
+    MONTHS,
+    WEEKDAYS,
+    date_hints,
+    event_from_template,
+    export_ics,
+    fingerprint,
+    free_slots,
+    instances,
+    merge_events,
+    occurrence_draft,
+    occurs,
+    parse,
+    quick_entry,
+    representative,
+    search,
+    slot_available,
+    template_from_event,
+    validate,
+)
 from store import Store,ConflictError
 
 BASE=Path(__file__).resolve().parent
@@ -29,7 +47,22 @@ class Bridge(QObject):
     changed=Signal(); errorChanged=Signal(); editRequested=Signal('QVariantMap'); noticeChanged=Signal()
     createRequested=Signal('QVariantMap')
     def __init__(self,store,smoke=False):
-        super().__init__();self.store=store;self._events=store.read();self._selected=dt.date.today();self._view='today';self._query='';self._kind='all';self._category=-1;self._agenda_days=14;self._task_order='default';self._planning_filter='all';self._error='';self._notice='';self._undo=None;self._settings=store.settings();self.smoke=smoke
+        super().__init__()
+        self.store=store
+        self._events=store.read()
+        self._selected=dt.date.today()
+        self._view='today'
+        self._query=''
+        self._kind='all'
+        self._category=-1
+        self._agenda_days=14
+        self._task_order='default'
+        self._planning_filter='all'
+        self._error=''
+        self._notice=''
+        self._undo=None
+        self._settings=store.settings()
+        self.smoke=smoke
         self._need_widget=False
         self._project_filter='*';self._priority_filter=-1;self._undo_project_filter=None
         self._templates=store.templates()
@@ -378,11 +411,8 @@ class Bridge(QObject):
                 day=parse(date) if date else representative(event,self._selected)
                 if day is None or not occurs(event,day):
                     raise ConflictError('This task occurrence no longer exists.')
-                child=copy.deepcopy(event)
-                child.update(id=uuid.uuid4().hex,date=day.isoformat(),done=True,
-                             repeat='none',until='',exceptions={},occurrenceOf=ident,
-                             occurrenceDate=day.isoformat(),originHash=fingerprint(event))
-                child.pop('weekdays',None)
+                child=occurrence_draft(event,day.isoformat())
+                child['done']=True
                 desired.append(child)
             self.commit(desired,label='Task updated',allow_occurrences=True)
         except Exception as e:self.fail(e)
@@ -391,16 +421,14 @@ class Bridge(QObject):
         try:
             event=next(copy.deepcopy(e) for e in self._events if e['id']==ident)
             if not event['task'] or fingerprint(event)!=expected:raise ConflictError('The task has changed. Reopen it.')
-            step=next(item for item in event.get('checklist',[]) if item['id']==step_id)
-            step['done']=not step['done']
             desired=copy.deepcopy(self._events)
+            target=occurrence_draft(event,date) if event['repeat']!='none' else event
+            step=next(item for item in target.get('checklist',[]) if item['id']==step_id)
+            step['done']=not step['done']
             if event['repeat']!='none':
-                day=parse(date)
-                if not occurs(event,day):raise ConflictError('This occurrence no longer exists.')
-                event.update(id=uuid.uuid4().hex,date=date,repeat='none',until='',exceptions={},occurrenceOf=ident,occurrenceDate=date,originHash=expected)
-                event.pop('weekdays',None)
-                desired.append(event)
-            else:desired=[event if e['id']==ident else e for e in desired]
+                desired.append(target)
+            else:
+                desired=[target if e['id']==ident else e for e in desired]
             self.commit(desired,label='Checklist updated',allow_occurrences=True)
         except Exception as e:self.fail(e)
     @Slot(str,str,str,int,str)
@@ -414,8 +442,9 @@ class Bridge(QObject):
                 for item in desired:
                     if item['id']==ident:item.update(date=target,time=time,allDay=False if as_task else item['allDay'])
             else:
-                if not occurs(e,parse(original)):raise ConflictError("This occurrence no longer exists.")
-                child=copy.deepcopy(e);child.update(id=uuid.uuid4().hex,date=target,time=time,allDay=False if as_task else e['allDay'],repeat='none',until='',exceptions={},occurrenceOf=ident,occurrenceDate=original,originHash=fingerprint(e));child.pop('weekdays',None);desired.append(child)
+                child=occurrence_draft(e,original)
+                child.update(date=target,time=time,allDay=False if as_task else e['allDay'])
+                desired.append(child)
             self.commit(desired,label="Event rescheduled · overlaps are highlighted in red",allow_occurrences=True,planning_slot=planning_slot)
         except Exception as e:self.fail(e)
     @Slot(str,str,result='QVariantList')

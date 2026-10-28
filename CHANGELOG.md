@@ -2,6 +2,16 @@
 
 **0.3.6-beta.1** is the cumulative public release of the 0.3.x development work. Versions 0.3.0–0.3.5 below are unpublished historical snapshots. Patch numbers were assigned retrospectively on 28 October 2026, one per functional code patch after the initial 0.3.0 baseline. Source links identify the original implementation commits, which retain their original version strings. No commits or published tags were rewritten. Documentation-only commits are not numbered separately.
 
+## 0.3.8.1 — 2026-10-28
+
+Beta prerelease, using the maintainer-requested version. The 0.3.8-beta.1 preparation was not published separately.
+
+- Share identical text-field, checkbox and editable-number controls between editors and date/time pickers, preserving their palette bindings and interaction behavior.
+- Treat qml/ as the canonical source for shared controls/calendar JavaScript. Synchronize standalone widget copies with scripts/sync_widget_sources.py and reject drift in CI, source packaging and installation before changing installed files.
+- Reuse the existing occurrence_draft helper for task completion, checklist edits and moves; retain stored identities, exceptions and transactional conflict checks.
+- Replace wildcard logic imports with explicit dependencies and expand Bridge initialization for readability.
+- Validate with existing regression suites, distribution checks and before/after synthetic renders. No schema migration, new feature or visual redesign.
+
 ## 0.3.7-beta.1 — 2026-10-28
 
 - Exact ISO/DMY date and relative-day searches return actual occurrences only, excluding cancelled days and undated title matches. App and widget agree.

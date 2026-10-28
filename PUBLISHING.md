@@ -2,11 +2,11 @@
 
 ## Current public beta
 
-**0.3.7-beta.1** is published as **Liquid Calendar 0.3.7 Beta 1** on **28 October 2026**.
+**0.3.8.1** is published as **Liquid Calendar 0.3.8.1** (beta prerelease) on **28 October 2026**.
 
 - [Public repository](https://github.com/jonas101201/liquid-calendar)
-- [Release and downloads](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.3.7-beta.1)
-- [Audited preparation CI run](https://github.com/jonas101201/liquid-calendar/actions/runs/40778146708); final checks are attached to the release tag commit.
+- [Release and downloads](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.3.8.1)
+- [Audited preparation CI run](https://github.com/jonas101201/liquid-calendar/actions/runs/40780000929); final checks are attached to the release tag commit.
 
 The release includes source ZIP and TAR archives plus SHA256SUMS. It is marked as a prerelease. Published tags and assets identify fixed snapshots; documentation updates on main do not replace an existing release archive.
 
@@ -21,6 +21,10 @@ The maintainer renewed release authorization on 28 October 2026. Version 0.3.6-b
 ## 0.3.7 release record
 
 The maintainer requested publication of the audited bug-fix patch on 28 October 2026. See [the release record](docs/RELEASE_0.3.7.md) and [independent audit](docs/BUG_AUDIT_0.3.7.md). Existing published tags and assets remain unchanged.
+
+## 0.3.8.1 release record
+
+The maintainer requested publication under the exact version **0.3.8.1** on 28 October 2026. The earlier 0.3.8-beta.1 preparation was not published separately; the release is still marked as a prerelease. Shared sources pass the sync check before packaging and installation. See [the release record](docs/RELEASE_0.3.8.1.md) and [refactor record](docs/REFACTOR_0.3.8.md).
 
 ## Preparing a future release
 
