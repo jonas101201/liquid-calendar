@@ -1,7 +1,6 @@
 # Beta limitations
 
 - Target: Fedora Linux with KDE Plasma 6. Windows/macOS and other Linux desktops are not validated.
-- A fresh-user-account installation test was explicitly skipped. Automated isolated-data and offscreen Qt checks are not an installation certification.
 - The installer requires network access to PyPI and Python 3.10–3.14 with venv/pip support; it is not an offline installer. Linux Qt platform libraries must be available from the operating system.
 - The interface is English only. No language selector or complete localization framework yet. German date-query aliases are retained as input compatibility.
 - Local storage only: no account sync, mobile app or collaborative calendars.
