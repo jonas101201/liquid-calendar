@@ -9,7 +9,7 @@ from PySide6.QtQml import QQmlApplicationEngine,QQmlExpression
 from PySide6.QtCore import QUrl,QTimer,QEventLoop,qInstallMessageHandler,QLocale
 from PySide6.QtQuick import QQuickWindow
 from PySide6.QtTest import QTest
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt,QPoint
 QLocale.setDefault(QLocale('en_GB'));app=QApplication([]);logs=[];qInstallMessageHandler(lambda typ,ctx,text:logs.append(text))
 temp=tempfile.TemporaryDirectory(prefix='reviewer-language-');p=pathlib.Path(temp.name);shutil.copytree(src/'qml',p/'qml')
 s=(p/'qml/App.qml').read_text().replace('id:win','id:win\n function review(code){return eval(code);}',1);(p/'qml/App.qml').write_text(s)
@@ -121,7 +121,11 @@ expr('resultList.itemAtIndex(0).setChecklistExpanded(true)');expr('resultList.it
 assert st.read()!=[check_series]
 assert expr('resultList.itemAtIndex(0).checklistExpanded') is True
 # Creation milestone: preview -> editor -> pickers -> template -> actual Save.
-b.commit([]);settle();expr('win.openQuick()');settle()
+b.commit([]);settle();expr('toolsButton.clicked()');settle()
+point=QPoint(round(expr('quickAddAction.mapToItem(win.contentItem,quickAddAction.width/2,quickAddAction.height/2).x')),round(expr('quickAddAction.mapToItem(win.contentItem,quickAddAction.width/2,quickAddAction.height/2).y')))
+QTest.mouseClick(win,Qt.LeftButton,Qt.NoModifier,point);settle()
+assert expr('quickPopup.visible') is True
+assert expr('quickInput.activeFocus') is True
 expr('quickInput.text="tomorrow 15:00 Dentist for 45m";quickPopup.refresh()');settle()
 assert st.read()==[]
 assert expr('quickPopup.preview.event.time')=='15:00'
@@ -138,7 +142,7 @@ expr('editorSurface.review("datePicker.close()")')
 
 expr('editorSurface.review('+json.dumps('timePicker.openFor("23:55");timePicker.choose()')+')');settle()
 assert expr('editorSurface.review("timeField.text")')=='23:55'
-expr('editorSurface.review("templateButton.clicked()")');settle()
+expr('editorSurface.review("editorToolsButton.clicked();templateButton.triggered();editorActions.close()")');settle()
 expr('editorSurface.review('+json.dumps('templateNameField.text="Dentist visit";saveTemplateButton.clicked()')+')');settle()
 assert len(b.templates)==1 and st.read()==[]
 expr('editorSurface.review("saveButton.clicked()")');settle()

@@ -113,7 +113,7 @@ ApplicationWindow {
     function refreshSlots(){planner.clearError();slotError="";suggestedSlots=planner.slotsOn(planningTask.id,planningTask.occurrenceDate,slotDate);slotError=planner.error;}
     function planTask(record){planningTask=record;slotDate=planner.selected;slotDateField.text=slotDate;refreshSlots();slotPopup.open();}
     function shiftSlots(n){var d=dateValue(slotDate);d.setDate(d.getDate()+n);slotDate=Qt.formatDateTime(d,"yyyy-MM-dd");slotDateField.text=slotDate;refreshSlots();}
-    readonly property bool creationModalOpen:quickPopup.visible||templateLibrary.visible||templateEditPopup.visible
+    readonly property bool creationModalOpen:creationMenu.visible||quickPopup.visible||templateLibrary.visible||templateEditPopup.visible
     function openQuick(){quickInput.text="";quickPopup.preview=({error:"",summary:""});quickPopup.open();quickInput.forceActiveFocus();}
     function newEvent(){editorSurface.openEvent(null,dateValue(planner.selected));}
     Shortcut {sequence:"Ctrl+N";enabled:!editorSurface.modalOpen&&!win.creationModalOpen;onActivated:win.newEvent()}
@@ -258,8 +258,12 @@ ApplicationWindow {
                 }
                 Action {visible:["today","week","month","agenda"].indexOf(planner.view)>=0;text:"Date";onClicked:{jumpDate.text=planner.selected;datePopup.open();}}
                 Action {visible:planner.view!=="settings";text:"Today";onClicked:planner.today()}
-                Action {visible:planner.view!=="settings";text:"Quick add";onClicked:win.openQuick()}
-                Action {visible:planner.view!=="settings";text:"Templates";onClicked:templateLibrary.open()}
+                Action {id:toolsButton;visible:planner.view!=="settings";text:"Tools ▾";Accessible.name:"Creation tools";onClicked:creationMenu.open()
+                    ActionMenu {id:creationMenu;parent:toolsButton;light:win.light;y:toolsButton.height+4;x:Math.min(0,toolsButton.width-width)
+                        ActionMenuItem {id:quickAddAction;light:win.light;text:"Quick add…";onTriggered:win.openQuick()}
+                        ActionMenuItem {id:templatesAction;light:win.light;text:"Event templates…";onTriggered:templateLibrary.open()}
+                    }
+                }
                 Action {visible:planner.view!=="settings";text:"+ Task";primary:planner.view==="tasks";onClicked:editorSurface.openNewTask(win.dateValue(planner.selected))}
                 Action {visible:planner.view!=="settings";text:"+ Event";primary:planner.view!=="tasks";onClicked:win.newEvent()}
             }

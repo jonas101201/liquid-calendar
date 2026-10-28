@@ -104,7 +104,7 @@ Item {
         untilField.text=e?e.until:""; locationField.text=e?e.location:""; notesField.text=e?e.notes:"";
         categoryBox.currentIndex=e?e.category:0; editor.validation=""; editor.open(); titleField.forceActiveFocus();
     }
-    function openDraft(event) {openEvent(event);editor.eventId="";editor.draftOriginal=null;}
+    function openDraft(event) {openEvent(event);editor.eventId="";editor.original=null;}
     function openNewTask(date) {openEvent(null,date);task.checked=true;scheduled.checked=false;}
     function toggleTask(e,date) {
         try {store(Cal.toggleTaskOccurrence(events,e.id,date||e.date));}
@@ -587,7 +587,11 @@ Item {
             Label { visible:(!task.checked||scheduled.checked)&&repeatBox.currentIndex>0; text:"Editing and deleting applies to the entire series."; font.pixelSize:10; color:root.muted; Layout.fillWidth:true; wrapMode:Text.Wrap }
             RowLayout {
                 GlassButton { visible:editor.eventId!==""; text:"Delete …"; tint:root.danger; onClicked:deleteConfirm.open() }
-                GlassButton { id:duplicateButton; visible:editor.eventId!==""; text:"Duplicate"; onClicked: { editor.eventId=""; editor.original=null; titleField.text=Array.from(titleField.text+" – Copy").slice(0,200).join(""); } Accessible.name:"Duplicate event as a template" }
+                GlassButton {id:editorToolsButton;visible:editor.eventId!=="";text:"More ▾";Accessible.name:"Entry actions";onClicked:editorActions.open()
+                    ActionMenu {id:editorActions;parent:editorToolsButton;light:root.light;y:editorToolsButton.height+4
+                        ActionMenuItem {id:duplicateButton;light:root.light;visible:editor.eventId!=="";text:"Duplicate";onTriggered:{editor.eventId="";editor.original=null;titleField.text=Array.from(titleField.text+" – Copy").slice(0,200).join("");}}
+                    }
+                }
                 Item { Layout.fillWidth:true }
                 GlassButton {
                     id:saveButton

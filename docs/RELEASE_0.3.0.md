@@ -4,6 +4,7 @@ Branch: `prepare/0.3.0-beta.1`. Not published; no release date scheduled. Curren
 
 ## Scope
 
+- [x] Existing main layout retained, with Tools and editor More dropdowns for additional functions.
 - [x] Deterministic quick-entry parser with English/German dates, times, durations and a reviewable draft.
 - [x] Date/month/year grid and time selection, including repeat-end dates, in desktop and widget editors.
 - [x] Desktop event-template save/use/rename/delete with date-independent defaults and fresh IDs.

@@ -4,9 +4,9 @@ This milestone is **not published yet**. The current public beta remains 0.2.0-b
 
 ## Faster creation
 
-- **Quick add** / Ctrl+Shift+N: type `tomorrow 15:00 Dentist for 45m` or `Morgen 15 Uhr Zahnarzt für 45 Minuten`. Review the interpreted title, date, time and duration before saving.
+- **Tools ▾ → Quick add** / Ctrl+Shift+N: type `tomorrow 15:00 Dentist for 45m` or `Morgen 15 Uhr Zahnarzt für 45 Minuten`. Review the interpreted title, date, time and duration before saving.
 - **Date and time picking:** choose a date from a month grid with year control and Today/Tomorrow shortcuts; choose hours/minutes or a time preset. Repeat end dates also have a picker. These controls are available in the companion widget too.
-- **Event templates:** save the current event details as a named template. Use, rename or delete templates in the desktop library. Applying a template creates a fresh editable draft on the selected day.
+- **Event templates:** use **More ▾ → Save template…** in the editor to save the current event details as a named template. Use, rename or delete templates through **Tools ▾ → Event templates**. Applying a template creates a fresh editable draft on the selected day.
 
 ## Behavior and limits
 

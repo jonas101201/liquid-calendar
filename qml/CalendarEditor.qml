@@ -608,8 +608,12 @@ Item {
             Label { visible:(!task.checked||scheduled.checked)&&repeatBox.currentIndex>0; text:"Editing and deleting applies to the entire series."; font.pixelSize:10; color:root.muted; Layout.fillWidth:true; wrapMode:Text.Wrap }
             RowLayout {
                 GlassButton { visible:editor.eventId!==""; text:"Delete …"; tint:root.danger; onClicked:deleteConfirm.open() }
-                GlassButton { id:duplicateButton; visible:editor.eventId!==""; text:"Duplicate"; onClicked: { editor.eventId=""; editor.draftOriginal=null; titleField.text=Array.from(titleField.text+" – Copy").slice(0,200).join(""); } Accessible.name:"Duplicate event as a template" }
-                GlassButton {id:templateButton;visible:!!root.persistence&&!task.checked;text:"Save template…";onClicked:{templateNameField.text=titleField.text;templateNamePopup.error="";templateNamePopup.open();}}
+                GlassButton {id:editorToolsButton;visible:editor.eventId!==""|| (!!root.persistence&&!task.checked);text:"More ▾";Accessible.name:"Entry actions";onClicked:editorActions.open()
+                    ActionMenu {id:editorActions;parent:editorToolsButton;light:root.light;y:editorToolsButton.height+4
+                        ActionMenuItem {id:duplicateButton;light:root.light;visible:editor.eventId!=="";text:"Duplicate";onTriggered:{editor.eventId="";editor.draftOriginal=null;titleField.text=Array.from(titleField.text+" – Copy").slice(0,200).join("");}}
+                        ActionMenuItem {id:templateButton;light:root.light;visible:!!root.persistence&&!task.checked;text:"Save template…";onTriggered:{templateNameField.text=titleField.text;templateNamePopup.error="";templateNamePopup.open();}}
+                    }
+                }
                 Item { Layout.fillWidth:true }
                 GlassButton {
                     id:saveButton

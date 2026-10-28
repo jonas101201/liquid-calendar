@@ -45,5 +45,6 @@ with tempfile.TemporaryDirectory(prefix='liquid-public-screenshots-') as folder:
  bridge.setView('today');run('win.openQuick();quickInput.text="Tomorrow 15:00 Dentist for 45m";quickPopup.refresh()');capture('quick-add.png');run('quickPopup.close()')
  bridge.edit('demo-design',day,False);settle();run('editorSurface.review('+json.dumps('datePicker.openFor(dateField.text)')+')');capture('date-picker.png');run('editorSurface.review("datePicker.close();editor.close()")')
  run('templateLibrary.open()');capture('templates.png');run('templateLibrary.close()')
+ run('toolsButton.clicked()');capture('creation-menu.png');run('creationMenu.close()')
  bridge.reload_timer.stop();bridge.reminder_timer.stop();window.close();engine.deleteLater();settle()
 print('Rendered public screenshots using synthetic data only.')
