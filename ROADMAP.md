@@ -10,7 +10,7 @@ It is a planning draft, not a delivery promise. Features and priorities may chan
 | --- | --- | --- | --- |
 | **0.1.0** | First public beta | Calendar, tasks, agenda and local storage | Released; last bug-fix beta: [`0.1.1-beta.1`](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.1.1-beta.1) |
 | **0.2.0** | Task organization | Priorities, checklists and projects | Released 2026-10-28: [`0.2.0-beta.1`](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.2.0-beta.1) |
-| **0.3.0** | Faster event creation | Quick entry, improved date and time selection, and event templates | Implemented on `prepare/0.3.0-beta.1`; verification before release |
+| **0.3.0** | Faster event creation | Quick entry, improved date and time selection, and event templates | Development build `0.3.6-beta.1` on `prepare/0.3.0-beta.1`; publication paused |
 | **0.4.0** | Flexible daily planning | Custom working hours, breaks, and splitting tasks across multiple time blocks | Planned |
 | **0.5.0** | Multiple calendars | Show and hide separate personal, work and custom calendars | Planned |
 | **0.6.0** | Import and sharing | ICS import with a preview and duplicate detection | Planned |
@@ -23,7 +23,7 @@ English remains the primary interface language. The language milestone introduce
 
 ## Bug-fix releases and version naming
 
-The current release is **0.2.0-beta.1**, the second feature milestone. The next feature milestone **0.3.0** is in [preparation](docs/RELEASE_0.3.0.md). See the [release record](docs/RELEASE_0.2.0.md).
+The current release is **0.2.0-beta.1**, the second feature milestone. The next feature milestone **0.3.0**, currently at development patch **0.3.6-beta.1**, is in [preparation](docs/RELEASE_0.3.0.md). See the [release record](docs/RELEASE_0.2.0.md).
 
 Each beta milestone can receive bug-fix releases as needed. These do not count as additional milestones in the ten-beta roadmap.
 
@@ -43,3 +43,7 @@ After **0.10.0 Beta**, release candidates can be published as `1.0.0-rc.1`, `1.0
 ## Feedback and contributions
 
 Share feature suggestions and reproducible bug reports through [GitHub Issues](https://github.com/jonas101201/liquid-calendar/issues). See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
+
+## Development patch tracking
+
+Each functional patch after the initial 0.3.0 development baseline receives the next patch number, retaining the `-beta.1` suffix. Documentation-only commits do not increment it. The current development build is **0.3.6-beta.1**; the existing preparation branch keeps its name. These retrospective snapshot labels do not create public releases or move historical tags. See the [per-patch changelog](CHANGELOG.md). Publication remains paused.

@@ -1,6 +1,8 @@
-# Liquid Calendar 0.3.0 Beta 1 — release preparation
+# Liquid Calendar 0.3.6 Beta 1 — release preparation
 
 This milestone is **not published yet**. The current public beta remains 0.2.0-beta.1. English interface, Fedora/KDE Plasma, GPL-3.0-or-later.
+
+Current development version: **0.3.6-beta.1**. The six functional patches since the 0.3.0 baseline are numbered separately in the [changelog](CHANGELOG.md); these are unpublished development snapshots, not past public releases.
 
 ## Faster creation
 

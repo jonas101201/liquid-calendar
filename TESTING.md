@@ -1,6 +1,6 @@
 # Testing
 
-## Preparing 0.3.0-beta.1
+## Preparing 0.3.6-beta.1
 
 The [0.3.0 preparation tests](https://github.com/jonas101201/liquid-calendar/actions/runs/40749293714) passed on Python **3.10, 3.12 and 3.14**, including all 92 Python tests, the actual QML checks, smoke launch and seven JavaScript suites. [Security analysis](https://github.com/jonas101201/liquid-calendar/actions/runs/40749289194) also passed. These results cover implementation snapshot [`5492bc9`](https://github.com/jonas101201/liquid-calendar/commit/5492bc9494d806be7edda4056d7786aa1fc472d2); check the preparation PR for later documentation updates and final release checks. Automated results do not certify every desktop environment.
 

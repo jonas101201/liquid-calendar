@@ -2,7 +2,7 @@
 
 A local desktop calendar and task planner for **Fedora Linux / KDE Plasma 6**. English interface, no account required.
 
-**Preparing: 0.3.0-beta.1** · Latest published beta: **0.2.0-beta.1** · **GPL-3.0-or-later**
+**Preparing: 0.3.6-beta.1** · Latest published beta: **0.2.0-beta.1** · **GPL-3.0-or-later**
 
 [Download 0.2.0 Beta 1](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.2.0-beta.1) · [Release notes](RELEASE_NOTES.md) · [Known issues](KNOWN_ISSUES.md) · [Roadmap](ROADMAP.md)
 
@@ -23,7 +23,7 @@ A local desktop calendar and task planner for **Fedora Linux / KDE Plasma 6**. E
 
 Saved events and individual repeat occurrences can be combined through **More ▾ → Merge with another event…**, with a preview and Undo. The week view displays overlapping events in separate lanes and scrolls horizontally when needed.
 
-This branch prepares **0.3.0-beta.1**. It is not published yet; downloads above still point to 0.2.0. See [the preparation checklist](docs/RELEASE_0.3.0.md).
+This branch prepares **0.3.6-beta.1**. It is not published yet; downloads above still point to 0.2.0. See [the preparation checklist](docs/RELEASE_0.3.0.md).
 
 ## Roadmap
 

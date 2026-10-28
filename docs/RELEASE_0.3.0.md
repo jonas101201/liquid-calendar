@@ -1,6 +1,8 @@
-# 0.3.0-beta.1 preparation
+# 0.3.6-beta.1 preparation
 
 Branch: `prepare/0.3.0-beta.1`. Not published; no release date scheduled. Current public release: 0.2.0-beta.1.
+
+Current development version: **0.3.6-beta.1**. The existing `prepare/0.3.0-beta.1` branch and this checklist track the entire 0.3.x preparation. Historical patch assignments are recorded in [CHANGELOG.md](../CHANGELOG.md); no 0.3.x release has been published.
 
 ## Scope
 

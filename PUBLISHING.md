@@ -14,9 +14,9 @@ The release includes source ZIP and TAR archives plus SHA256SUMS. It is marked a
 
 The maintainer brought publication forward from 29 October to **28 October 2026**. See [the release record](docs/RELEASE_0.2.0.md). The former scheduled follow-up is no longer needed.
 
-## Preparing 0.3.0-beta.1
+## Preparing 0.3.6-beta.1
 
-Work is on `prepare/0.3.0-beta.1`; the maintainer stopped publication on 28 October 2026 for additional bug fixes and event merging. No release is scheduled; explicit renewed release authorization is required. Follow [the preparation checklist](docs/RELEASE_0.3.0.md). Published 0.2.0 tags/assets remain unchanged.
+The current development version is **0.3.6-beta.1**. Work remains on `prepare/0.3.0-beta.1`, the existing branch for the 0.3.x milestone; the maintainer stopped publication on 28 October 2026 for additional bug fixes and event merging. No release is scheduled; explicit renewed release authorization is required. Follow [the preparation checklist](docs/RELEASE_0.3.0.md). Published 0.2.0 tags/assets remain unchanged.
 
 ## Preparing a future release
 
