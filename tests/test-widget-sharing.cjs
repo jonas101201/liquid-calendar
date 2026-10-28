@@ -1,0 +1,12 @@
+const fs=require('fs'),vm=require('vm'),assert=require('node:assert/strict'),c={};vm.createContext(c);vm.runInContext(fs.readFileSync('companion-widget/contents/ui/Calendar.js','utf8'),c);
+const a={id:'a',title:'A',date:'2026-10-28',time:'09:00',minutes:60,allDay:false,task:false,done:false,repeat:'none',until:'',category:0,location:'',notes:''},b={...a,id:'b',title:'B'};
+let merged=c.mergeEvents([a,b],[{...a,title:'Widget'},b],[a,{...b,title:'App'}]);assert.equal(merged.find(e=>e.id==='a').title,'Widget');assert.equal(merged.find(e=>e.id==='b').title,'App');
+assert.throws(()=>c.mergeEvents([a],[{...a,title:'Widget'}],[{...a,title:'App'}]));
+const series={...a,repeat:'weekly',exceptions:{'2026-11-04':{cancelled:true}}},child={...b,seriesId:'a'};
+assert.equal(c.occurs(series,c.parse('2026-11-04')),false);assert.equal(c.key(c.nextOccurrence(series,c.parse('2026-11-04'))),'2026-11-11');assert.equal(c.key(c.lastOccurrence(series,c.parse('2026-11-04'))),'2026-10-28');
+assert.equal(c.mergeEvents([series,child],[child],[series,child]).length,0);
+assert.throws(()=>c.mergeEvents([series,child],[],[series,{...child,title:'Neu'}]));
+assert.equal(c.valid({...a,reminder:'10'}),false);assert.equal(c.valid({...a,exceptions:[]}),false);assert.equal(c.valid({...a,exceptions:{'2026-11-04':{cancelled:true}}}),true);
+assert.throws(()=>c.restore(c.backup([{...a,occurrenceOf:'x'}])));
+assert.equal(c.restore(c.backup([{...a,id:'__proto__'}])).length,1);assert.equal(c.mergeEvents([],[{...a,id:'__proto__'}],[]).length,1);
+console.log('Gemeinsame Speicherung, Konflikte, Serienausnahmen, Gruppenlöschung und Importvalidierung geprüft.');

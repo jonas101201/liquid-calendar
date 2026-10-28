@@ -1,0 +1,10 @@
+const fs=require('fs'),vm=require('vm'),assert=require('node:assert/strict'),c={};vm.createContext(c);vm.runInContext(fs.readFileSync('companion-widget/contents/ui/Calendar.js','utf8'),c);
+const e={id:'task',title:'Konzept',date:'',time:'',minutes:45,allDay:false,task:true,done:false,repeat:'none',until:'',category:0,location:'',notes:'Nächster Schritt',reminder:-1,exceptions:{}};
+assert(c.valid(e));assert(!c.valid({...e,task:false}));assert(!c.valid({...e,repeat:'weekly'}));assert(!c.valid({...e,reminder:10}));assert(!c.valid({...e,time:'09:00'}));
+assert.equal(c.instances([e],c.parse('2026-10-28'),90,'',-1).length,0);
+assert.equal(c.searchAll([e],'kon',-1,3,c.parse('2026-10-28'))[0].date,'');
+assert.equal(c.searchAll([e],'kon',-1,3,c.parse('2026-10-28'))[0].unscheduled,true);
+assert.equal(c.searchAll([{...e,done:true}],'',-1,3,c.parse('2026-10-28')).length,0);
+assert.equal(c.nextOccurrence(e,c.parse('2026-10-28')),null);assert.equal(c.lastOccurrence(e,c.parse('2026-10-28')),null);
+assert.equal(c.restore(c.backup([e]))[0].date,'');assert.equal(c.ics([e]).includes('BEGIN:VEVENT'),false);
+console.log('13 Widget-Prüfungen für Aufgaben ohne Datum bestanden.');

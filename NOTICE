@@ -1,0 +1,6 @@
+Liquid Calendar
+Copyright (C) 2026 Jonas
+
+This project is licensed under GPL-3.0-or-later. See LICENSE.
+This beta contains no bundled Python, Qt, PySide6, shiboken6 or other third-party runtime binaries. Dependencies are obtained separately from PyPI by the installer and retain their own licenses. See THIRD_PARTY.md.
+The calendar icon and QML interface assets in this repository are distributed under the project license.

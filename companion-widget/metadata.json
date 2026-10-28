@@ -1,0 +1,19 @@
+{
+  "KPlugin": {
+    "Id": "org.jonas.liquidglass.calendar",
+    "Name": "Liquid Glass Calendar (Beta)",
+    "Description": "Local calendar with global search and desktop app integration",
+    "Icon": "view-calendar-month",
+    "Version": "0.1.0-beta.1",
+    "License": "GPL-3.0-or-later",
+    "Category": "Date and Time",
+    "Authors": [
+      {
+        "Name": "Jonas"
+      }
+    ]
+  },
+  "X-Plasma-API-Minimum-Version": "6.0",
+  "X-Plasma-MainScript": "ui/main.qml",
+  "KPackageStructure": "Plasma/Applet"
+}

@@ -1,0 +1,2 @@
+PySide6-Essentials==6.10.2
+shiboken6==6.10.2
