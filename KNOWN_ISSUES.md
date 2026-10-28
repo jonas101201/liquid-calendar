@@ -21,7 +21,7 @@ This page distinguishes current limitations from issues fixed in earlier beta ve
 - Projects are task labels, created when assigned to a task. Empty projects are not retained. Names are case-sensitive; renaming to an existing name merges assignments. Clearing a project does not delete its tasks.
 - Project counters count stored task records, including detached occurrences, rather than an infinite recurring schedule.
 - Checklist completion is independent of the task's completion. Inline checklist changes affect only the selected occurrence; editing **Series** changes the series template.
-- Up to 100 steps per checklist, 200 characters per step and 80 characters per project name. The project name `*` is reserved for the all-projects filter.
+- Up to 100 steps per checklist, 200 characters per step and 80 characters per project name. Limits count Unicode code points consistently across app and widget. The project name `*` is reserved for the all-projects filter.
 - The companion widget supports editing task details; the full project overview and combined organization filters are in the desktop app.
 
 ## Updating from 0.1.x

@@ -28,6 +28,8 @@ ApplicationWindow {
     property string exportKind:"json"
     property string slotDate:""
     property string slotError:""
+    property var expandedChecklists:({})
+    function checklistKey(record){return (record.event.seriesId||record.id)+"|"+(record.event.originalDate||record.occurrenceDate||"");}
     property date clockNow:new Date()
     Timer {interval:60000;running:true;repeat:true;onTriggered:win.clockNow=new Date()}
     readonly property var nextAppointment: {
@@ -69,7 +71,8 @@ ApplicationWindow {
         required property var record
         property bool showDate:false
         property bool compact:false
-        property bool checklistExpanded:false
+        readonly property bool checklistExpanded:win.expandedChecklists[win.checklistKey(record)]===true
+        function setChecklistExpanded(expanded){var state=Object.assign({},win.expandedChecklists);state[win.checklistKey(record)]=expanded;win.expandedChecklists=state;}
         function toggleStep(stepId){planner.toggleChecklist(record.id,record.occurrenceDate,stepId,record.fingerprint)}
         implicitHeight:82+(checklistExpanded?record.checklist.length*38+8:0)
         radius:10
@@ -88,7 +91,7 @@ ApplicationWindow {
                 Label {Layout.fillWidth:true;text:entry.record.unscheduled?"Undated · "+entry.record.minutes+" min":(entry.showDate?entry.record.date+" · ":"")+(entry.record.allDay?"All day":(entry.record.carry?"Continued · ":"")+entry.record.time+" · "+entry.record.minutes+" min")+(entry.record.conflict?" · Overlap":"");color:entry.record.conflict?win.danger:win.muted;font.pixelSize:11;elide:Text.ElideRight}
                 Label {visible:entry.record.task&&(entry.record.priority>0||entry.record.project.length>0);Layout.fillWidth:true;text:(["","Low priority","Medium priority","High priority"])[entry.record.priority]+(entry.record.priority&&entry.record.project?" · ":"")+entry.record.project;textFormat:Text.PlainText;color:entry.record.priority===3?win.danger:win.accent;font.pixelSize:11;elide:Text.ElideRight}
             }
-            Action {visible:entry.record.task&&entry.record.checklist.length>0;text:entry.record.checklistDone+"/"+entry.record.checklist.length+(entry.checklistExpanded?" ▴":" ▾");Accessible.name:"Show checklist progress";onClicked:entry.checklistExpanded=!entry.checklistExpanded}
+            Action {visible:entry.record.task&&entry.record.checklist.length>0;text:entry.record.checklistDone+"/"+entry.record.checklist.length+(entry.checklistExpanded?" ▴":" ▾");Accessible.name:"Show checklist progress";onClicked:entry.setChecklistExpanded(!entry.checklistExpanded)}
             Action {visible:entry.record.task&&!entry.record.done;text:entry.compact?"Plan":"Find time";onClicked:win.planTask(entry.record)}
             Action {visible:entry.record.repeated;text:"Series";onClicked:planner.edit(entry.record.id,entry.record.occurrenceDate,false);Accessible.name:"Edit entire series"}
             Action {text:"↗";Accessible.name:entry.record.task?"Edit task":"Edit event";ToolTip.visible:hovered;ToolTip.text:Accessible.name;onClicked:planner.edit(entry.record.id,entry.record.occurrenceDate,true)}
@@ -123,12 +126,12 @@ ApplicationWindow {
             spacing:12
             Label {text:"Edit project";color:win.ink;font.pixelSize:20}
             Label {text:"Rename to an existing project to merge them. Clearing the project keeps all tasks.";Layout.fillWidth:true;wrapMode:Text.Wrap;color:win.muted}
-            Field {id:renameProjectField;Layout.fillWidth:true;maximumLength:80;Accessible.name:"Project name"}
+            Field {id:renameProjectField;Layout.fillWidth:true;maximumLength:160;Accessible.name:"Project name"}
             RowLayout {
                 Action {text:"Clear project";onClicked:{planner.renameProject(planner.projectFilter,"");projectPopup.close();}}
                 Item {Layout.fillWidth:true}
                 Action {text:"Cancel";onClicked:projectPopup.close()}
-                Action {text:"Save";primary:true;enabled:renameProjectField.text.trim().length>0&&renameProjectField.text.trim()!=="*";onClicked:{planner.renameProject(planner.projectFilter,renameProjectField.text);projectPopup.close();}}
+                Action {text:"Save";primary:true;enabled:renameProjectField.text.trim().length>0&&Array.from(renameProjectField.text.trim()).length<=80&&renameProjectField.text.trim()!=="*";onClicked:{planner.renameProject(planner.projectFilter,renameProjectField.text);projectPopup.close();}}
             }
         }
     }

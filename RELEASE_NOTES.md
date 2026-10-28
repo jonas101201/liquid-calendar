@@ -21,4 +21,4 @@ Reminders still require the app or tray process. ICS exports events only; cloud 
 
 ## Verification
 
-The preparation is covered by 71 Python tests, seven JavaScript suites, real offscreen QML editor interactions and a smoke launch. Hosted CI must pass for the final release commit before publication. Fresh-account installation validation remains excluded at the maintainer's request. See [TESTING.md](TESTING.md) and the [release checklist](docs/RELEASE_0.2.0.md).
+The preparation is covered by 77 Python tests, seven JavaScript suites, real offscreen QML editor interactions and a smoke launch. Hosted CI must pass for the final release commit before publication. Fresh-account installation validation remains excluded at the maintainer's request. See [TESTING.md](TESTING.md) and the [release checklist](docs/RELEASE_0.2.0.md).

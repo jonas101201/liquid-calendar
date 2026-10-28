@@ -281,7 +281,7 @@ Item {
             Layout.fillWidth:true
             GlassField {
                 id:searchInput
-                maximumLength:200
+                maximumLength:400
                 Layout.fillWidth:true; Layout.minimumWidth:0; rightPadding:34
                 placeholderText:"Search all months …"
                 onTextChanged:root.query=text
@@ -503,7 +503,7 @@ Item {
                 ColumnLayout {
                     width:editorScroll.availableWidth; spacing:8
                     Label { text:"Title"; color:root.muted }
-                    GlassField { id:titleField; Accessible.name:"Title"; Layout.fillWidth:true; maximumLength:200; placeholderText:"What are you planning?"; selectByMouse:true }
+                    GlassField { id:titleField; Accessible.name:"Title"; Layout.fillWidth:true; maximumLength:400; placeholderText:"What are you planning?"; selectByMouse:true }
                     RowLayout {
                         visible:!task.checked||scheduled.checked
                         Layout.fillWidth:true
@@ -529,7 +529,7 @@ Item {
                             ColumnLayout {
                                 Layout.fillWidth:true;Layout.minimumWidth:0
                                 Label {text:"Project · optional";color:root.muted}
-                                GlassField {id:projectField;objectName:"taskProject";Layout.fillWidth:true;maximumLength:80;placeholderText:"e.g. Website launch";Accessible.name:"Task project";selectByMouse:true}
+                                GlassField {id:projectField;objectName:"taskProject";Layout.fillWidth:true;maximumLength:160;placeholderText:"e.g. Website launch";Accessible.name:"Task project";selectByMouse:true}
                             }
                         }
                         GlassButton {text:"Choose existing project ▾";visible:root.events.some(function(e){return e.task&&e.project;});onClicked:projectChoices.open()
@@ -550,7 +550,7 @@ Item {
                                 required property var modelData
                                 Layout.fillWidth:true
                                 GlassCheck {checked:modelData.done;Accessible.name:"Complete checklist step";onClicked:{editor.checklist[index].done=checked;editor.checklist=editor.checklist.slice();}}
-                                GlassField {Layout.fillWidth:true;text:modelData.title;maximumLength:200;placeholderText:"Describe this step";Accessible.name:"Checklist step title";onTextEdited:{editor.checklist[index].title=text;editor.validation="";} selectByMouse:true}
+                                GlassField {Layout.fillWidth:true;text:modelData.title;maximumLength:400;placeholderText:"Describe this step";Accessible.name:"Checklist step title";onTextEdited:{editor.checklist[index].title=text;editor.validation="";} selectByMouse:true}
                                 GlassButton {text:"−";Accessible.name:"Remove checklist step";onClicked:{var items=editor.checklist.slice();items.splice(index,1);editor.checklist=items;}}
                             }
                         }
@@ -573,7 +573,7 @@ Item {
                     Label { visible:!task.checked||scheduled.checked; text:"Reminder"; color:root.muted }
                     GlassCombo { visible:!task.checked||scheduled.checked; id:reminderBox; Layout.fillWidth:true; model:["No reminder","At start","5 minutes before","10 minutes before","30 minutes before","1 hour before","1 day before"]; Accessible.name:"Reminder time" }
                     Label { text:"Location"; color:root.muted }
-                    GlassField { id:locationField; Accessible.name:"Location"; Layout.fillWidth:true; maximumLength:500; placeholderText:"Location or video link"; selectByMouse:true }
+                    GlassField { id:locationField; Accessible.name:"Location"; Layout.fillWidth:true; maximumLength:1000; placeholderText:"Location or video link"; selectByMouse:true }
                     Label { text:"Notes"; color:root.muted }
                     GlassArea { id:notesField; Accessible.name:"Notes"; Layout.fillWidth:true; Layout.preferredHeight:90; placeholderText:"Details, ideas, preparation …"; wrapMode:TextEdit.Wrap; selectByMouse:true }
                     }
@@ -583,7 +583,7 @@ Item {
             Label { visible:(!task.checked||scheduled.checked)&&repeatBox.currentIndex>0; text:"Editing and deleting applies to the entire series."; font.pixelSize:10; color:root.muted; Layout.fillWidth:true; wrapMode:Text.Wrap }
             RowLayout {
                 GlassButton { visible:editor.eventId!==""; text:"Delete …"; tint:root.danger; onClicked:deleteConfirm.open() }
-                GlassButton { id:duplicateButton; visible:editor.eventId!==""; text:"Duplicate"; onClicked: { editor.eventId=""; editor.draftOriginal=null; titleField.text=(titleField.text+" – Copy").slice(0,200); } Accessible.name:"Duplicate event as a template" }
+                GlassButton { id:duplicateButton; visible:editor.eventId!==""; text:"Duplicate"; onClicked: { editor.eventId=""; editor.draftOriginal=null; titleField.text=Array.from(titleField.text+" – Copy").slice(0,200).join(""); } Accessible.name:"Duplicate event as a template" }
                 Item { Layout.fillWidth:true }
                 GlassButton {
                     id:saveButton

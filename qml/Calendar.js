@@ -1,3 +1,5 @@
+// Count Unicode code points, matching Python validation rather than UTF-16 units.
+function textLength(text) { return Array.from(text).length; }
 function key(d) { return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()); }
 function pad(n) { return n < 10 ? '0'+n : ''+n; }
 function parse(s) {
@@ -10,27 +12,27 @@ function monday(d) { return add(d,-((d.getDay()+6)%7)); }
 function month(d,n) { return new Date(d.getFullYear(),d.getMonth()+n,1,12); }
 function isUndated(e) {return e.task===true&&e.date===''&&e.time==='';}
 function valid(e) {
-    return e && typeof e.id==='string' && e.id.length>0 && e.id.length<150 &&
-        typeof e.title==='string' && e.title.trim().length>0 && e.title.length<=200 &&
+    return e && typeof e.id==='string' && e.id.length>0 && textLength(e.id)<=150 &&
+        typeof e.title==='string' && e.title.trim().length>0 && textLength(e.title)<=200 &&
         typeof e.date==='string' && typeof e.time==='string' &&
         (isUndated(e)?e.repeat==='none'&&e.until===''&&e.allDay===false&&(e.reminder===undefined||e.reminder===-1)&&Object.keys(e.exceptions||{}).length===0:!!parse(e.date)&&/^([01]\d|2[0-3]):[0-5]\d$/.test(e.time)) &&
         Number.isInteger(e.minutes) && e.minutes>=5 && e.minutes<=1440 &&
         ['none','daily','weekly','monthly','yearly'].indexOf(e.repeat)>=0 &&
         typeof e.until==='string' && (e.until==='' || (!!parse(e.until) && e.until>=e.date)) &&
         typeof e.allDay==='boolean' && typeof e.task==='boolean' && typeof e.done==='boolean' &&
-        typeof e.location==='string' && e.location.length<=500 && typeof e.notes==='string' && e.notes.length<=10000 &&
+        typeof e.location==='string' && textLength(e.location)<=500 && typeof e.notes==='string' && textLength(e.notes)<=10000 &&
         Number.isInteger(e.category) && e.category>=0 && e.category<4 &&
         (e.reminder===undefined||(Number.isInteger(e.reminder)&&[-1,0,5,10,30,60,1440].indexOf(e.reminder)>=0)) &&
         (e.exceptions===undefined||validExceptions(e.exceptions)) && validTaskDetails(e);
 }
 function validTaskDetails(e) {
     if(e.priority!==undefined&&(!Number.isInteger(e.priority)||e.priority<0||e.priority>3))return false;
-    if(e.project!==undefined&&(typeof e.project!=='string'||e.project.length>80||e.project==='*'))return false;
+    if(e.project!==undefined&&(typeof e.project!=='string'||textLength(e.project)>80||e.project==='*'))return false;
     if(e.checklist===undefined)return true;
     if(!Array.isArray(e.checklist)||e.checklist.length>100)return false;
     var ids=Object.create(null);
     return e.checklist.every(function(item){
-        if(!item||typeof item.id!=='string'||!item.id.length||item.id.length>150||ids[item.id]||typeof item.title!=='string'||!item.title.trim()||item.title.length>200||typeof item.done!=='boolean')return false;
+        if(!item||typeof item.id!=='string'||!item.id.length||textLength(item.id)>150||ids[item.id]||typeof item.title!=='string'||!item.title.trim()||textLength(item.title)>200||typeof item.done!=='boolean')return false;
         ids[item.id]=true;return true;
     });
 }

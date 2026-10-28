@@ -7,7 +7,12 @@
 - Projects with task counts, filtering, sorting, renaming, merging and clearing assignments without deleting tasks.
 - Global search includes project names and checklist steps across all dates.
 - JSON backup/import and companion-widget editing preserve the new optional task details. Existing records need no migration.
-- Added regression tests for validation, concurrent edits, recurrence, backups, scheduling, project operations and real QML editor Save/reopen behavior.
+- Project Undo restores the previous project filter, while preserving a different filter subsequently chosen by the user.
+- Project summaries aggregate records in one pass rather than scanning all tasks for each project.
+- Unicode limits agree between Python, the app editor and the widget; valid emoji text survives editing and duplication without truncation.
+- Expanded inline checklists stay open after completion, including when a recurring occurrence is detached.
+- Project rename/merge/clear rejects a concurrent change in project membership instead of silently leaving some assignments behind.
+- Added regression tests for validation, concurrent edits, recurrence, backups, scheduling, project operations, Unicode boundaries and real QML keyboard/editor behavior.
 
 ## 0.1.1-beta.1 — 2026-10-28
 

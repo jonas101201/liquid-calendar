@@ -66,8 +66,9 @@ expr('editorSurface.openNewTask(win.dateValue(planner.selected))');settle()
 expr('editorSurface.review('+json.dumps('titleField.text="Prepare release";priorityBox.currentIndex=3;projectField.text="Launch";editor.checklist=[{id:"verify",title:"Verify package",done:false}];saveButton.clicked()')+')');settle()
 saved=st.read()[0];assert saved['date']=='' and saved['priority']==3 and saved['project']=='Launch';assert len(saved['checklist'])==1
 b.setTaskFilters('Launch',3);assert len(b.results)==1
-expr('resultList.itemAtIndex(0).checklistExpanded=true');settle()
+expr('resultList.itemAtIndex(0).setChecklistExpanded(true)');settle()
 expr('resultList.itemAtIndex(0).toggleStep("verify")');settle();assert st.read()[0]['checklist'][0]['done']
+assert expr('resultList.itemAtIndex(0).checklistExpanded') is True
 b.undo();assert st.read()==[saved]
 for theme in ['dark','light']:
  b.setTheme(theme)
@@ -103,6 +104,20 @@ assert st.read()[0]['checklist'][1]['done'] is True
 b.edit(st.read()[0]['id'],'',False);settle()
 assert expr('editorSurface.review("checklistRows.itemAt(1).children[1].text")')=='second step'
 expr('editorSurface.review("editor.close()")')
+# Valid imported astral Unicode must survive opening and saving without truncation.
+unicode_entry=e('unicode',task=True,date='',time='',reminder=-1,title='🚀'*200,location='🚀'*500,project='🚀'*80,checklist=[dict(id='emoji',title='🚀'*200,done=False)])
+b.commit([unicode_entry]);b.edit('unicode','',False);settle()
+assert expr('editorSurface.review("titleField.text")')==unicode_entry['title']
+assert expr('editorSurface.review("locationField.text")')==unicode_entry['location']
+assert expr('editorSurface.review("projectField.text")')==unicode_entry['project']
+assert expr('editorSurface.review("checklistRows.itemAt(0).children[1].text")')==unicode_entry['checklist'][0]['title']
+expr('editorSurface.review("saveButton.clicked()")');settle();assert st.read()==[unicode_entry]
+# Expansion survives a model refresh and detachment of a recurring occurrence.
+check_series=e('check-series',task=True,date='2032-01-05',repeat='weekly',checklist=[dict(id='step',title='Check',done=False)])
+b.commit([check_series]);b.setView('tasks');b.setTaskFilters('*',-1);b.setFilter('tasks',-1);settle()
+expr('resultList.itemAtIndex(0).setChecklistExpanded(true)');expr('resultList.itemAtIndex(0).toggleStep("step")');settle()
+assert st.read()!=[check_series]
+assert expr('resultList.itemAtIndex(0).checklistExpanded') is True
 print('0.2 task editor Save/reopen/validation, project filters and checklist Undo passed.')
 print('Recurring task Qt slot, hidden calendar fallback and visible app-wide group Undo passed.')
 print('English dates/search; German aliases; non-ASCII data preserved; 14 small-window views rendered.')

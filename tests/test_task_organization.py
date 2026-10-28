@@ -76,3 +76,35 @@ class TaskOrganization(unittest.TestCase):
         source=self.task();self.put([source]);self.assertTrue(self.b.scheduleTask('t','','2032-01-05',600,fingerprint(source)))
         for field in ['priority','project','checklist']:self.assertEqual(self.store.read()[0][field],source[field])
 
+    def test_project_undo_restores_selected_filter(self):
+        for target in ['Renamed','']:
+            self.put([self.task()]);self.b.setView('tasks');self.b.setTaskFilters('Launch',-1)
+            self.b.renameProject('Launch',target);self.b.undo()
+            self.assertEqual(self.b.projectFilter,'Launch');self.assertEqual(len(self.b.results),1)
+    def test_project_undo_preserves_later_user_filter(self):
+        self.put([self.task(),self.task('other')|{'project':'Other'}]);self.b.setView('tasks');self.b.setTaskFilters('Launch',-1)
+        self.b.renameProject('Launch','Renamed');self.b.setTaskFilters('Other',-1);self.b.undo()
+        self.assertEqual(self.b.projectFilter,'Other');self.assertEqual([v['id'] for v in self.b.results],['other'])
+    def test_noop_project_rename_keeps_undo_context(self):
+        self.put([self.task()]);self.b.setView('tasks');self.b.setTaskFilters('Launch',-1)
+        self.b.renameProject('Launch','Renamed');self.b.renameProject('Renamed','Renamed');self.b.undo()
+        self.assertEqual(self.b.projectFilter,'Launch');self.assertEqual(len(self.b.results),1)
+    def test_project_summary_visits_each_record_once(self):
+        class CountingList(list):
+            visits=0
+            def __iter__(self):
+                for e in super().__iter__():self.visits+=1;yield e
+        self.b._events=CountingList([self.task(str(i))|{'project':f'Project {i}'} for i in range(1000)])
+        self.assertEqual(len(self.b.projects),1000);self.assertEqual(self.b._events.visits,1000)
+    def test_project_rename_rejects_new_concurrent_members(self):
+        original=self.task();self.put([original]);remote=[original,self.task('added')]
+        self.store.merge(remote,[original]);self.b.renameProject('Launch','Renamed')
+        self.assertIn('membership',self.b.error)
+        self.assertEqual({e['project'] for e in self.store.read()},{'Launch'})
+        self.b.reload();self.b.renameProject('Launch','Renamed');self.assertFalse(self.b.error)
+        self.assertEqual({e['project'] for e in self.store.read()},{'Renamed'})
+    def test_unicode_limits_are_code_points(self):
+        source=self.task()|{'id':'🚀'*150,'title':'🚀'*200,'project':'🚀'*80,'location':'🚀'*500,'notes':'🚀'*10000,'checklist':[{'id':'🚀'*150,'title':'🚀'*200,'done':False}]}
+        validate([source]);self.put([source]);self.assertEqual(self.store.read(),[source])
+        for field,limit in [('id',150),('title',200),('project',80),('location',500),('notes',10000)]:
+            with self.subTest(field=field),self.assertRaises(ValueError):validate([source|{field:'🚀'*(limit+1)}])
