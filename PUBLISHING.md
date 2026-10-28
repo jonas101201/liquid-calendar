@@ -2,17 +2,21 @@
 
 ## Current public beta
 
-**0.2.0-beta.1** is published as **Liquid Calendar 0.2.0 Beta 1** on **28 October 2026**.
+**0.3.6-beta.1** is published as **Liquid Calendar 0.3.6 Beta 1** on **28 October 2026**.
 
 - [Public repository](https://github.com/jonas101201/liquid-calendar)
-- [Release and downloads](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.2.0-beta.1)
-- [Audited preparation CI run](https://github.com/jonas101201/liquid-calendar/actions/runs/40734583186); final checks are attached to the release tag commit.
+- [Release and downloads](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.3.6-beta.1)
+- [Audited preparation CI run](https://github.com/jonas101201/liquid-calendar/actions/runs/40774771194); final checks are attached to the release tag commit.
 
 The release includes source ZIP and TAR archives plus SHA256SUMS. It is marked as a prerelease. Published tags and assets identify fixed snapshots; documentation updates on main do not replace an existing release archive.
 
 ## 0.2.0 release record
 
 The maintainer brought publication forward from 29 October to **28 October 2026**. See [the release record](docs/RELEASE_0.2.0.md). The former scheduled follow-up is no longer needed.
+
+## 0.3.6 release record
+
+The maintainer renewed release authorization on 28 October 2026. Version 0.3.6-beta.1 is the first published 0.3.x beta, including all six development patches after the 0.3.0 baseline. See [the release record](docs/RELEASE_0.3.6.md). Earlier published tags/assets remain unchanged; intermediate development versions were not published separately.
 
 ## Preparing a future release
 

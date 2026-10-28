@@ -1,6 +1,7 @@
 """Calendar calculations. Local floating dates, compatible with the Plasma widget."""
 from __future__ import annotations
 import calendar
+import bisect
 import heapq
 import copy
 import datetime as dt
@@ -47,6 +48,9 @@ def validate(events):
             if not isinstance(e.get('time'),str) or len(e['time'])!=5 or dt.time.fromisoformat(e['time']).isoformat(timespec='minutes')!=e['time']:raise ValueError("Invalid time.")
         if type(e.get('minutes')) is not int or not 5<=e['minutes']<=1440:raise ValueError('Duration must be between 5 and 1440 minutes.')
         if e.get('repeat') not in ['none','daily','weekly','monthly','yearly']:raise ValueError("Invalid repeat setting.")
+        if 'weekdays' in e:
+            days=e['weekdays']
+            if e['repeat']!='weekly' or not isinstance(days,list) or not 1<=len(days)<=7 or any(type(day) is not int or not 0<=day<=6 for day in days) or len(set(days))!=len(days):raise ValueError("Choose at least one valid weekday for a weekly repeat.")
         if not isinstance(e.get('until'),str) or (e['until'] and (len(e['until'])!=10 or parse(e['until']).isoformat()!=e['until'] or parse(e['until'])<parse(e['date']))):raise ValueError("Invalid repeat end date.")
         if any(type(e.get(k)) is not bool for k in ('allDay','task','done')):raise ValueError("Invalid event status.")
         if type(e.get('category')) is not int or not 0<=e['category']<4:raise ValueError("Invalid category.")
@@ -73,7 +77,7 @@ def occurs(e,day):
     s=day.isoformat(); start=parse(e['date'])
     if s<e['date'] or e['until'] and s>e['until'] or e.get('exceptions',{}).get(s,{}).get('cancelled'):return False
     repeat=e['repeat']
-    return (s==e['date'] if repeat=='none' else True if repeat=='daily' else day.weekday()==start.weekday() if repeat=='weekly' else day.day==start.day if repeat=='monthly' else (day.month,day.day)==(start.month,start.day))
+    return (s==e['date'] if repeat=='none' else True if repeat=='daily' else day.weekday() in e.get('weekdays',[start.weekday()]) if repeat=='weekly' else day.day==start.day if repeat=='monthly' else (day.month,day.day)==(start.month,start.day))
 
 def next_occurrence(e,day):
     if is_undated(e):return None
@@ -124,11 +128,13 @@ def instances(events,start,days,kind='all',category=-1):
                 carry.update(date=(day+dt.timedelta(days=1)).isoformat(),time='00:00',start=0,end=v['start']+e['minutes']-1440,carry=True,segmentMinutes=v['start']+e['minutes']-1440)
                 result.append(carry)
     result.sort(key=lambda v:(v['date'],not v['allDay'],v['start'],v['title'].casefold()))
-    # Midnight continuations have already been split into same-day segments.
-    # Every interval in a connected overlap group of size > 1 has a conflict.
+    # Visual intervals include the minimum card height (20px + 4px gap at 66px/hour).
+    # Conflict badges still describe real time overlaps, not visual padding.
     daily={}
     for v in result:
+        v['laneSpan']=1
         if not v['allDay'] and not (v['task'] and v['done']):
+            v['layoutEnd']=min(1440,max(v['end'],v['start']+24))
             daily.setdefault(v['date'],[]).append(v)
     def assign(group):
         active=[];available=[];lane_count=0
@@ -137,15 +143,25 @@ def instances(events,start,days,kind='all',category=-1):
                 _,lane=heapq.heappop(active);heapq.heappush(available,lane)
             if available:lane=heapq.heappop(available)
             else:lane=lane_count;lane_count+=1
-            v['lane']=lane;heapq.heappush(active,(v['end'],lane))
-        for v in group:
-            v['lanes']=max(1,lane_count);v['conflict']=len(group)>1
+            v['lane']=lane;heapq.heappush(active,(v['layoutEnd'],lane))
+        lanes=[[] for _ in range(lane_count)]
+        for v in group:lanes[v['lane']].append(v)
+        starts=[[v['start'] for v in lane] for lane in lanes]
+        previous_end=-1
+        for index,v in enumerate(group):
+            v['lanes']=max(1,lane_count)
+            v['conflict']=previous_end>v['start'] or (index+1<len(group) and group[index+1]['start']<v['end'])
+            previous_end=max(previous_end,v['end'])
+            for lane in range(v['lane']+1,lane_count):
+                last=bisect.bisect_left(starts[lane],v['layoutEnd'])-1
+                if last>=0 and lanes[lane][last]['layoutEnd']>v['start']:break
+                v['laneSpan']+=1
     for entries in daily.values():
         group=[];group_end=-1
         for v in entries:
             if group and v['start']>=group_end:
                 assign(group);group=[];group_end=-1
-            group.append(v);group_end=max(group_end,v['end'])
+            group.append(v);group_end=max(group_end,v['layoutEnd'])
         assign(group)
     return result
 
@@ -238,11 +254,15 @@ def export_ics(events):
     lines=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Liquid Calendar//EN','CALSCALE:GREGORIAN']
     for e in events:
         if e['task']:continue
-        start=dt.datetime.combine(parse(e['date']),dt.time.fromisoformat(e['time']));end=start+dt.timedelta(minutes=e['minutes'])
+        first=parse(e['date'])
+        if e['repeat']=='weekly' and 'weekdays' in e:
+            first+=dt.timedelta(days=min((day-first.weekday())%7 for day in e['weekdays']))
+            if e['until'] and first.isoformat()>e['until']:continue
+        start=dt.datetime.combine(first,dt.time.fromisoformat(e['time']));end=start+dt.timedelta(minutes=e['minutes'])
         lines+=['BEGIN:VEVENT','UID:'+e['id']+'@liquid-glass-calendar','DTSTAMP:'+dt.datetime.now(dt.timezone.utc).strftime('%Y%m%dT%H%M%SZ')]
         if e['allDay']:lines+=['DTSTART;VALUE=DATE:'+start.strftime('%Y%m%d'),'DTEND;VALUE=DATE:'+(start+dt.timedelta(days=1)).strftime('%Y%m%d')]
         else:lines+=['DTSTART:'+start.strftime('%Y%m%dT%H%M%S'),'DTEND:'+end.strftime('%Y%m%dT%H%M%S')]
-        if e['repeat']!='none':lines+=['RRULE:FREQ='+e['repeat'].upper()+(';UNTIL='+e['until'].replace('-','')+('' if e['allDay'] else 'T235959') if e['until'] else '')]
+        if e['repeat']!='none':lines+=['RRULE:FREQ='+e['repeat'].upper()+(';BYDAY='+','.join(['MO','TU','WE','TH','FR','SA','SU'][day] for day in sorted(e['weekdays'])) if e['repeat']=='weekly' and 'weekdays' in e else '')+(';UNTIL='+e['until'].replace('-','')+('' if e['allDay'] else 'T235959') if e['until'] else '')]
         for date in e.get('exceptions',{}):
             lines.append(('EXDATE;VALUE=DATE:'+date.replace('-','')) if e['allDay'] else 'EXDATE:'+date.replace('-','')+'T'+e['time'].replace(':','')+'00')
         lines+=['SUMMARY:'+escape_ics(e['title']),'LOCATION:'+escape_ics(e['location']),'DESCRIPTION:'+escape_ics(e['notes']),'END:VEVENT']
@@ -256,3 +276,113 @@ def export_ics(events):
             chunk+=char
         folded.append(chunk)
     return '\r\n'.join(folded)+'\r\n'
+
+# Creation helpers are deterministic, offline and independent of Qt.
+TEMPLATE_FIELDS=('title','time','minutes','allDay','category','location','notes','reminder')
+
+def new_event(day):
+    return dict(id=uuid.uuid4().hex,title='',date=day.isoformat(),time='09:00',minutes=60,allDay=False,task=False,done=False,repeat='none',until='',category=0,location='',notes='',reminder=10)
+
+def quick_entry(text,today,default_date=None):
+    """Parse explicit dates/times; return a draft for review, never write it."""
+    import re
+    if not isinstance(text,str) or not text.strip() or len(text)>500:raise ValueError('Enter an event of up to 500 characters.')
+    remaining=text.strip();draft=new_event(default_date or today)
+    def take(pattern):
+        nonlocal remaining
+        matches=list(re.finditer(pattern,remaining,re.I))
+        if len(matches)>1:raise ValueError('Several dates, times or durations were found. Use one of each.')
+        if not matches:return None
+        m=matches[0];remaining=remaining[:m.start()]+' '+remaining[m.end():];return m
+    duration=take(r'(?<!\w)(?:for|für|fuer)\s+(\d+)\s*(minutes?|mins?|minuten?|m|hours?|stunden?|h)\b')
+    if duration:
+        draft['minutes']=int(duration[1])*(60 if duration[2].lower().startswith(('h','stund')) else 1)
+        if not 5<=draft['minutes']<=1440:raise ValueError('Duration must be between 5 and 1440 minutes.')
+    names=sorted(['day after tomorrow','today','tomorrow','heute','morgen','übermorgen','uebermorgen']+WEEKDAYS+GERMAN_WEEKDAYS,key=len,reverse=True)
+    date_match=take(r'(?<!\w)(?:on\s+|am\s+)?(?P<date>\d{4}-\d{2}-\d{2}|\d{1,2}\.\d{1,2}\.(?:\d{4})?|'+ '|'.join(map(re.escape,names))+r')(?!\w)')
+    if date_match:
+        token=date_match['date'];q=normalize(token)
+        if re.fullmatch(r'\d{4}-\d{2}-\d{2}',token):day=parse(token)
+        elif re.fullmatch(r'\d{1,2}\.\d{1,2}\.(?:\d{4})?',token):
+            parts=token.split('.');day=dt.date(int(parts[2] or today.year),int(parts[1]),int(parts[0]))
+        elif q in ['today','heute']:day=today
+        elif q in ['tomorrow','morgen']:day=today+dt.timedelta(days=1)
+        elif q in ['day after tomorrow','ubermorgen','uebermorgen']:day=today+dt.timedelta(days=2)
+        else:
+            weekdays={normalize(name):i for nameset in [WEEKDAYS,GERMAN_WEEKDAYS] for i,name in enumerate(nameset)}
+            day=today+dt.timedelta(days=(weekdays[q]-today.weekday())%7)
+        draft['date']=day.isoformat()
+    clock=take(r'(?<!\w)(?:(?:at|um)\s+)?(?:(?P<ampmh>\d{1,2})(?::(?P<ampmm>\d{2}))?\s*(?P<period>am|pm)|(?P<hour>\d{1,2}):(?P<minute>\d{2})|(?P<uhr>\d{1,2})\s*Uhr)(?!\w)')
+    if clock:
+        hour=int(clock['ampmh'] or clock['hour'] or clock['uhr']);minute=int(clock['ampmm'] or clock['minute'] or 0)
+        if clock['period']:
+            if not 1<=hour<=12:raise ValueError('Use 1–12 with am/pm.')
+            hour=hour%12+(12 if clock['period'].lower()=='pm' else 0)
+        if not 0<=hour<=23 or not 0<=minute<=59:raise ValueError('Use a valid time, e.g. 15:00.')
+        draft['time']=f'{hour:02d}:{minute:02d}'
+    all_day=take(r'(?<!\w)(all day|ganztägig|ganztaegig)(?!\w)')
+    if all_day:
+        if clock:raise ValueError('Choose either all day or a start time.')
+        draft['allDay']=True
+    # Recognizable but incomplete input must not silently become a different event.
+    if re.search(r'(?<!\w)(?:at|um)\s+\d|\d{1,2}:\d|\b(?:for|für|fuer)\s+\d',remaining,re.I):raise ValueError('Check the time or duration. Try “tomorrow 15:00 Dentist for 45m”.')
+    draft['title']=' '.join(remaining.split()).strip(' ,;')
+    validate([draft]);return draft
+
+def template_from_event(name,event,ident=None):
+    if not isinstance(name,str) or not name.strip() or len(name.strip())>80:raise ValueError('Enter a template name of 1–80 characters.')
+    validate([event])
+    if event['task']:raise ValueError('Templates currently support events. Tasks stay in the task editor.')
+    defaults={key:copy.deepcopy(event.get(key,10 if key=='reminder' else None)) for key in TEMPLATE_FIELDS}
+    return dict(id=ident or uuid.uuid4().hex,name=name.strip(),event=defaults)
+
+def event_from_template(template,day):
+    draft=new_event(day);draft.update(copy.deepcopy(template['event']));validate([draft]);return draft
+
+def validate_templates(templates):
+    if not isinstance(templates,list) or len(templates)>50:raise ValueError('You can store up to 50 event templates.')
+    ids=set()
+    for t in templates:
+        if not isinstance(t,dict) or set(t)!= {'id','name','event'}:raise ValueError('Invalid template.')
+        if not isinstance(t['id'],str) or not 0<len(t['id'])<=150 or t['id'] in ids:raise ValueError('Invalid template ID.')
+        ids.add(t['id'])
+        if not isinstance(t['name'],str) or not t['name'].strip() or len(t['name'])>80:raise ValueError('Invalid template name.')
+        if not isinstance(t['event'],dict) or set(t['event'])!=set(TEMPLATE_FIELDS):raise ValueError('Invalid template fields.')
+        event_from_template(t,dt.date(2000,1,1))
+    return templates
+
+
+def occurrence_draft(event,date,ident=None):
+    if event['repeat']=='none' or not occurs(event,parse(date)):
+        raise ValueError("This occurrence no longer exists.")
+    draft=copy.deepcopy(event)
+    draft.update(id=ident or uuid.uuid4().hex,date=date,repeat='none',until='',exceptions={},occurrenceOf=event['id'],occurrenceDate=date,originHash=fingerprint(event))
+    draft.pop('weekdays',None)
+    return draft
+
+
+def merge_events(first,second):
+    """Combine concrete events; occurrence commands are resolved by the bridge."""
+    validate([first,second])
+    if any(e['task'] or e['repeat']!='none' or e.get('seriesId') for e in (first,second)):
+        raise ValueError("Choose independent events or individual occurrences, not entire series or tasks.")
+    if first['date']!=second['date'] or first['allDay']!=second['allDay']:
+        raise ValueError("Choose two events on the same date, both timed or both all-day.")
+    if first.get('occurrenceOf') and (first['occurrenceOf'],first.get('occurrenceDate'))==(second.get('occurrenceOf'),second.get('occurrenceDate')):
+        raise ValueError("Choose two different event occurrences.")
+    result=copy.deepcopy(first)
+    for key in ('occurrenceOf','occurrenceDate','originHash','seriesId','originalDate','weekdays'):
+        result.pop(key,None)
+    result['exceptions']={}
+    start=lambda e:int(e['time'][:2])*60+int(e['time'][3:])
+    if not first['allDay']:
+        minute=min(start(first),start(second));end=max(start(first)+first['minutes'],start(second)+second['minutes'])
+        result.update(time=f'{minute//60:02}:{minute%60:02}',minutes=end-minute)
+    def combine(key,separator):
+        return separator.join(dict.fromkeys(e[key] for e in (first,second) if e[key]))
+    result.update(title=combine('title',' / '),location=combine('location',' · '),notes=combine('notes','\n\n'))
+    # One combined event has one reminder. Keep the earlier enabled offset.
+    reminders=[e.get('reminder',-1) for e in (first,second) if e.get('reminder',-1)>=0]
+    result['reminder']=max(reminders,default=-1)
+    validate([result]) # Never truncate user content or silently exceed duration limits.
+    return result

@@ -1,33 +1,35 @@
-# Liquid Calendar 0.2.0 Beta 1
+# Liquid Calendar 0.3.6 Beta 1
 
-Released **28 October 2026**. [Release and downloads](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.2.0-beta.1). English interface, Fedora/KDE Plasma, GPL-3.0-or-later.
+Released **28 October 2026**. English interface, Fedora/KDE Plasma, GPL-3.0-or-later.
 
-## Task organization
+This is the first published 0.3.x beta and includes the initial 0.3.0 milestone plus six development patches. Versions 0.3.0–0.3.5 were not published separately. See the [per-patch changelog](CHANGELOG.md).
 
-- Choose no, low, medium or high priority; filter and sort tasks by priority.
-- Add, edit, remove and complete up to 100 checklist steps per task. Expand progress directly in the Tasks view.
-- Organize tasks into named projects. Combine project, priority, status, category and scheduling filters. Project menus display completed/total task records.
-- Rename or merge projects, or clear their assignments while preserving every task. Undo restores the previous state.
-- Search project names and checklist text across all dates, alongside titles, locations and notes.
-- Repeating-task inline checklist progress belongs to the selected occurrence. Future occurrences keep the template's state. Marking all steps complete does not automatically complete the parent task.
+[Release and downloads](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.3.6-beta.1).
 
-## Corrections included in the preparation
+## Faster creation
 
-- Typed checklist steps and editor checkboxes are saved correctly; adding another step keeps earlier input.
-- Expanded checklists stay open after a click, including recurring-occurrence edits.
-- Undo after renaming or clearing a project restores the appropriate filter.
-- Parallel changes to project membership reject the rename atomically; refresh and retry includes the new tasks.
-- App and widget agree on Unicode character limits, and valid emoji text survives editing and duplication.
-- Project summaries aggregate tasks in one pass to avoid slowdowns with many projects.
+- **Tools ▾ → Quick add** / Ctrl+Shift+N: type `tomorrow 15:00 Dentist for 45m` or `Morgen 15 Uhr Zahnarzt für 45 Minuten`. Review the interpreted title, date, time and duration before saving.
+- **Date and time picking:** choose a date from a month grid with year control and Today/Tomorrow shortcuts; choose hours/minutes or a time preset. Repeat end dates also have a picker. These controls are available in the companion widget too.
+- **Event templates:** use **More ▾ → Save template…** in the editor to save the current event details as a named template. Use, rename or delete templates through **Tools ▾ → Event templates**. Applying a template creates a fresh editable draft on the selected day.
 
-## Install or update
+- **Weekly repeat days:** select any nonempty set of weekdays in desktop and widget editors. Existing weekly records keep their original weekday. JSON and ICS exports preserve the rule, and single-occurrence edits leave future days intact.
 
-Extract the source archive and run `python3 installieren.py`. Use `--with-widget` for a new optional widget. The installer also updates an already installed widget. Quit the old app with **Ctrl+Q**, then reopen it. Reload the desktop widget when convenient to use its new task editor.
+## Event merging and overlapping entries
 
-New task details are optional fields in the existing local records, preserved by JSON backup/import. No existing entries are automatically rewritten; no database migration is required. Both app and widget support the fields. Keep a JSON backup before testing a beta.
+Open a saved event or individual occurrence and choose **More ▾ → Merge with another event…**. Select another event on the same date and review the preview before confirming. Titles, locations and notes are combined without truncation; timed entries cover the union of both ranges, including gaps. The first event keeps its identity/category, and the largest enabled reminder offset is used relative to the new start. Undo restores both entries. Concurrent edits are rejected transactionally.
 
-Reminders still require the app or tray process. ICS exports events only; cloud sync and ICS import remain future milestones. See [known issues](KNOWN_ISSUES.md).
+Merging supports independent events and selected occurrences from repeat series, either both timed or both all-day. Open an individual occurrence before merging: only the selected occurrences become exceptions, while future repeats and other exceptions remain unchanged. The merged result is a standalone event. Tasks, whole-series edits and already detached series occurrences are excluded. Save editor changes before merging. Limit violations block the merge rather than dropping content.
 
-## Verification
+The week view gives simultaneous entries separate readable lanes, expands entries into available lanes and scrolls horizontally when needed. Headings follow horizontal scrolling. Short neighboring entries use visual spacing without receiving false time-conflict badges; midnight continuations are included.
 
-This release is covered by 77 Python tests, seven JavaScript suites, real offscreen QML editor interactions and a smoke launch. [Preparation CI passed on Python 3.10, 3.12 and 3.14](https://github.com/jonas101201/liquid-calendar/actions/runs/40734583186). A separate agent reproduced the audit findings and rechecked the corrections. The release tag identifies the final checked source commit; its checks are available on GitHub. Fresh-account installation validation remains excluded at the maintainer's request. See [TESTING.md](TESTING.md) and the [release record](docs/RELEASE_0.2.0.md).
+## Behavior and limits
+
+Quick entry is a deterministic offline parser for documented syntax, not unrestricted natural language. It rejects multiple recognized dates/times. Relative dates use the current day, missing dates use the selected day, missing times use 09:00 and duration defaults to 60 minutes. Always review the preview.
+
+Templates retain title, time, duration, category, reminder, location and notes. They exclude dates, repeats, task/completion details and series identities. Up to 50 event templates; names 1–80 characters. The library is separate from event Undo and event JSON import/export. Templates are stored in the existing local database and covered by automatic SQLite backups. Stale edits/deletions are rejected rather than overwriting changes from another app instance.
+
+## Install and verification
+
+The source installer and optional widget installer retain their existing workflow. Existing events need no migration. An active older widget must be reloaded via **Connect** for sharing protocol 3 before app editing is enabled. Fully quit with Ctrl+Q before reopening after an update.
+
+122 Python tests, eight JavaScript suites, actual offscreen Qt creation/merge/menu interactions, the isolated widget editor and temporary-database smoke launches passed. The [tested source snapshot](https://github.com/jonas101201/liquid-calendar/commit/ff0988d6478d9f260b5df96a2f1b85065ab7e908) passed [hosted tests](https://github.com/jonas101201/liquid-calendar/actions/runs/40774771194) on Python 3.10, 3.12 and 3.14 and [security analysis](https://github.com/jonas101201/liquid-calendar/actions/runs/40774765474). Final release checks are recorded on the tagged commit. Fresh-account installation testing remains excluded. See [testing details](TESTING.md), [known issues](KNOWN_ISSUES.md) and [the release record](docs/RELEASE_0.3.6.md).

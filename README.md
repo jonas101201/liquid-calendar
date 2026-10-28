@@ -2,9 +2,9 @@
 
 A local desktop calendar and task planner for **Fedora Linux / KDE Plasma 6**. English interface, no account required.
 
-**Current beta: 0.2.0-beta.1** · **GPL-3.0-or-later**
+**Current beta: 0.3.6-beta.1** · Released **2026-10-28** · **GPL-3.0-or-later**
 
-[Download 0.2.0 Beta 1](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.2.0-beta.1) · [Release notes](RELEASE_NOTES.md) · [Known issues](KNOWN_ISSUES.md) · [Roadmap](ROADMAP.md)
+[Download 0.3.6 Beta 1](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.3.6-beta.1) · [Release notes](RELEASE_NOTES.md) · [Known issues](KNOWN_ISSUES.md) · [Roadmap](ROADMAP.md)
 
 ![Today view with synthetic example data](docs/screenshots/today.png)
 
@@ -14,13 +14,16 @@ A local desktop calendar and task planner for **Fedora Linux / KDE Plasma 6**. E
 - Undated tasks with optional scheduling, categories, filters and sorting. Complete individual occurrences of repeating tasks while keeping future repetitions open.
 - Task priorities, editable checklists and projects, with combined filters and sorting.
 - Search across years using titles, projects, checklist steps, locations, notes, dates and partial month/day names.
-- Repeats, individual occurrences, reminders and available-time suggestions.
+- Quick event drafts, calendar/time pickers and a reusable event-template library.
+- Repeats with selectable weekly weekdays, individual occurrences, reminders and available-time suggestions.
 - Conflict-aware local storage, undo, daily backups and optional Plasma widget.
 - JSON backup/import and ICS event export.
 
 ![Task organization with synthetic example data](docs/screenshots/tasks.png)
 
-The second beta milestone adds task organization. Released **28 October 2026**. See [release notes](RELEASE_NOTES.md), [audit results](docs/BUG_AUDIT_0.2.0.md) and the [release record](docs/RELEASE_0.2.0.md).
+Saved events and individual repeat occurrences can be combined through **More ▾ → Merge with another event…**, with a preview and Undo. The week view displays overlapping events in separate lanes and scrolls horizontally when needed.
+
+**0.3.6-beta.1** includes the complete 0.3.0 milestone and all six development patches. Earlier 0.3.0–0.3.5 snapshots were not published separately. See [the release record](docs/RELEASE_0.3.6.md).
 
 ## Roadmap
 
@@ -30,7 +33,7 @@ See the [roadmap](ROADMAP.md) for the ten beta milestones, planned features and 
 
 Requirements: Fedora/KDE Plasma 6, **Python 3.10–3.14**, venv/pip support, network access to PyPI and the system Qt platform libraries. `notify-send` is needed for notifications. Other systems are not validated.
 
-Download an archive from the [0.2.0 Beta 1 release](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.2.0-beta.1), extract it and open a terminal in its folder:
+Download an archive from the [0.3.6 Beta 1 release](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.3.6-beta.1), extract it and open a terminal in its folder:
 
 ```bash
 python3 installieren.py
@@ -44,7 +47,7 @@ python3 installieren.py --with-widget
 
 No sudo is needed. The installer creates a per-user virtual environment with pinned Qt dependencies and an application-menu entry **Liquid Calendar Beta**. It backs up existing program files and never opens or modifies the event database. The download contains source code, not bundled third-party runtime binaries.
 
-After an update, quit the old app using **Ctrl+Q** and reopen it. Add **Liquid Glass Calendar (Beta)** through Plasma's widget picker if installed. If an old widget is active, use **Connect** when prompted; this briefly reloads the desktop and panels.
+After an update, quit the old app using **Ctrl+Q** and reopen it. Add **Liquid Glass Calendar (Beta)** through Plasma's widget picker if installed. An active widget must support sharing protocol 3 for selected-weekday repeats. If an old widget is active, use **Connect** when prompted; this briefly reloads the desktop and panels.
 
 **Beta scope:** Fedora/KDE Plasma is the target. See [known limitations](KNOWN_ISSUES.md) and [testing details](TESTING.md) for supported behavior and validation scope.
 
@@ -58,12 +61,23 @@ Projects are created by assigning a name to a task. Project menus show completed
 
 For repeating tasks, inline checklist clicks affect only that occurrence; future repetitions keep their original checklist. **Series** edits the checklist template for the whole series.
 
+**Tools ▾ → Quick add** (Ctrl+Shift+N) turns `tomorrow 15:00 Dentist for 45m` or `Morgen 15 Uhr Zahnarzt für 45 Minuten` into a preview. **Review event** opens the editor; only **Save** inserts the event. Recognized input includes English/German full weekday names, today/tomorrow/day after tomorrow, ISO dates, `15.03.2027`, `15.03.`, 24-hour `HH:MM`, `15 Uhr`, `3 pm`, `3:45 pm`, `all day`/`ganztägig`, and `for 45m`/`for 2h` durations. Weekdays include today when matching. Relative dates use the actual current day, regardless of the selected month. Missing dates use the selected day, missing times use 09:00, and missing duration is 60 minutes. Ambiguous multiple dates/times and invalid dates are rejected. This is a limited parser; always review the draft.
+
+Use **Pick…** beside Date or Time for the month/year grid or hour/minute controls. Repeat end dates also have a picker. Manual ISO date/time input remains available. The companion widget gets these pickers too.
+
+**More ▾ → Save template…** in the event editor stores title, time, duration, category, reminder, location and notes. **Tools ▾ → Event templates → Use** creates a fresh draft on the selected day. Dates, repeats, completion states, task details and series identities are never copied. Templates currently support events only. The library supports up to 50 templates with names of 1–80 characters; manage a template to rename or delete it. Existing events are unaffected by template deletion. Template changes are separate from event Undo.
+
+![Quick event preview with synthetic data](docs/screenshots/quick-add.png)
+
+For **Repeat → Weekly**, select one or more days under **Repeats on** (e.g. Mon/Wed/Fri). The start date is the earliest allowed date; only selected weekdays occur. At least one day stays selected. Existing weekly series without an explicit day selection retain their original weekday until edited. JSON backups and ICS `BYDAY` exports preserve the selection. Editing, moving or completing one occurrence does not change the other days.
+
 Search `today`, `tomorrow`, `day after tomorrow`, `wed`, `nov`, `2027-03-15` or `15.03.2027`. Dates use English names and 24-hour time. German query aliases remain supported, but there is no language selector. Slash-based US dates are not supported.
 
 When completing a repeating task, only the selected occurrence is completed. You can reopen that occurrence without creating a duplicate. If an older beta marked a whole series completed, explicitly reopen that legacy series to make future occurrences available again. Updating does not automatically rewrite stored completion states.
 
 Reminders require the app to be open or running in the tray. Closing the window may keep it running. **Ctrl+Q** fully quits. Optional login startup is disabled by default.
 
+- **Ctrl+Shift+N:** quick event entry
 - **Ctrl+N:** new event
 - **Ctrl+F:** search
 - **Ctrl+Z:** undo last change
@@ -77,7 +91,7 @@ No cloud synchronization, account sign-in or analytics are implemented. Data sta
 ~/.local/share/plasmashell/QML/OfflineStorage/Databases/dd9450f249be1bf7e7f3854d39b8b74b.sqlite
 ```
 
-Program files are installed under `~/.local/share/liquid-glass-planner/`. Daily data backups are kept in its `backups/` directory (latest 14 daily files). Program-update backups are stored separately within that directory. Back up important data before beta use. JSON preserves tasks and metadata; ICS exports calendar events only. Import adds new IDs without replacing existing IDs.
+Program files are installed under `~/.local/share/liquid-glass-planner/`. Daily data backups are kept in its `backups/` directory (latest 14 daily files). Program-update backups are stored separately within that directory. Back up important data before beta use. JSON preserves events, tasks and their metadata; it does **not** include the separate template library. Automatic SQLite backups include templates. ICS exports calendar events only. Import adds new IDs without replacing existing IDs.
 
 ## Develop
 

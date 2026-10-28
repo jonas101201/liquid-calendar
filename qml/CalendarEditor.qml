@@ -32,7 +32,7 @@ Item {
     readonly property var results: Cal.searchAll(events,query,categoryFilter,kindFilter,today)
     readonly property var suggestions: searching?Cal.dateSuggestions(query,today):[]
     property var deletedEntry: null
-    readonly property bool modalOpen: editor.visible||transfer.visible||options.visible||filters.visible||dateJump.visible||deleteConfirm.visible
+    readonly property bool modalOpen: editor.visible||transfer.visible||options.visible||filters.visible||dateJump.visible||deleteConfirm.visible||mergeDialog.visible
     property string error: ""
     property real glassOpacity: 0.80
     readonly property real minimumOpacity: light ? 0.92 : 0.76
@@ -88,6 +88,7 @@ Item {
         else select(Cal.add(selected,n*(mode===1?7:30)));
     }
     function openEvent(e, date) {
+        editor.selectedWeekdays=e&&e.weekdays?e.weekdays.slice():[];
         editor.checklist=JSON.parse(JSON.stringify(e&&e.checklist?e.checklist:[]));
         priorityBox.currentIndex=e&&e.priority?e.priority:0;projectField.text=e&&e.project?e.project:"";
         editor.draftOriginal=e||null;
@@ -100,6 +101,10 @@ Item {
         repeatBox.currentIndex=e?["none","daily","weekly","monthly","yearly"].indexOf(e.repeat):0;
         untilField.text=e?e.until:""; locationField.text=e?e.location:""; notesField.text=e?e.notes:"";
         categoryBox.currentIndex=e?e.category:0; editor.detailsExpanded=!!(e&&(e.category!==0||e.repeat!=="none"||e.location||e.notes||(e.reminder!==undefined&&e.reminder!==10&&e.reminder!==-1))); editor.validation=""; editor.open(); titleField.forceActiveFocus();
+    }
+    function openDraft(event) {openEvent(event);editor.eventId="";editor.draftOriginal=null;}
+    function templateSnapshot(){
+        return JSON.stringify({id:"template-draft",title:titleField.text.trim(),date:dateField.text,time:timeField.text,minutes:durationField.value,allDay:allDay.checked,task:false,done:false,repeat:"none",until:"",category:categoryBox.currentIndex,location:locationField.text,notes:notesField.text,reminder:[-1,0,5,10,30,60,1440][reminderBox.currentIndex]});
     }
     function openNewTask(date) {openEvent(null,date);task.checked=true;scheduled.checked=false;}
     function toggleTask(e,date) {
@@ -484,6 +489,33 @@ Item {
     }
     Popup {
         id:editor
+        Popup {
+            id:templateNamePopup;parent:editor.contentItem;anchors.centerIn:parent;width:Math.min(parent.width-8,420);modal:true;focus:true;padding:16
+            property string error:""
+            background:LiquidSurface {light:root.light;radius:16;glassOpacity:1}
+            contentItem:ColumnLayout {
+                spacing:10
+                Label {text:"Save event template";color:root.ink;font.pixelSize:18}
+                Label {text:"Keeps title, time, duration, category, reminder, location and notes. Dates and repeats are not copied.";color:root.muted;Layout.fillWidth:true;wrapMode:Text.Wrap}
+                GlassField {id:templateNameField;Layout.fillWidth:true;maximumLength:160;Accessible.name:"Template name";placeholderText:"e.g. Team meeting"}
+                Label {visible:templateNamePopup.error!=="";text:templateNamePopup.error;textFormat:Text.PlainText;color:root.danger;Layout.fillWidth:true;wrapMode:Text.Wrap}
+                RowLayout {
+                    GlassButton {text:"Cancel";onClicked:templateNamePopup.close()}
+                    Item {Layout.fillWidth:true}
+                    GlassButton {id:saveTemplateButton;text:"Save template";highlighted:true;enabled:templateNameField.text.trim().length>0;onClicked:{if(root.persistence.saveTemplate(templateNameField.text,root.templateSnapshot()))templateNamePopup.close();else templateNamePopup.error=root.persistence.error;}}
+                }
+            }
+        }
+        DatePicker {id:untilPicker;parent:editor.contentItem;anchors.centerIn:parent;light:root.light;onPicked:function(value){untilField.text=value;}}
+        DatePicker {id:datePicker;parent:editor.contentItem;anchors.centerIn:parent;light:root.light;onPicked:function(value){dateField.text=value;}}
+        TimePicker {id:timePicker;parent:editor.contentItem;anchors.centerIn:parent;light:root.light;onPicked:function(value){timeField.text=value;}}
+        property var selectedWeekdays:[]
+        function weeklyDays(){var date=Cal.parse(dateField.text);return selectedWeekdays.length?selectedWeekdays:[Cal.isoWeekday(date||new Date())];}
+        function toggleWeekday(day){
+            var days=weeklyDays().slice();var index=days.indexOf(day);
+            if(index>=0){if(days.length===1){validation="Choose at least one weekday.";return;}days.splice(index,1);}else days.push(day);
+            selectedWeekdays=days.sort(function(a,b){return a-b;});validation="";
+        }
         property string eventId:""
         property var draftOriginal:null
         property string validation:""
@@ -507,8 +539,8 @@ Item {
                     RowLayout {
                         visible:!task.checked||scheduled.checked
                         Layout.fillWidth:true
-                        ColumnLayout { Layout.fillWidth:true; Label { text:"Date (YYYY-MM-DD)"; color:root.muted } GlassField { id:dateField; Accessible.name:"Date in year-month-day format"; Layout.fillWidth:true; placeholderText:"2026-10-28"; maximumLength:10; selectByMouse:true } }
-                        ColumnLayout { Label { text:"Time (HH:MM)"; color:root.muted } GlassField { id:timeField; Accessible.name:"Time in hours and minutes"; Layout.preferredWidth:100; enabled:!allDay.checked; maximumLength:5; selectByMouse:true } }
+                        ColumnLayout { Layout.fillWidth:true; RowLayout {Layout.fillWidth:true;Label {text:"Date";color:root.muted;Layout.fillWidth:true} GlassButton {text:"Pick…";Accessible.name:"Choose event date";onClicked:datePicker.openFor(dateField.text)}} GlassField { id:dateField; Accessible.name:"Date in year-month-day format"; Layout.fillWidth:true; placeholderText:"2026-10-28"; maximumLength:10; selectByMouse:true } }
+                        ColumnLayout { RowLayout {Label {text:"Time";color:root.muted} GlassButton {text:"Pick…";enabled:!allDay.checked;Accessible.name:"Choose start time";onClicked:timePicker.openFor(timeField.text)}} GlassField { id:timeField; Accessible.name:"Time in hours and minutes"; Layout.preferredWidth:100; enabled:!allDay.checked; maximumLength:5; selectByMouse:true } }
                     }
                     RowLayout {
                         GlassCheck { id:allDay; visible:!task.checked||scheduled.checked; text:"All day" }
@@ -567,8 +599,19 @@ Item {
                     GlassCombo { id:categoryBox; Accessible.name:"Category"; Layout.fillWidth:true; model:root.categories }
                     Label { visible:!task.checked||scheduled.checked; text:"Repeat"; color:root.muted }
                     GlassCombo { visible:!task.checked||scheduled.checked; id:repeatBox; Accessible.name:"Repeat"; Layout.fillWidth:true; model:["Once","Daily","Weekly","Monthly","Yearly"] }
+                    ColumnLayout {
+                        visible:(!task.checked||scheduled.checked)&&repeatBox.currentIndex===2;Layout.fillWidth:true;spacing:6
+                        Label {text:"Repeats on";color:root.muted}
+                        Flow {Layout.fillWidth:true;Layout.preferredHeight:childrenRect.height;spacing:4
+                            Repeater {id:repeatDays;model:["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]
+                                delegate:GlassButton {required property int index;required property string modelData;text:modelData;highlighted:editor.weeklyDays().indexOf(index)>=0;tint:highlighted?root.accentInk:root.ink;Accessible.name:"Repeat on "+modelData;onClicked:editor.toggleWeekday(index)}
+                            }
+                        }
+                        Label {text:"Every week from the start date, on the selected days.";color:root.muted;font.pixelSize:10;Layout.fillWidth:true;wrapMode:Text.Wrap}
+                    }
                     Label { visible:(!task.checked||scheduled.checked)&&repeatBox.currentIndex>0; text:"Repeat until · YYYY-MM-DD (blank = no end)"; color:root.muted; font.pixelSize:11 }
                     GlassField { id:untilField; Accessible.name:"Repeat end date"; visible:(!task.checked||scheduled.checked)&&repeatBox.currentIndex>0; Layout.fillWidth:true; maximumLength:10; selectByMouse:true }
+                    GlassButton {visible:(!task.checked||scheduled.checked)&&repeatBox.currentIndex>0;text:"Choose repeat end…";onClicked:untilPicker.openFor(untilField.text||dateField.text)}
                     Label { visible:(!task.checked||scheduled.checked)&&repeatBox.currentIndex>=3; Layout.fillWidth:true; text:"Dates that do not exist are skipped (e.g. February 31). Changes apply to the entire series."; color:root.muted; font.pixelSize:10; wrapMode:Text.Wrap }
                     Label { visible:!task.checked||scheduled.checked; text:"Reminder"; color:root.muted }
                     GlassCombo { visible:!task.checked||scheduled.checked; id:reminderBox; Layout.fillWidth:true; model:["No reminder","At start","5 minutes before","10 minutes before","30 minutes before","1 hour before","1 day before"]; Accessible.name:"Reminder time" }
@@ -583,7 +626,13 @@ Item {
             Label { visible:(!task.checked||scheduled.checked)&&repeatBox.currentIndex>0; text:"Editing and deleting applies to the entire series."; font.pixelSize:10; color:root.muted; Layout.fillWidth:true; wrapMode:Text.Wrap }
             RowLayout {
                 GlassButton { visible:editor.eventId!==""; text:"Delete …"; tint:root.danger; onClicked:deleteConfirm.open() }
-                GlassButton { id:duplicateButton; visible:editor.eventId!==""; text:"Duplicate"; onClicked: { editor.eventId=""; editor.draftOriginal=null; titleField.text=Array.from(titleField.text+" – Copy").slice(0,200).join(""); } Accessible.name:"Duplicate event as a template" }
+                GlassButton {id:editorToolsButton;visible:editor.eventId!==""|| (!!root.persistence&&!task.checked);text:"More ▾";Accessible.name:"Entry actions";onClicked:editorActions.open()
+                    ActionMenu {id:editorActions;parent:editorToolsButton;light:root.light;y:editorToolsButton.height+4
+                        ActionMenuItem {id:duplicateButton;light:root.light;visible:editor.eventId!=="";text:"Duplicate";onTriggered:{editor.eventId="";editor.draftOriginal=null;titleField.text=Array.from(titleField.text+" – Copy").slice(0,200).join("");}}
+                        ActionMenuItem {id:mergeButton;objectName:"mergeEventsAction";light:root.light;text:"Merge with another event…";visible:!!root.persistence&&!!editor.draftOriginal&&!editor.draftOriginal.task&&editor.draftOriginal.repeat==="none"&&!editor.draftOriginal.seriesId&&!root.events.some(function(child){return child.seriesId===editor.eventId;});onTriggered:root.openMerge()}
+                        ActionMenuItem {id:templateButton;light:root.light;visible:!!root.persistence&&!task.checked;text:"Save template…";onTriggered:{templateNameField.text=titleField.text;templateNamePopup.error="";templateNamePopup.open();}}
+                    }
+                }
                 Item { Layout.fillWidth:true }
                 GlassButton {
                     id:saveButton
@@ -592,6 +641,8 @@ Item {
                         var previous=editor.draftOriginal||root.events.filter(function(e){return e.id===editor.eventId;})[0];
                         var undated=task.checked&&!scheduled.checked;
                         var e=Object.assign({},previous||{},{id:editor.eventId||Date.now().toString(36)+'-'+Math.random().toString(36).slice(2),title:titleField.text.trim(),date:undated?"":dateField.text,time:undated?"":timeField.text,minutes:durationField.value,allDay:undated?false:allDay.checked,task:task.checked,done:previous?previous.done:false,repeat:undated?"none":["none","daily","weekly","monthly","yearly"][repeatBox.currentIndex],until:!undated&&repeatBox.currentIndex>0?untilField.text:"",category:categoryBox.currentIndex,location:locationField.text,notes:notesField.text,reminder:undated?-1:[-1,0,5,10,30,60,1440][reminderBox.currentIndex]});
+                        if(e.repeat==="weekly")e.weekdays=editor.weeklyDays().slice();else delete e.weekdays;
+                        if(e.repeat==="weekly"&&e.until&&Cal.valid(e)&&!Cal.unskippedNext(e,Cal.parse(e.date))){editor.validation="No selected weekdays fall within this date range.";return;}
                         if(undated){e.exceptions={};e.reminder=-1;}
                         if(task.checked) {
                             if(priorityBox.currentIndex||(previous&&previous.priority!==undefined))e.priority=priorityBox.currentIndex;
@@ -605,6 +656,39 @@ Item {
                         if(root.store(next)) { if(e.date)root.select(Cal.parse(e.date));else{searchInput.clear();kindBox.currentIndex=3;} editor.close(); } else editor.validation=root.error;
                     }
                 }
+            }
+        }
+    }
+    function openMerge() {
+        mergeDialog.first=JSON.stringify(editor.draftOriginal);
+        mergeDialog.choices=persistence.mergeChoices(mergeDialog.first);
+        mergeChoice.currentIndex=mergeDialog.choices.length?0:-1;
+        mergeDialog.message="";mergeDialog.open();
+    }
+    Dialog {
+        id:mergeDialog;objectName:"mergeEventsDialog";parent:root;anchors.centerIn:parent;modal:true
+        width:Math.max(280,Math.min(root.width-20,500));height:Math.min(root.height-20,520)
+        property string first:""
+        property var choices:[]
+        property string message:""
+        readonly property string second:mergeChoice.currentIndex>=0&&mergeChoice.currentIndex<choices.length?JSON.stringify(choices[mergeChoice.currentIndex]):""
+        readonly property var preview:second&&root.persistence?root.persistence.mergePreview(first,second):({error:"No compatible events on this day. Choose an event or an individual occurrence."})
+        background:LiquidSurface {light:root.light;motionEnabled:root.motionEnabled;radius:18;glassOpacity:1}
+        contentItem:ColumnLayout {
+            spacing:12
+            Label {text:"Merge events";color:root.ink;font.pixelSize:20}
+            Label {text:"Uses saved entries. Save any edits before merging. Choose a second event on the same date. Only selected occurrences are combined; future repeats stay unchanged.";color:root.muted;Layout.fillWidth:true;wrapMode:Text.Wrap}
+            GlassCombo {id:mergeChoice;objectName:"mergeEventChoice";Layout.fillWidth:true;model:mergeDialog.choices.map(function(e){return (e.allDay?"All day":e.time)+" · "+e.title+(e.occurrenceOf?" · This occurrence":"");});Accessible.name:"Event to merge"}
+            ScrollView {
+                Layout.fillWidth:true;Layout.fillHeight:true;contentWidth:availableWidth;clip:true
+                Label {width:parent.width;textFormat:Text.PlainText;wrapMode:Text.Wrap;color:root.ink;text:mergeDialog.preview.event?mergeDialog.preview.event.title+"\n\n"+mergeDialog.preview.event.date+" · "+(mergeDialog.preview.event.allDay?"All day":mergeDialog.preview.event.time+" · "+mergeDialog.preview.event.minutes+" min")+"\n\n"+mergeDialog.preview.event.location+"\n"+mergeDialog.preview.event.notes:mergeDialog.preview.error}
+            }
+            Label {text:"Keeps this event's category. Combines titles, locations and notes; covers both time ranges (including gaps). Uses the earliest enabled reminder. Undo restores both entries.";color:root.muted;Layout.fillWidth:true;wrapMode:Text.Wrap;font.pixelSize:11}
+            Label {text:mergeDialog.message;color:root.danger;visible:text!=="";Layout.fillWidth:true;wrapMode:Text.Wrap}
+            RowLayout {
+                GlassButton {text:"Cancel";onClicked:mergeDialog.close()}
+                Item {Layout.fillWidth:true}
+                GlassButton {id:confirmMerge;objectName:"confirmMerge";text:"Merge two events";highlighted:true;enabled:!!mergeDialog.preview.event;onClicked:{if(root.persistence.mergeEvents(mergeDialog.first,mergeDialog.second)){mergeDialog.close();editor.close();}else mergeDialog.message=root.persistence.error;}}
             }
         }
     }

@@ -113,12 +113,79 @@ ApplicationWindow {
     function refreshSlots(){planner.clearError();slotError="";suggestedSlots=planner.slotsOn(planningTask.id,planningTask.occurrenceDate,slotDate);slotError=planner.error;}
     function planTask(record){planningTask=record;slotDate=planner.selected;slotDateField.text=slotDate;refreshSlots();slotPopup.open();}
     function shiftSlots(n){var d=dateValue(slotDate);d.setDate(d.getDate()+n);slotDate=Qt.formatDateTime(d,"yyyy-MM-dd");slotDateField.text=slotDate;refreshSlots();}
+    readonly property bool creationModalOpen:creationMenu.visible||quickPopup.visible||templateLibrary.visible||templateEditPopup.visible
+    function openQuick(){quickInput.text="";quickPopup.preview=({error:"",summary:""});quickPopup.open();quickInput.forceActiveFocus();}
     function newEvent(){editorSurface.openEvent(null,dateValue(planner.selected));}
-    Shortcut {sequence:"Ctrl+N";enabled:!editorSurface.modalOpen;onActivated:win.newEvent()}
-    Shortcut {sequence:"Ctrl+F";enabled:!editorSurface.modalOpen;onActivated:{planner.setView("search");globalSearch.forceActiveFocus();}}
-    Shortcut {sequence:"Ctrl+Z";enabled:!editorSurface.modalOpen&&planner.canUndo;onActivated:planner.undo()}
+    Shortcut {sequence:"Ctrl+N";enabled:!editorSurface.modalOpen&&!win.creationModalOpen;onActivated:win.newEvent()}
+    Shortcut {sequence:"Ctrl+F";enabled:!editorSurface.modalOpen&&!win.creationModalOpen;onActivated:{planner.setView("search");globalSearch.forceActiveFocus();}}
+    Shortcut {sequence:"Ctrl+Z";enabled:!editorSurface.modalOpen&&!win.creationModalOpen&&planner.canUndo;onActivated:planner.undo()}
+    Shortcut {sequence:"Ctrl+Shift+N";enabled:!editorSurface.modalOpen&&!win.creationModalOpen;onActivated:win.openQuick()}
     Shortcut {sequence:"Ctrl+Q";onActivated:Qt.quit()}
 
+    Popup {
+        id:quickPopup;parent:Overlay.overlay;anchors.centerIn:parent;width:Math.min(win.width-40,620);modal:true;focus:true;padding:20
+        property var preview:({error:"",summary:""})
+        function refresh(){preview=planner.quickPreview(quickInput.text);}
+        function review(){refresh();if(preview.error)return;var draft=preview.event;close();editorSurface.openDraft(draft);}
+        background:LiquidSurface {light:win.light;radius:18;glassOpacity:1}
+        contentItem:ColumnLayout {
+            spacing:14
+            Label {text:"Quick add";color:win.ink;font.pixelSize:23}
+            Field {id:quickInput;Layout.fillWidth:true;maximumLength:1000;placeholderText:"Tomorrow 15:00 Dentist for 45m";Accessible.name:"Quick event input";onTextEdited:quickPopup.refresh();onAccepted:quickPopup.review()}
+            Label {text:"English and German dates. Missing date uses the selected day; missing time uses 09:00 and duration 60 min.";Layout.fillWidth:true;color:win.muted;font.pixelSize:12;wrapMode:Text.Wrap}
+            Label {visible:!!quickPopup.preview.event;text:quickPopup.preview.event?quickPopup.preview.event.title:"";textFormat:Text.PlainText;Layout.fillWidth:true;color:win.ink;font.pixelSize:17;wrapMode:Text.Wrap}
+            Label {text:quickPopup.preview.summary||"";color:win.accent;Layout.fillWidth:true;wrapMode:Text.Wrap}
+            Label {visible:quickInput.text.trim().length>0&&!!quickPopup.preview.error;text:quickPopup.preview.error||"";textFormat:Text.PlainText;Layout.fillWidth:true;color:win.danger;wrapMode:Text.Wrap}
+            RowLayout {
+                Action {text:"Cancel";onClicked:quickPopup.close()}
+                Item {Layout.fillWidth:true}
+                Action {id:reviewQuickButton;text:"Review event";primary:true;enabled:quickInput.text.trim().length>0&&!quickPopup.preview.error;onClicked:quickPopup.review()}
+            }
+        }
+    }
+    Popup {
+        id:templateLibrary;parent:Overlay.overlay;anchors.centerIn:parent;width:Math.min(win.width-40,650);height:Math.min(win.height-40,520);modal:true;focus:true;padding:20
+        background:LiquidSurface {light:win.light;radius:18;glassOpacity:1}
+        contentItem:ColumnLayout {
+            spacing:12
+            RowLayout {Label {text:"Event templates";color:win.ink;font.pixelSize:23;Layout.fillWidth:true} Action {text:"Close";onClicked:templateLibrary.close()}}
+            Label {text:"Save a template from the event editor. Use applies it to the selected day and opens a new draft for review.";Layout.fillWidth:true;color:win.muted;wrapMode:Text.Wrap;font.pixelSize:12}
+            ListView {id:templateList;Layout.fillWidth:true;Layout.fillHeight:true;clip:true;spacing:8;model:planner.templates
+                delegate:RowLayout {
+                    required property var modelData
+                    width:templateList.width;spacing:8
+                    ColumnLayout {Layout.fillWidth:true;Layout.minimumWidth:0
+                        Label {text:modelData.name;textFormat:Text.PlainText;Layout.fillWidth:true;color:win.ink;elide:Text.ElideRight;font.bold:true}
+                        Label {text:(modelData.event.allDay?"All day":modelData.event.time)+" · "+modelData.event.minutes+" min";color:win.muted;font.pixelSize:12}
+                    }
+                    Action {text:"Use";onClicked:{var ident=modelData.id;templateLibrary.close();planner.useTemplate(ident);}}
+                    Action {text:"Edit…";onClicked:{templateEditPopup.snapshot=JSON.stringify(modelData);templateRename.text=modelData.name;templateEditPopup.problem="";templateEditPopup.open();}}
+                }
+                ScrollBar.vertical:ScrollBar {}
+                Label {visible:templateList.count===0;anchors.centerIn:parent;text:"No templates yet. Open an event and choose Save template.";width:parent.width;wrapMode:Text.Wrap;color:win.muted;horizontalAlignment:Text.AlignHCenter}
+            }
+            Label {text:planner.templates.length+" / 50 templates · local to this app · not included in event-only JSON export";Layout.fillWidth:true;wrapMode:Text.Wrap;color:win.muted;font.pixelSize:11}
+        }
+    }
+    Popup {
+        id:templateEditPopup;parent:templateLibrary.contentItem;anchors.centerIn:parent;width:Math.min(parent.width-8,420);modal:true;focus:true;padding:16
+        property string snapshot:""
+        property string problem:""
+        background:LiquidSurface {light:win.light;radius:18;glassOpacity:1}
+        contentItem:ColumnLayout {
+            spacing:12
+            Label {text:"Edit template";color:win.ink;font.pixelSize:20}
+            Field {id:templateRename;Layout.fillWidth:true;maximumLength:160;Accessible.name:"Rename template"}
+            Label {text:"Delete removes this template only. Existing events are kept. Template changes are not covered by event Undo.";color:win.muted;wrapMode:Text.Wrap;Layout.fillWidth:true;font.pixelSize:12}
+            Label {visible:templateEditPopup.problem!=="";text:templateEditPopup.problem;textFormat:Text.PlainText;color:win.danger;Layout.fillWidth:true;wrapMode:Text.Wrap}
+            RowLayout {
+                Action {id:deleteTemplateButton;text:"Delete template";onClicked:{if(planner.deleteTemplate(JSON.parse(templateEditPopup.snapshot).id,templateEditPopup.snapshot))templateEditPopup.close();else templateEditPopup.problem=planner.error;}}
+                Item {Layout.fillWidth:true}
+                Action {text:"Cancel";onClicked:templateEditPopup.close()}
+                Action {id:renameTemplateButton;text:"Save name";primary:true;enabled:templateRename.text.trim().length>0;onClicked:{if(planner.renameTemplate(JSON.parse(templateEditPopup.snapshot).id,templateRename.text,templateEditPopup.snapshot))templateEditPopup.close();else templateEditPopup.problem=planner.error;}}
+            }
+        }
+    }
     Popup {
         id:projectPopup;parent:Overlay.overlay;anchors.centerIn:parent;width:420;modal:true;focus:true
         background:LiquidSurface {light:win.light;radius:18;glassOpacity:1}
@@ -191,6 +258,12 @@ ApplicationWindow {
                 }
                 Action {visible:["today","week","month","agenda"].indexOf(planner.view)>=0;text:"Date";onClicked:{jumpDate.text=planner.selected;datePopup.open();}}
                 Action {visible:planner.view!=="settings";text:"Today";onClicked:planner.today()}
+                Action {id:toolsButton;visible:planner.view!=="settings";text:"Tools ▾";Accessible.name:"Creation tools";onClicked:creationMenu.open()
+                    ActionMenu {id:creationMenu;parent:toolsButton;light:win.light;y:toolsButton.height+4;x:Math.min(0,toolsButton.width-width)
+                        ActionMenuItem {id:quickAddAction;light:win.light;text:"Quick add…";onTriggered:win.openQuick()}
+                        ActionMenuItem {id:templatesAction;light:win.light;text:"Event templates…";onTriggered:templateLibrary.open()}
+                    }
+                }
                 Action {visible:planner.view!=="settings";text:"+ Task";primary:planner.view==="tasks";onClicked:editorSurface.openNewTask(win.dateValue(planner.selected))}
                 Action {visible:planner.view!=="settings";text:"+ Event";primary:planner.view!=="tasks";onClicked:win.newEvent()}
             }
@@ -294,9 +367,11 @@ ApplicationWindow {
                     anchors.fill:parent;visible:planner.view==="week"
                     ColumnLayout {
                         anchors.fill:parent;anchors.margins:10;spacing:6
-                        RowLayout {
-                            Layout.fillWidth:true;Layout.leftMargin:48;spacing:0
-                            Repeater {model:planner.weekDays;delegate:Item {required property var modelData;Layout.fillWidth:true;implicitHeight:46;Column {anchors.centerIn:parent;spacing:3;Label {anchors.horizontalCenter:parent.horizontalCenter;text:modelData.name;font.pixelSize:10;color:win.muted} Label {anchors.horizontalCenter:parent.horizontalCenter;text:modelData.number;color:modelData.today?win.accent:win.ink;font.pixelSize:20;font.bold:modelData.today}}}}
+                        Item {
+                            Layout.fillWidth:true;Layout.preferredHeight:46;clip:true
+                            Row {id:weekHeader;x:timeline.gutter-timeline.contentX;width:timeline.contentWidth-timeline.gutter;spacing:0
+                            Repeater {model:planner.weekDays;delegate:Item {required property var modelData;width:timeline.columnWidth;height:46;Column {anchors.centerIn:parent;spacing:3;Label {anchors.horizontalCenter:parent.horizontalCenter;text:modelData.name;font.pixelSize:10;color:win.muted} Label {anchors.horizontalCenter:parent.horizontalCenter;text:modelData.number;color:modelData.today?win.accent:win.ink;font.pixelSize:20;font.bold:modelData.today}}}}
+                            }
                         }
                         ListView {
                             id:allDayList;visible:count>0;Layout.fillWidth:true;Layout.preferredHeight:34;orientation:ListView.Horizontal;spacing:6;clip:true
@@ -310,9 +385,18 @@ ApplicationWindow {
                             Layout.fillWidth:true;Layout.fillHeight:true;clip:true
                             readonly property real hourHeight:66
                             readonly property real gutter:48
-                            readonly property real columnWidth:(width-gutter)/7
-                            contentWidth:width;contentHeight:24*hourHeight
-                            Component.onCompleted:contentY=7.5*hourHeight
+                            readonly property real columnWidth:(contentWidth-gutter)/7
+                            contentWidth:Math.max(width,gutter+7*Math.max(120,win.weekData.reduce(function(n,v){return Math.max(n,v.lanes*100);},0)));contentHeight:24*hourHeight
+                            readonly property string selectedDate:planner.selected
+                            function revealSelectedDay() {
+                                var index=planner.weekDays.findIndex(function(day){return day.date===selectedDate;});
+                                if(index>=0)contentX=Math.max(0,Math.min(contentWidth-width,gutter+(index+.5)*columnWidth-width/2));
+                            }
+                            onVisibleChanged:if(visible)Qt.callLater(revealSelectedDay)
+                            onSelectedDateChanged:if(visible)Qt.callLater(revealSelectedDay)
+                            onContentWidthChanged:if(visible)Qt.callLater(revealSelectedDay)
+                            ScrollBar.horizontal:ScrollBar {active:timeline.contentWidth>timeline.width}
+                            Component.onCompleted:{contentY=7.5*hourHeight;Qt.callLater(revealSelectedDay);}
                             boundsBehavior:Flickable.StopAtBounds
                             ScrollBar.vertical:ScrollBar {}
                             Item {
@@ -339,7 +423,7 @@ ApplicationWindow {
                                         property var record:modelData
                                         readonly property real homeX:timeline.gutter+record.dayIndex*timeline.columnWidth+record.lane*timeline.columnWidth/record.lanes+3
                                         readonly property real homeY:record.start/60*timeline.hourHeight+2
-                                        x:homeX;y:homeY;width:Math.max(24,timeline.columnWidth/record.lanes-6);height:Math.max(20,record.segmentMinutes/60*timeline.hourHeight-4)
+                                        x:homeX;y:homeY;width:Math.max(1,timeline.columnWidth*(record.laneSpan||1)/record.lanes-6);height:Math.min(1440*timeline.hourHeight/60-homeY,Math.max(20,record.segmentMinutes/60*timeline.hourHeight-4))
                                         readonly property color eventTint:record.conflict?win.danger:record.color
                                         radius:7;border.width:dragMouse.drag.active?1:0;border.color:eventTint;clip:true
                                         color:Qt.rgba(eventTint.r,eventTint.g,eventTint.b,win.light?.15:.16)
@@ -347,9 +431,9 @@ ApplicationWindow {
                                         z:dragMouse.drag.active?20:3
                                         Drag.active:dragMouse.drag.active;Drag.keys:["liquid-calendar-event"];Drag.source:eventBlock;Drag.hotSpot.x:width/2;Drag.hotSpot.y:8
                                         Column {
-                                            anchors.fill:parent;anchors.margins:6;spacing:3
-                                            Label {width:parent.width;text:(eventBlock.record.carry?"↳ ":"")+eventBlock.record.time;color:win.ink;font.pixelSize:10;elide:Text.ElideRight}
-                                            Label {visible:eventBlock.height>38;width:parent.width;text:eventBlock.record.title;textFormat:Text.PlainText;color:win.ink;font.pixelSize:11;font.bold:true;wrapMode:Text.Wrap;maximumLineCount:3;elide:Text.ElideRight}
+                                            anchors.fill:parent;anchors.margins:eventBlock.height<38?2:6;anchors.leftMargin:6;spacing:3
+                                            Label {width:parent.width;visible:eventBlock.height>38;text:(eventBlock.record.carry?"↳ ":"")+eventBlock.record.time;color:win.ink;font.pixelSize:10;elide:Text.ElideRight}
+                                            Label {visible:true;width:parent.width;text:eventBlock.record.title;textFormat:Text.PlainText;color:win.ink;font.pixelSize:11;font.bold:true;wrapMode:Text.Wrap;maximumLineCount:eventBlock.height<38?1:3;elide:Text.ElideRight}
                                             Label {visible:eventBlock.height>95&&eventBlock.record.conflict;width:parent.width;text:"Overlap";color:win.danger;font.pixelSize:9;elide:Text.ElideRight}
                                         }
                                         MouseArea {
@@ -367,58 +451,59 @@ ApplicationWindow {
                 Surface {
                     anchors.fill:parent;visible:planner.view==="tasks"||planner.view==="search"
                     ColumnLayout {
-                        anchors.fill:parent;anchors.margins:16;spacing:12
+                        anchors.fill:parent;anchors.margins:16;spacing:8
                         RowLayout {
                             Layout.fillWidth:true
                             Field {id:globalSearch;Layout.fillWidth:true;placeholderText:"Title, project, checklist, notes or date …";maximumLength:200;text:planner.query;onTextEdited:planner.setQuery(text);Accessible.name:"Global search"}
-                                                        Action {text:"All";primary:planner.kind==="all"||planner.kind==="tasks";onClicked:planner.setFilter(planner.view==="tasks"?"tasks":"all",planner.category)}
+                            Action {text:"All";primary:planner.kind==="all"||planner.kind==="tasks";onClicked:planner.setFilter(planner.view==="tasks"?"tasks":"all",planner.category)}
                             Action {text:"Open";primary:planner.kind==="open";onClicked:planner.setFilter("open",planner.category)}
                             Action {text:"Completed";primary:planner.kind==="done";onClicked:planner.setFilter("done",planner.category)}
-                        }
-                        RowLayout {
-                            Layout.fillWidth:true;spacing:8
-                            Action {visible:planner.view==="search";text:"Events only";primary:planner.kind==="events";onClicked:planner.setFilter("events",planner.category)}
-                            Action {visible:planner.view==="search";text:"Tasks only";primary:planner.kind==="tasks";onClicked:planner.setFilter("tasks",planner.category)}
-                            Action {text:(["All categories","Personal","Work","Important","Leisure"])[planner.category+1]+" ▾";onClicked:categoryMenu.open()
-                                Menu {id:categoryMenu
-                                    Repeater {model:["All categories","Personal","Work","Important","Leisure"];delegate:MenuItem {required property int index;required property string modelData;text:modelData;onTriggered:planner.setFilter(planner.kind,index-1)}}
-                                }
-                            }
-                            Action {visible:planner.view==="tasks";text:"Sort ▾";onClicked:sortMenu.open()
-                                Menu {id:sortMenu
-                                    MenuItem {text:"Default";checkable:true;checked:planner.taskOrder==="default";onTriggered:planner.setTaskOrder("default")}
-                                    MenuItem {text:"Priority: high first";checkable:true;checked:planner.taskOrder==="priority";onTriggered:planner.setTaskOrder("priority")}
-                                    MenuItem {text:"Project";checkable:true;checked:planner.taskOrder==="project";onTriggered:planner.setTaskOrder("project")}
-                                    MenuItem {text:"Title A–Z";checkable:true;checked:planner.taskOrder==="title";onTriggered:planner.setTaskOrder("title")}
-                                    MenuItem {text:"Scheduled first";checkable:true;checked:planner.taskOrder==="planned";onTriggered:planner.setTaskOrder("planned")}
-                                    MenuItem {text:"Shortest duration first";checkable:true;checked:planner.taskOrder==="duration";onTriggered:planner.setTaskOrder("duration")}
-                                }
-                            }
-                            Item {Layout.fillWidth:true}
                             Action {visible:planner.projectFilter!=="*"||planner.priorityFilter>=0||planner.category>=0||planner.query.length>0||planner.planningFilter!=="all"||planner.taskOrder!=="default"||["all","tasks"].indexOf(planner.kind)<0;text:"Reset";onClicked:{planner.setTaskFilters("*",-1);planner.setTaskOrder("default");planner.setPlanningFilter("all");planner.setQuery("");planner.setFilter(planner.view==="tasks"?"tasks":"all",-1);}}
                         }
                         RowLayout {
-                            visible:planner.view==="tasks";Layout.fillWidth:true;spacing:8
-                            Action {Layout.maximumWidth:240;text:(planner.projectFilter==="*"?"All projects":planner.projectFilter||"No project")+" ▾";onClicked:taskProjectMenu.open()
-                                Menu {id:taskProjectMenu
-                                    MenuItem {text:"All projects";onTriggered:planner.setTaskFilters("*",planner.priorityFilter)}
-                                    MenuItem {text:"No project";onTriggered:planner.setTaskFilters("",planner.priorityFilter)}
-                                    Repeater {model:planner.projects;delegate:MenuItem {required property var modelData;text:modelData.name+" · "+modelData.done+"/"+modelData.total;onTriggered:planner.setTaskFilters(modelData.name,planner.priorityFilter)}}
+                            Layout.fillWidth:true;spacing:12
+                            Flow {
+                                id:taskFilterFlow;Layout.fillWidth:true;Layout.preferredHeight:childrenRect.height;spacing:4
+                                Action {primary:planner.category>=0;text:(["All categories","Personal","Work","Important","Leisure"])[planner.category+1]+" ▾";onClicked:categoryMenu.open()
+                                    Menu {id:categoryMenu
+                                        Repeater {model:["All categories","Personal","Work","Important","Leisure"];delegate:MenuItem {required property int index;required property string modelData;text:modelData;onTriggered:planner.setFilter(planner.kind,index-1)}}
+                                    }
                                 }
-                            }
-                            Action {text:(["Any priority","No priority","Low","Medium","High"])[planner.priorityFilter+1]+" ▾";onClicked:taskPriorityMenu.open()
-                                Menu {id:taskPriorityMenu
-                                    Repeater {model:["Any priority","No priority","Low","Medium","High"];delegate:MenuItem {required property int index;required property string modelData;text:modelData;onTriggered:planner.setTaskFilters(planner.projectFilter,index-1)}}
+                                Action {visible:planner.view==="tasks";width:Math.min(180,implicitWidth);primary:planner.projectFilter!=="*";text:(planner.projectFilter==="*"?"All projects":planner.projectFilter||"No project")+" ▾";onClicked:taskProjectMenu.open()
+                                    Menu {id:taskProjectMenu
+                                        MenuItem {text:"All projects";onTriggered:planner.setTaskFilters("*",planner.priorityFilter)}
+                                        MenuItem {text:"No project";onTriggered:planner.setTaskFilters("",planner.priorityFilter)}
+                                        MenuItem {visible:planner.projectFilter!=="*"&&planner.projectFilter!=="";text:"Edit selected project…";onTriggered:{renameProjectField.text=planner.projectFilter;projectPopup.open();}}
+                                        Repeater {model:planner.projects;delegate:MenuItem {required property var modelData;text:modelData.name+" · "+modelData.done+"/"+modelData.total;onTriggered:planner.setTaskFilters(modelData.name,planner.priorityFilter)}}
+                                    }
                                 }
+                                Action {visible:planner.view==="tasks";primary:planner.priorityFilter>=0;text:(["Any priority","No priority","Low","Medium","High"])[planner.priorityFilter+1]+" ▾";onClicked:taskPriorityMenu.open()
+                                    Menu {id:taskPriorityMenu
+                                        Repeater {model:["Any priority","No priority","Low","Medium","High"];delegate:MenuItem {required property int index;required property string modelData;text:modelData;onTriggered:planner.setTaskFilters(planner.projectFilter,index-1)}}
+                                    }
+                                }
+                                Action {visible:planner.view==="tasks";primary:planner.planningFilter!=="all";text:(["Any schedule","Undated","Scheduled"])[["all","undated","planned"].indexOf(planner.planningFilter)]+" ▾";onClicked:scheduleMenu.open()
+                                    ActionMenu {id:scheduleMenu;light:win.light
+                                        Repeater {model:[{id:"all",label:"Any schedule"},{id:"undated",label:"Undated"},{id:"planned",label:"Scheduled"}];delegate:ActionMenuItem {required property var modelData;light:win.light;text:modelData.label;onTriggered:planner.setPlanningFilter(modelData.id)}}
+                                    }
+                                }
+                                Action {visible:planner.view==="search";text:"Events only";primary:planner.kind==="events";onClicked:planner.setFilter("events",planner.category)}
+                                Action {visible:planner.view==="search";text:"Tasks only";primary:planner.kind==="tasks";onClicked:planner.setFilter("tasks",planner.category)}
                             }
-                            Action {visible:planner.projectFilter!=="*"&&planner.projectFilter!=="";text:"Edit project";onClicked:{renameProjectField.text=planner.projectFilter;projectPopup.open();}}
-                            Item {Layout.fillWidth:true}
-                            Label {text:planner.results.length+" tasks";color:win.muted;font.pixelSize:12}
-                        }
-                        RowLayout {visible:planner.view==="tasks";Layout.fillWidth:true
-                            Action {text:"Any schedule";primary:planner.planningFilter==="all";onClicked:planner.setPlanningFilter("all")}
-                            Action {text:"Undated";primary:planner.planningFilter==="undated";onClicked:planner.setPlanningFilter("undated")}
-                            Action {text:"Scheduled";primary:planner.planningFilter==="planned";onClicked:planner.setPlanningFilter("planned")}
+                            RowLayout {
+                                Layout.alignment:Qt.AlignTop;spacing:4
+                                Action {visible:planner.view==="tasks";text:"Sort ▾";onClicked:sortMenu.open()
+                                    Menu {id:sortMenu
+                                        MenuItem {text:"Default";checkable:true;checked:planner.taskOrder==="default";onTriggered:planner.setTaskOrder("default")}
+                                        MenuItem {text:"Priority: high first";checkable:true;checked:planner.taskOrder==="priority";onTriggered:planner.setTaskOrder("priority")}
+                                        MenuItem {text:"Project";checkable:true;checked:planner.taskOrder==="project";onTriggered:planner.setTaskOrder("project")}
+                                        MenuItem {text:"Title A–Z";checkable:true;checked:planner.taskOrder==="title";onTriggered:planner.setTaskOrder("title")}
+                                        MenuItem {text:"Scheduled first";checkable:true;checked:planner.taskOrder==="planned";onTriggered:planner.setTaskOrder("planned")}
+                                        MenuItem {text:"Shortest duration first";checkable:true;checked:planner.taskOrder==="duration";onTriggered:planner.setTaskOrder("duration")}
+                                    }
+                                }
+                                Label {text:planner.results.length+(planner.view==="tasks"?" tasks":" results");color:win.muted;font.pixelSize:12;leftPadding:6}
+                            }
                         }
                         RowLayout {
                             visible:planner.dateHints.length>0
@@ -446,7 +531,7 @@ ApplicationWindow {
                             Action {text:planner.animationsEnabled?"✓ Gentle motion":"Enable motion";primary:planner.animationsEnabled;onClicked:planner.setAnimations(!planner.animationsEnabled)}
                             Label {text:"Backup and sharing";color:win.ink;font.pixelSize:16;font.bold:true}
                             RowLayout {Action {text:"Back up JSON";onClicked:{win.exportKind="json";saveDialog.nameFilters=["JSON backup (*.json)"];saveDialog.defaultSuffix="json";saveDialog.open();}} Action {text:"Import JSON";onClicked:importDialog.open()} Action {text:"Export ICS";onClicked:{win.exportKind="ics";saveDialog.nameFilters=["Calendar (*.ics)"];saveDialog.defaultSuffix="ics";saveDialog.open();}}}
-                            Label {Layout.fillWidth:true;text:"ICS exports events for other calendar apps. JSON also preserves tasks, categories, reminders and repeat exceptions. Import adds new IDs without overwriting existing entries.";color:win.muted;wrapMode:Text.Wrap;font.pixelSize:12}
+                            Label {Layout.fillWidth:true;text:"ICS exports events for other calendar apps. JSON also preserves tasks, categories, reminders and repeat exceptions, but not the template library. Templates are included in automatic SQLite backups. Import adds new IDs without overwriting existing entries.";color:win.muted;wrapMode:Text.Wrap;font.pixelSize:12}
                             Label {text:"Keyboard";color:win.ink;font.pixelSize:16;font.bold:true}
                             Label {text:"Ctrl+N · New event\nCtrl+F · Search\nCtrl+Z · Undo last change\nCtrl+Q · Quit app and reminders";color:win.muted;font.pixelSize:13;lineHeight:1.7}
                             Label {Layout.fillWidth:true;text:"Database: "+planner.databasePath;textFormat:Text.PlainText;color:win.muted;font.pixelSize:10;wrapMode:Text.WrapAnywhere}
@@ -508,6 +593,7 @@ ApplicationWindow {
     Connections {
         target:planner
         function onEditRequested(event){editorSurface.openEvent(event);}
+        function onCreateRequested(event){editorSurface.openDraft(event);}
         function onChanged(){if(!editorSurface.modalOpen){editorSurface.events=planner.events;if(Qt.formatDateTime(editorSurface.selected,"yyyy-MM-dd")!==planner.selected)editorSurface.select(win.dateValue(planner.selected));}}
     }
 }
