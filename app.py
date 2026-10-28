@@ -30,6 +30,7 @@ class Bridge(QObject):
     def __init__(self,store,smoke=False):
         super().__init__();self.store=store;self._events=store.read();self._selected=dt.date.today();self._view='today';self._query='';self._kind='all';self._category=-1;self._agenda_days=14;self._task_order='default';self._planning_filter='all';self._error='';self._notice='';self._undo=None;self._settings=store.settings();self.smoke=smoke
         self._need_widget=False
+        self._project_filter='*';self._priority_filter=-1;self._undo_project_filter=None
         if not smoke:
             try:
                 result=subprocess.run(['/usr/lib64/qt6/bin/qdbus','org.kde.plasmashell','/PlasmaShell','org.kde.PlasmaShell.evaluateScript','var active=false; desktops().forEach(function(d){d.widgets().forEach(function(w){if(w.type==="org.jonas.liquidglass.calendar")active=true;});}); print(active);'],capture_output=True,text=True,timeout=3)
@@ -90,8 +91,40 @@ class Bridge(QObject):
     def taskOrder(self):return self._task_order
     @Slot(str)
     def setTaskOrder(self,value):
-        if value in ['default','title','duration','planned']:
+        if value in ['default','title','duration','planned','priority','project']:
             self._task_order=value;self.changed.emit()
+    @Property(str,notify=changed)
+    def projectFilter(self):return self._project_filter
+    @Property(int,notify=changed)
+    def priorityFilter(self):return self._priority_filter
+    @Slot(str,int)
+    def setTaskFilters(self,project,priority):
+        if len(project)<=80 and -1<=priority<=3:
+            self._project_filter=project;self._priority_filter=priority;self.changed.emit()
+    @Property('QVariantList',notify=changed)
+    def projects(self):
+        counts={}
+        for e in self._events:
+            name=e.get('project','')
+            if not e['task'] or not name:continue
+            count=counts.setdefault(name,dict(name=name,total=0,done=0))
+            count['total']+=1;count['done']+=int(e['done'])
+        return [counts[name] for name in sorted(counts,key=str.casefold)]
+    @Slot(str,str)
+    def renameProject(self,name,new_name):
+        try:
+            new_name=new_name.strip()
+            if not name or name=='*' or len(new_name)>80 or new_name=='*':raise ValueError('Enter a project name of up to 80 characters. “*” is reserved.')
+            desired=copy.deepcopy(self._events)
+            found=False
+            for e in desired:
+                if e['task'] and e.get('project','')==name:e['project']=new_name;found=True
+            if not found:raise ValueError('This project no longer exists.')
+            previous_filter=self._project_filter
+            if self.commit(desired,label='Project updated',project_name=name) is not None:
+                if name!=new_name:self._undo_project_filter=(previous_filter,new_name)
+                self._project_filter=new_name;self.changed.emit()
+        except Exception as e:self.fail(e)
     @Property(str,notify=changed)
     def planningFilter(self):return self._planning_filter
     @Slot(str)
@@ -154,9 +187,10 @@ class Bridge(QObject):
     @Property('QVariantList',notify=changed)
     def results(self):
         rows=search(self._events,self._query,dt.date.today(),self._kind,self._category)
-        if self._view=='tasks':rows=[v for v in rows if self._planning_filter=='all' or (self._planning_filter=='undated')==v['unscheduled']]
+        if self._view=='tasks':
+            rows=[v for v in rows if v['task'] and (self._planning_filter=='all' or (self._planning_filter=='undated')==v['unscheduled']) and (self._project_filter=='*' or v['project']==self._project_filter) and (self._priority_filter<0 or v['priority']==self._priority_filter)]
         if self._view=='tasks' and self._task_order!='default':
-            rows.sort(key=lambda v:(v['minutes'],v['title'].casefold()) if self._task_order=='duration' else (v['unscheduled'],v['date'],v['time'],v['title'].casefold()) if self._task_order=='planned' else (v['title'].casefold(),v['id']))
+            rows.sort(key=lambda v:(-v['priority'],v['done'],v['title'].casefold()) if self._task_order=='priority' else (v['project'].casefold(),-v['priority'],v['title'].casefold()) if self._task_order=='project' else (v['minutes'],v['title'].casefold()) if self._task_order=='duration' else (v['unscheduled'],v['date'],v['time'],v['title'].casefold()) if self._task_order=='planned' else (v['title'].casefold(),v['id']))
         return rows
     @Property(int,notify=changed)
     def conflictCount(self):return sum(v['conflict'] for v in instances(self._events,self._selected,1))
@@ -166,12 +200,13 @@ class Bridge(QObject):
             current=self.store.read();compatible=self.check_compatibility()
             if current!=self._events or compatible!=self._compatible:self._events=current;self._compatible=compatible;self.changed.emit()
         except Exception as e:self.fail(e)
-    def commit(self,desired,base=None,label="Saved",allow_occurrences=False):
+    def commit(self,desired,base=None,label="Saved",allow_occurrences=False,project_name=None):
         if not self._compatible:
             self.fail("Update the desktop calendar using “Connect” first. The app is read-only until connected.");return None
         try:
-            before,after=self.store.merge(desired,self._events if base is None else base,allow_occurrences=allow_occurrences)
+            before,after=self.store.merge(desired,self._events if base is None else base,allow_occurrences=allow_occurrences,project_name=project_name)
             self._undo=(before,after) if before!=after else self._undo
+            if before!=after:self._undo_project_filter=None
             self._events=after;self._error='';self.errorChanged.emit();self.changed.emit();self.note(label);return after
         except Exception as e:self.fail(e);return None
     @Slot(str,str,result=str)
@@ -186,7 +221,7 @@ class Bridge(QObject):
     @Slot(str)
     def setView(self,view):
         if view in ['today','week','month','agenda','tasks','search','settings']:
-            if view!=self._view:self._query='';self._kind='tasks' if view=='tasks' else 'all';self._category=-1
+            if view!=self._view:self._query='';self._kind='tasks' if view=='tasks' else 'all';self._category=-1;self._project_filter='*';self._priority_filter=-1
             self._view=view;self.changed.emit()
     @Slot(str)
     def selectDate(self,date):
@@ -253,6 +288,22 @@ class Bridge(QObject):
                 desired.append(child)
             self.commit(desired,label='Task updated',allow_occurrences=True)
         except Exception as e:self.fail(e)
+    @Slot(str,str,str,str)
+    def toggleChecklist(self,ident,date,step_id,expected):
+        try:
+            event=next(copy.deepcopy(e) for e in self._events if e['id']==ident)
+            if not event['task'] or fingerprint(event)!=expected:raise ConflictError('The task has changed. Reopen it.')
+            step=next(item for item in event.get('checklist',[]) if item['id']==step_id)
+            step['done']=not step['done']
+            desired=copy.deepcopy(self._events)
+            if event['repeat']!='none':
+                day=parse(date)
+                if not occurs(event,day):raise ConflictError('This occurrence no longer exists.')
+                event.update(id=uuid.uuid4().hex,date=date,repeat='none',until='',exceptions={},occurrenceOf=ident,occurrenceDate=date,originHash=expected)
+                desired.append(event)
+            else:desired=[event if e['id']==ident else e for e in desired]
+            self.commit(desired,label='Checklist updated',allow_occurrences=True)
+        except Exception as e:self.fail(e)
     @Slot(str,str,str,int,str)
     def move(self,ident,original,target,minute,expected,as_task=False):
         try:
@@ -302,7 +353,9 @@ class Bridge(QObject):
         if not self._compatible:self.fail("Connect the desktop calendar first.");return
         if not self._undo:return
         try:
-            _,after=self.store.patch(*self._undo);self._events=after;self._undo=None;self.changed.emit();self.note("Last change undone")
+            _,after=self.store.patch(*self._undo);self._events=after;self._undo=None
+            if self._undo_project_filter and self._project_filter==self._undo_project_filter[1]:self._project_filter=self._undo_project_filter[0]
+            self._undo_project_filter=None;self.changed.emit();self.note("Last change undone")
         except Exception as e:self.fail(e)
     @Slot(str)
     def setTheme(self,value):

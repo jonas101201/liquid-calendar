@@ -40,12 +40,15 @@ class Store:
             with self.connect() as source,closing(sqlite3.connect(target)) as dest:source.backup(dest)
         self._backup_date=dt.date.today()
         for old in sorted(self.backup_dir.glob('calendar-*.sqlite'))[:-14]:old.unlink()
-    def merge(self,desired,base,allow_occurrences=False):
+    def merge(self,desired,base,allow_occurrences=False,project_name=None):
         validate(desired);validate(base);self.backup()
         desired_map={e['id']:copy.deepcopy(e) for e in desired};base_map={e['id']:e for e in base}
         with self.connect() as c:
             c.execute('BEGIN IMMEDIATE')
             before=self.read_conn(c);remote={e['id']:e for e in before}
+            if project_name is not None:
+                members=lambda records:{i for i,e in records.items() if e['task'] and e.get('project','')==project_name}
+                if members(base_map)!=members(remote):raise ConflictError("Project membership has changed. Refresh and reopen the project; no tasks were renamed.")
             for ident in base_map.keys()|desired_map.keys():
                 old=base_map.get(ident);new=desired_map.get(ident)
                 if old==new:continue

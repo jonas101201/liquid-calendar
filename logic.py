@@ -52,6 +52,15 @@ def validate(events):
         if type(e.get('category')) is not int or not 0<=e['category']<4:raise ValueError("Invalid category.")
         if any(not isinstance(e.get(k),str) or len(e[k])>limit for k,limit in [('location',500),('notes',10000)]):raise ValueError('Location or notes are invalid or too long.')
         if 'reminder' in e and (type(e['reminder']) is not int or e['reminder'] not in [-1,0,5,10,30,60,1440]):raise ValueError("Invalid reminder.")
+        if type(e.get('priority',0)) is not int or not 0<=e.get('priority',0)<=3:raise ValueError("Invalid task priority.")
+        if not isinstance(e.get('project',''),str) or len(e.get('project',''))>80 or e.get('project','')=='*':raise ValueError("Project names can contain up to 80 characters.")
+        checklist=e.get('checklist',[])
+        if not isinstance(checklist,list) or len(checklist)>100:raise ValueError("A checklist can contain up to 100 steps.")
+        step_ids=set()
+        for item in checklist:
+            if not isinstance(item,dict) or not isinstance(item.get('id'),str) or not 0<len(item['id'])<=150 or item['id'] in step_ids:raise ValueError("Invalid or duplicate checklist step ID.")
+            step_ids.add(item['id'])
+            if not isinstance(item.get('title'),str) or not item['title'].strip() or len(item['title'])>200 or type(item.get('done')) is not bool:raise ValueError("Each checklist step needs a title of up to 200 characters and a completion state.")
         exceptions=e.get('exceptions',{})
         if not isinstance(exceptions,dict):raise ValueError("Invalid repeat exceptions.")
         for date,v in exceptions.items():
@@ -96,7 +105,7 @@ def kind_matches(e,kind):
 
 def occurrence(e,day):
     minute=0 if is_undated(e) else int(e['time'][:2])*60+int(e['time'][3:])
-    return dict(event=copy.deepcopy(e),id=e['id'],date=day.isoformat() if day else '',unscheduled=is_undated(e),title=e['title'],time=e['time'],minutes=e['minutes'],start=minute,end=minute+e['minutes'],allDay=e['allDay'],task=e['task'],done=e['done'],color=COLORS[e['category']],location=e['location'],repeated=e['repeat']!='none',fingerprint=fingerprint(e),conflict=False,lane=0,lanes=1,occurrenceDate=day.isoformat() if day else '',carry=False,segmentMinutes=e['minutes'])
+    return dict(event=copy.deepcopy(e),id=e['id'],date=day.isoformat() if day else '',unscheduled=is_undated(e),title=e['title'],time=e['time'],minutes=e['minutes'],start=minute,end=minute+e['minutes'],allDay=e['allDay'],task=e['task'],done=e['done'],color=COLORS[e['category']],location=e['location'],repeated=e['repeat']!='none',fingerprint=fingerprint(e),conflict=False,lane=0,lanes=1,occurrenceDate=day.isoformat() if day else '',carry=False,segmentMinutes=e['minutes'],priority=e.get('priority',0),project=e.get('project',''),checklist=copy.deepcopy(e.get('checklist',[])),checklistDone=sum(item['done'] for item in e.get('checklist',[])))
 
 def instances(events,start,days,kind='all',category=-1):
     result=[]
@@ -172,7 +181,7 @@ def search(events,text,today,kind='all',category=-1):
     for e in events:
         if (category>=0 and e['category']!=category) or not kind_matches(e,kind):continue
         if is_undated(e):
-            if all(t in normalize(e['title']+' '+e['location']+' '+e['notes']) for t in tokens):out.append(occurrence(e,None))
+            if all(t in normalize(e['title']+' '+e['location']+' '+e['notes']+' '+e.get('project','')+' '+' '.join(item['title'] for item in e.get('checklist',[]))) for t in tokens):out.append(occurrence(e,None))
             continue
         if relative_target and not occurs(e,relative_target):continue
         day=relative_target or representative(e,today)
@@ -181,7 +190,7 @@ def search(events,text,today,kind='all',category=-1):
             if target and (hint['kind']!='month' or target.strftime('%Y-%m')==hint['date'][:7]):day=target;break
         if not day:continue
         relative='today heute' if day==today else 'tomorrow morgen' if day==today+dt.timedelta(days=1) else 'day after tomorrow übermorgen' if day==today+dt.timedelta(days=2) else ''
-        words=' '.join([relative,e['title'],e['location'],e['notes'],day.isoformat(),parse(e['date']).isoformat(),WEEKDAYS[day.weekday()],MONTHS[day.month-1],GERMAN_WEEKDAYS[day.weekday()],GERMAN_MONTHS[day.month-1],day.strftime('%d.%m.%Y')])
+        words=' '.join([relative,e['title'],e['location'],e['notes'],e.get('project',''),' '.join(item['title'] for item in e.get('checklist',[])),day.isoformat(),parse(e['date']).isoformat(),WEEKDAYS[day.weekday()],MONTHS[day.month-1],GERMAN_WEEKDAYS[day.weekday()],GERMAN_MONTHS[day.month-1],day.strftime('%d.%m.%Y')])
         if not all(t in normalize(words) for t in tokens):continue
         out.append(occurrence(e,day))
     q=normalize(text)

@@ -88,6 +88,8 @@ Item {
         else select(Cal.add(selected,n*(mode===1?7:30)));
     }
     function openEvent(e, date) {
+        editor.checklist=JSON.parse(JSON.stringify(e&&e.checklist?e.checklist:[]));
+        priorityBox.currentIndex=e&&e.priority?e.priority:0;projectField.text=e&&e.project?e.project:"";
         editor.draftOriginal=e||null;
         editor.eventId=e?e.id:"";
         var reminder=e&&e.reminder!==undefined?e.reminder:10;
@@ -279,7 +281,7 @@ Item {
             Layout.fillWidth:true
             GlassField {
                 id:searchInput
-                maximumLength:200
+                maximumLength:400
                 Layout.fillWidth:true; Layout.minimumWidth:0; rightPadding:34
                 placeholderText:"Search all months …"
                 onTextChanged:root.query=text
@@ -486,6 +488,7 @@ Item {
         property var draftOriginal:null
         property string validation:""
         property bool detailsExpanded:false
+        property var checklist:[]
         parent:root; anchors.centerIn:parent; width:Math.min(root.width-16,520); height:Math.min(root.height-16,660)
         modal:true; focus:true; closePolicy:Popup.CloseOnEscape
         background:LiquidSurface {light:root.light;motionEnabled:root.motionEnabled;radius:18;glassOpacity:1}
@@ -500,7 +503,7 @@ Item {
                 ColumnLayout {
                     width:editorScroll.availableWidth; spacing:8
                     Label { text:"Title"; color:root.muted }
-                    GlassField { id:titleField; Accessible.name:"Title"; Layout.fillWidth:true; maximumLength:200; placeholderText:"What are you planning?"; selectByMouse:true }
+                    GlassField { id:titleField; Accessible.name:"Title"; Layout.fillWidth:true; maximumLength:400; placeholderText:"What are you planning?"; selectByMouse:true }
                     RowLayout {
                         visible:!task.checked||scheduled.checked
                         Layout.fillWidth:true
@@ -514,6 +517,45 @@ Item {
                     GlassCheck {id:scheduled;visible:task.checked;text:"Schedule in calendar";enabled:repeatBox.currentIndex===0;Accessible.name:"Schedule task with a date"}
                     Label {visible:task.checked&&!scheduled.checked;Layout.fillWidth:true;text:"Undated · stays in your task list. You can schedule it later.";color:root.muted;font.pixelSize:11;wrapMode:Text.Wrap}
                     Label {visible:task.checked&&repeatBox.currentIndex>0;Layout.fillWidth:true;text:"Repeating tasks require a date.";color:root.muted;font.pixelSize:11;wrapMode:Text.Wrap}
+                    ColumnLayout {
+                        visible:task.checked;Layout.fillWidth:true;spacing:8
+                        RowLayout {
+                            Layout.fillWidth:true
+                            ColumnLayout {
+                                Layout.fillWidth:true
+                                Label {text:"Priority";color:root.muted}
+                                GlassCombo {id:priorityBox;objectName:"taskPriority";Layout.fillWidth:true;model:["No priority","Low","Medium","High"];Accessible.name:"Task priority"}
+                            }
+                            ColumnLayout {
+                                Layout.fillWidth:true;Layout.minimumWidth:0
+                                Label {text:"Project · optional";color:root.muted}
+                                GlassField {id:projectField;objectName:"taskProject";Layout.fillWidth:true;maximumLength:160;placeholderText:"e.g. Website launch";Accessible.name:"Task project";selectByMouse:true}
+                            }
+                        }
+                        GlassButton {text:"Choose existing project ▾";visible:root.events.some(function(e){return e.task&&e.project;});onClicked:projectChoices.open()
+                            Menu {id:projectChoices
+                                Repeater {model:root.events.filter(function(e){return e.task&&e.project;}).map(function(e){return e.project;}).filter(function(v,i,a){return a.indexOf(v)===i;}).sort()
+                                    delegate:MenuItem {required property string modelData;text:modelData;onTriggered:projectField.text=modelData}
+                                }
+                            }
+                        }
+                        RowLayout {
+                            Layout.fillWidth:true
+                            Label {text:"Checklist · "+editor.checklist.filter(function(c){return c.done;}).length+" / "+editor.checklist.length;color:root.muted;Layout.fillWidth:true}
+                            GlassButton {id:addChecklistStep;objectName:"addChecklistStep";text:"+ Step";enabled:editor.checklist.length<100;onClicked:editor.checklist=editor.checklist.concat([{id:Date.now().toString(36)+'-'+Math.random().toString(36).slice(2),title:"",done:false}])}
+                        }
+                        Repeater {id:checklistRows;model:editor.checklist
+                            delegate:RowLayout {
+                                required property int index
+                                required property var modelData
+                                Layout.fillWidth:true
+                                GlassCheck {checked:modelData.done;Accessible.name:"Complete checklist step";onClicked:{editor.checklist[index].done=checked;editor.checklist=editor.checklist.slice();}}
+                                GlassField {Layout.fillWidth:true;text:modelData.title;maximumLength:400;placeholderText:"Describe this step";Accessible.name:"Checklist step title";onTextEdited:{editor.checklist[index].title=text;editor.validation="";} selectByMouse:true}
+                                GlassButton {text:"−";Accessible.name:"Remove checklist step";onClicked:{var items=editor.checklist.slice();items.splice(index,1);editor.checklist=items;}}
+                            }
+                        }
+                        Label {visible:repeatBox.currentIndex>0;text:"Checklist changes in this editor apply to the selected entry or series. Open a single occurrence for independent progress.";color:root.muted;font.pixelSize:10;Layout.fillWidth:true;wrapMode:Text.Wrap}
+                    }
                     RowLayout {
                         Label { text:"Duration (minutes)"; color:root.muted }
                         GlassSpin { id:durationField; Accessible.name:"Duration in minutes"; from:5; to:1440; stepSize:5; editable:true; enabled:(task.checked&&!scheduled.checked)||!allDay.checked }
@@ -531,7 +573,7 @@ Item {
                     Label { visible:!task.checked||scheduled.checked; text:"Reminder"; color:root.muted }
                     GlassCombo { visible:!task.checked||scheduled.checked; id:reminderBox; Layout.fillWidth:true; model:["No reminder","At start","5 minutes before","10 minutes before","30 minutes before","1 hour before","1 day before"]; Accessible.name:"Reminder time" }
                     Label { text:"Location"; color:root.muted }
-                    GlassField { id:locationField; Accessible.name:"Location"; Layout.fillWidth:true; maximumLength:500; placeholderText:"Location or video link"; selectByMouse:true }
+                    GlassField { id:locationField; Accessible.name:"Location"; Layout.fillWidth:true; maximumLength:1000; placeholderText:"Location or video link"; selectByMouse:true }
                     Label { text:"Notes"; color:root.muted }
                     GlassArea { id:notesField; Accessible.name:"Notes"; Layout.fillWidth:true; Layout.preferredHeight:90; placeholderText:"Details, ideas, preparation …"; wrapMode:TextEdit.Wrap; selectByMouse:true }
                     }
@@ -541,7 +583,7 @@ Item {
             Label { visible:(!task.checked||scheduled.checked)&&repeatBox.currentIndex>0; text:"Editing and deleting applies to the entire series."; font.pixelSize:10; color:root.muted; Layout.fillWidth:true; wrapMode:Text.Wrap }
             RowLayout {
                 GlassButton { visible:editor.eventId!==""; text:"Delete …"; tint:root.danger; onClicked:deleteConfirm.open() }
-                GlassButton { id:duplicateButton; visible:editor.eventId!==""; text:"Duplicate"; onClicked: { editor.eventId=""; editor.draftOriginal=null; titleField.text=(titleField.text+" – Copy").slice(0,200); } Accessible.name:"Duplicate event as a template" }
+                GlassButton { id:duplicateButton; visible:editor.eventId!==""; text:"Duplicate"; onClicked: { editor.eventId=""; editor.draftOriginal=null; titleField.text=Array.from(titleField.text+" – Copy").slice(0,200).join(""); } Accessible.name:"Duplicate event as a template" }
                 Item { Layout.fillWidth:true }
                 GlassButton {
                     id:saveButton
@@ -551,6 +593,13 @@ Item {
                         var undated=task.checked&&!scheduled.checked;
                         var e=Object.assign({},previous||{},{id:editor.eventId||Date.now().toString(36)+'-'+Math.random().toString(36).slice(2),title:titleField.text.trim(),date:undated?"":dateField.text,time:undated?"":timeField.text,minutes:durationField.value,allDay:undated?false:allDay.checked,task:task.checked,done:previous?previous.done:false,repeat:undated?"none":["none","daily","weekly","monthly","yearly"][repeatBox.currentIndex],until:!undated&&repeatBox.currentIndex>0?untilField.text:"",category:categoryBox.currentIndex,location:locationField.text,notes:notesField.text,reminder:undated?-1:[-1,0,5,10,30,60,1440][reminderBox.currentIndex]});
                         if(undated){e.exceptions={};e.reminder=-1;}
+                        if(task.checked) {
+                            if(priorityBox.currentIndex||(previous&&previous.priority!==undefined))e.priority=priorityBox.currentIndex;
+                            if(projectField.text.trim()||(previous&&previous.project!==undefined))e.project=projectField.text.trim();
+                            if(editor.checklist.length||(previous&&previous.checklist!==undefined))e.checklist=JSON.parse(JSON.stringify(editor.checklist));
+                        } else {delete e.priority;delete e.project;delete e.checklist;}
+                        if(task.checked&&e.project==="*"){editor.validation="Choose a different project name; * is reserved.";return;}
+                        if(task.checked&&!Cal.validTaskDetails(e)){editor.validation="Every checklist step needs a title of 1–200 characters. Fill in or remove empty steps.";return;}
                         if(!Cal.valid(e)) { editor.validation="Check the title and, for scheduled entries, the date, time and repeat end date. Notes can contain up to 10,000 characters."; return; }
                         var next=root.events.filter(function(v){return v.id!==e.id;}); next.push(e);
                         if(root.store(next)) { if(e.date)root.select(Cal.parse(e.date));else{searchInput.clear();kindBox.currentIndex=3;} editor.close(); } else editor.validation=root.error;

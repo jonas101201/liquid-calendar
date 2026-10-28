@@ -1,6 +1,6 @@
 # Known issues and beta limitations
 
-Applies to **Liquid Calendar 0.1.1-beta.1**. Last updated: **2026-10-28**.
+Applies to **Liquid Calendar 0.2.0-beta.1**. Last updated: **2026-10-28**.
 
 This page distinguishes current limitations from issues fixed in earlier beta versions. It is not a guarantee that the beta is free of bugs.
 
@@ -16,7 +16,18 @@ This page distinguishes current limitations from issues fixed in earlier beta ve
 - **Shared storage:** app and widget use the same local Plasma database. If an incompatible active widget is detected, editing is blocked until **Connect** reloads it. This briefly refreshes the desktop and panels.
 - **Undo:** app-wide Undo covers the last local app change and refuses to overwrite a newer edit of the same entry. It is not an unlimited history or backup restoration tool.
 
-## Updating from 0.1.0-beta.1
+## Task organization scope in 0.2.0
+
+- Projects are task labels, created when assigned to a task. Empty projects are not retained. Names are case-sensitive; renaming to an existing name merges assignments. Clearing a project does not delete its tasks.
+- Project counters count stored task records, including detached occurrences, rather than an infinite recurring schedule.
+- Checklist completion is independent of the task's completion. Inline checklist changes affect only the selected occurrence; editing **Series** changes the series template.
+- Up to 100 steps per checklist, 200 characters per step and 80 characters per project name. Limits count Unicode code points consistently across app and widget. The project name `*` is reserved for the all-projects filter.
+- The companion widget supports editing task details; the full project overview and combined organization filters are in the desktop app.
+
+## Updating from 0.1.x
+
+- Task details are optional; old records are not rewritten. JSON backups preserve priority, project and checklist fields. Future older-version compatibility is not guaranteed; retain a backup before downgrading.
+
 
 - Fully quit the running app with **Ctrl+Q** and reopen it after updating. Reload an active desktop widget to activate its corrected task-completion behavior.
 - Existing stored completion states are not automatically rewritten. If an older version marked a whole recurring task series completed, explicitly reopen that series to make its future occurrences available again.

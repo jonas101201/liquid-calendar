@@ -2,9 +2,9 @@
 
 A local desktop calendar and task planner for **Fedora Linux / KDE Plasma 6**. English interface, no account required.
 
-**Current beta: 0.1.1-beta.1** · **GPL-3.0-or-later**
+**Current beta: 0.2.0-beta.1** · **GPL-3.0-or-later**
 
-[Download 0.1.1 Beta 1](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.1.1-beta.1) · [Release notes](RELEASE_NOTES.md) · [Known issues](KNOWN_ISSUES.md) · [Roadmap](ROADMAP.md)
+[Download 0.2.0 Beta 1](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.2.0-beta.1) · [Release notes](RELEASE_NOTES.md) · [Known issues](KNOWN_ISSUES.md) · [Roadmap](ROADMAP.md)
 
 ![Today view with synthetic example data](docs/screenshots/today.png)
 
@@ -12,10 +12,15 @@ A local desktop calendar and task planner for **Fedora Linux / KDE Plasma 6**. E
 
 - Today overview, 24-hour weekly timeline, month and 7/14/30-day agenda views.
 - Undated tasks with optional scheduling, categories, filters and sorting. Complete individual occurrences of repeating tasks while keeping future repetitions open.
-- Search across years using titles, locations, notes, dates and partial month/day names.
+- Task priorities, editable checklists and projects, with combined filters and sorting.
+- Search across years using titles, projects, checklist steps, locations, notes, dates and partial month/day names.
 - Repeats, individual occurrences, reminders and available-time suggestions.
 - Conflict-aware local storage, undo, daily backups and optional Plasma widget.
 - JSON backup/import and ICS event export.
+
+![Task organization with synthetic example data](docs/screenshots/tasks.png)
+
+The second beta milestone adds task organization. Released **28 October 2026**. See [release notes](RELEASE_NOTES.md), [audit results](docs/BUG_AUDIT_0.2.0.md) and the [release record](docs/RELEASE_0.2.0.md).
 
 ## Roadmap
 
@@ -25,7 +30,7 @@ See the [roadmap](ROADMAP.md) for the ten beta milestones, planned features and 
 
 Requirements: Fedora/KDE Plasma 6, **Python 3.10–3.14**, venv/pip support, network access to PyPI and the system Qt platform libraries. `notify-send` is needed for notifications. Other systems are not validated.
 
-Download an archive from the [0.1.1 Beta 1 release](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.1.1-beta.1), extract it and open a terminal in its folder:
+Download an archive from the [0.2.0 Beta 1 release](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.2.0-beta.1), extract it and open a terminal in its folder:
 
 ```bash
 python3 installieren.py
@@ -46,6 +51,12 @@ After an update, quit the old app using **Ctrl+Q** and reopen it. Add **Liquid G
 ## Use
 
 Create **+ Event** or **+ Task**. Tasks are undated by default. **Schedule in calendar** or **Find time** assigns a date explicitly; suggestions cover 09:00–18:00. More options reveals categories, repeats, reminders, locations and notes. Dragging a repeating event moves only that occurrence; use **Series** to edit the whole series.
+
+In **+ Task**, choose No priority, Low, Medium or High, enter an optional project and add checklist steps. Tasks remain undated unless explicitly scheduled. The Tasks view combines project, priority, category, status, schedule and text filters; **Reset** clears them. Use **Sort** for priority or project ordering. The checklist counter expands inline steps. Completing all steps does not automatically complete the task.
+
+Projects are created by assigning a name to a task. Project menus show completed/total task records, including detached occurrences. Select a project and use **Edit project** to rename it, merge it with an existing name, or clear its assignments without deleting tasks. App-wide Undo covers these edits. Project names are case-sensitive and limited to 80 characters; `*` is reserved. Each task supports up to 100 checklist steps.
+
+For repeating tasks, inline checklist clicks affect only that occurrence; future repetitions keep their original checklist. **Series** edits the checklist template for the whole series.
 
 Search `today`, `tomorrow`, `day after tomorrow`, `wed`, `nov`, `2027-03-15` or `15.03.2027`. Dates use English names and 24-hour time. German query aliases remain supported, but there is no language selector. Slash-based US dates are not supported.
 
