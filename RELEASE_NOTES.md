@@ -1,6 +1,6 @@
-# Liquid Calendar 0.3.0 Beta 1 — release preparation
+# Liquid Calendar 0.3.0 Beta 1
 
-This milestone is **not published yet**. The current public beta remains 0.2.0-beta.1. English interface, Fedora/KDE Plasma, GPL-3.0-or-later.
+Released **28 October 2026**. [Release and downloads](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.3.0-beta.1). English interface, Fedora/KDE Plasma, GPL-3.0-or-later.
 
 ## Faster creation
 
@@ -20,4 +20,4 @@ Templates retain title, time, duration, category, reminder, location and notes. 
 
 The source installer and optional widget installer retain their existing workflow. Existing events need no migration. An active older widget must be reloaded via **Connect** for sharing protocol 3 before app editing is enabled. Fully quit with Ctrl+Q before reopening after an update.
 
-102 Python tests, eight JavaScript suites, real offscreen QML creation interactions and a temporary-database smoke launch form the preparation checks. [Hosted preparation tests](https://github.com/jonas101201/liquid-calendar/actions/runs/40749293714) passed on Python 3.10, 3.12 and 3.14. Final release CI must pass again before publication. Fresh-account installation testing remains excluded. See [testing details](TESTING.md), [known issues](KNOWN_ISSUES.md) and [the preparation checklist](docs/RELEASE_0.3.0.md).
+102 Python tests, eight JavaScript suites, real offscreen QML creation interactions and a temporary-database smoke launch cover the feature and regression checks. [Hosted preparation tests](https://github.com/jonas101201/liquid-calendar/actions/runs/40753058768) passed on Python 3.10, 3.12 and 3.14. The release tag identifies the final checked source commit; its checks are available on GitHub. Fresh-account installation testing remains excluded. See [testing details](TESTING.md), [known issues](KNOWN_ISSUES.md) and [the release record](docs/RELEASE_0.3.0.md).

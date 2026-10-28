@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.3.0-beta.1 — Unreleased
+## 0.3.0-beta.1 — 2026-10-28
 
 - Weekly repeats can select multiple weekdays in app and widget editors. Calendar, search, reminders, exceptions, per-occurrence changes and JSON/ICS export honor the selected days; legacy weekly records retain their original behavior.
 - Sharing protocol 3 prevents editing against an active widget without weekday support until it is reloaded with Connect.
