@@ -35,3 +35,5 @@ Development checks included storage conflict/undo tests, repeats and exceptions,
 - Release archives were checked for excluded data/binaries, internal manifest hashes and deterministic rebuilds.
 
 The fresh-account installation check remains deliberately unperformed. No hosted CI run or public upload is claimed by these local results.
+
+The hosted Ubuntu CI runner requires Qt system libraries (including libegl1 and libopengl0) even for offscreen tests; these are installed explicitly in the workflow. This is automated test-environment setup, not the excluded fresh-account application-installation test.
