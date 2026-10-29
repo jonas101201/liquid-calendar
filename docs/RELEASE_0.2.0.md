@@ -1,6 +1,6 @@
 # 0.2.0-beta.1 release record
 
-Release date: **28 October 2026**. The maintainer requested immediate publication, bringing forward the original 29 October target.
+Release date: **28 October 2026**.
 
 [Release and downloads](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.2.0-beta.1) · [Release notes](../RELEASE_NOTES.md) · [Known issues](../KNOWN_ISSUES.md)
 
@@ -11,7 +11,7 @@ Release date: **28 October 2026**. The maintainer requested immediate publicatio
 - Projects: assignment, combined filtering, sorting, completed/total counts, rename/merge/clear and Undo.
 - Cross-date project/checklist search, JSON preservation and matching widget validation/editor.
 - 77 Python tests, seven JavaScript suites, actual offscreen QML keyboard/interactions and a temporary-database smoke launch.
-- A separate agent reproduced the follow-up bugs and independently rechecked their corrections.
+- An independent review reproduced the follow-up bugs and independently rechecked their corrections.
 - Corrected app/widget program files installed locally with a backup; installed-app smoke check passed without opening personal calendar data.
 
 ## Audit and CI evidence
@@ -31,4 +31,4 @@ The final release tag identifies the source snapshot used to build the TAR and Z
 
 Existing entries need no migration. New fields are optional. Shared app/widget protocol remains 2. Project counts refer to stored records, not future recurring occurrences. Marking checklist steps does not automatically complete the parent task.
 
-This is a targeted audit, not a guarantee of bug-free software. Long-term everyday usage, live desktop reminder delivery and complete installation behavior are not fully validated. The fresh-account installation test remains excluded. Existing platform, reminder and synchronization limitations in KNOWN_ISSUES.md remain applicable.
+This is a targeted audit, not a guarantee of bug-free software. Long-term everyday usage, live desktop reminder delivery and complete installation behavior are not fully validated. Installation in a fresh user account has not been tested. Existing platform, reminder and synchronization limitations in KNOWN_ISSUES.md remain applicable.

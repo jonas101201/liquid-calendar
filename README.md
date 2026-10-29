@@ -8,7 +8,7 @@ A local desktop calendar and task planner for **Fedora Linux / KDE Plasma 6**. E
 
 ![Today view with synthetic example data](docs/screenshots/today.png)
 
-**0.3.8.1** publishes the targeted maintenance refactor under the version requested by the maintainer. It remains a beta prerelease. See [the refactor record](docs/REFACTOR_0.3.8.md) and [release record](docs/RELEASE_0.3.8.1.md).
+**0.3.8.1** publishes the targeted maintenance refactor. It remains a beta prerelease. See [the refactor record](docs/REFACTOR_0.3.8.md) and [release record](docs/RELEASE_0.3.8.1.md).
 
 ## Features
 

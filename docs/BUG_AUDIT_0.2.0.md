@@ -1,6 +1,6 @@
 # 0.2.0 task organization audit — 2026-10-28
 
-Scope: preparation branch for 0.2.0-beta.1, using isolated synthetic records. The main agent and a separate review agent examined task organization, shared storage and real offscreen QML interactions. This is a targeted audit, not a guarantee of bug-free software.
+Scope: preparation branch for 0.2.0-beta.1, using isolated synthetic records. Implementation review and independent verification covered task organization, shared storage and real offscreen QML interactions. This is a targeted audit, not a guarantee of bug-free software.
 
 ## Confirmed and corrected
 

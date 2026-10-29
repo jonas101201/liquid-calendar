@@ -12,7 +12,7 @@ Scope: targeted review after 0.3.6-beta.1, isolated synthetic records only. No f
 
 ## Review sequence
 
-The primary agent reproduced and corrected findings 1–2. A separate read-only agent verified those changes and reported findings 3–5. After the corrections, that same agent performed a second review. It caught an accidental Drag.keys replacement during the week-cell fix; the primary agent restored the event card's Drag.keys and retained the enabled guard only on DropArea. The reviewer then independently re-ran the checks and found no remaining actionable defect in the reviewed corrections. This is a scoped result, not a guarantee of universal bug freedom.
+Findings 1–2 were reproduced and corrected, then independently verified. The review identified findings 3–5, which were corrected and checked again. A temporary Drag.keys regression was found during the week-cell change and corrected before verification. The final independent check found no remaining actionable defect in the reviewed corrections. This is a scoped result, not a guarantee of universal bug freedom.
 
 ## Verification
 

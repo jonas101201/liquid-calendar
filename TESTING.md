@@ -61,7 +61,7 @@ Screenshots show the VERSION of the checked-out source. They do not use a person
 
 ## Validation limits and audit clarification
 
-Fresh-user-account application-installation validation remains deliberately unperformed at the maintainer's request. Offscreen checks and CI do not replace live desktop testing across supported systems.
+Installation in a fresh user account has not been validated. Offscreen checks and CI do not replace live desktop testing across supported systems.
 
 The initial audit overstated the reachability of the calendar fallback Undo issue. The native app already hid that action when persistence was attached; its visible global Undo already restored full groups. The internal fallback is now corrected and explicitly tested too.
 
@@ -71,7 +71,7 @@ The first public beta had 48 Python tests and five JavaScript suites. Its hosted
 
 ## 0.2.0 follow-up audit
 
-A separate agent reproduced Unicode validation differences, inline checklist collapse and concurrent project membership changes, then reviewed the corrections. Additional reproductions covered project Undo filtering and quadratic project summaries. See [the audit record](docs/BUG_AUDIT_0.2.0.md) for scope and limits.
+An independent review reproduced Unicode validation differences, inline checklist collapse and concurrent project membership changes, then reviewed the corrections. Additional reproductions covered project Undo filtering and quadratic project summaries. See [the audit record](docs/BUG_AUDIT_0.2.0.md) for scope and limits.
 
 Selected-weekday checks also exercise the actual day buttons, the last-day guard and save/reopen behavior. `check_widget_editor.py` loads the real widget editor against a temporary offline database with only the unavailable Kirigami theme lookup stubbed; it verifies weekday editing and preservation of existing priority/project/checklist values. This does not constitute live Plasma testing. Sharing protocol tests reject old version 2 and accept version 3.
 

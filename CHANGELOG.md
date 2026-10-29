@@ -4,7 +4,7 @@
 
 ## 0.3.8.1 — 2026-10-28
 
-Beta prerelease, using the maintainer-requested version. The 0.3.8-beta.1 preparation was not published separately.
+Beta prerelease. The 0.3.8-beta.1 preparation was not published separately.
 
 - Share identical text-field, checkbox and editable-number controls between editors and date/time pickers, preserving their palette bindings and interaction behavior.
 - Treat qml/ as the canonical source for shared controls/calendar JavaScript. Synchronize standalone widget copies with scripts/sync_widget_sources.py and reject drift in CI, source packaging and installation before changing installed files.
@@ -18,7 +18,7 @@ Beta prerelease, using the maintainer-requested version. The 0.3.8-beta.1 prepar
 - Planning suggestions and final validation advance past already-started minutes, including seconds/microseconds.
 - Revalidate task scheduling availability inside the SQLite write transaction, rejecting bookings inserted after the initial check.
 - Bound recurrence scans and week rendering/navigation to the supported date range; disable drop targets for nonexistent days.
-- Regression tests cover injected concurrent bookings, exact-date results, sub-minute timing and actual Qt rendering at date endpoints. An independent agent reviewed the fixes and performed a second verification round; see the [audit record](docs/BUG_AUDIT_0.3.7.md).
+- Regression tests cover injected concurrent bookings, exact-date results, sub-minute timing and actual Qt rendering at date endpoints. The fixes underwent an independent review and a second verification round; see the [audit record](docs/BUG_AUDIT_0.3.7.md).
 
 ## 0.3.6-beta.1 — 2026-10-28
 
@@ -41,7 +41,6 @@ Source: [`f702a8d`](https://github.com/jonas101201/liquid-calendar/commit/f702a8
 
 - Add desktop event merge with preview, combined content, transactional stale-edit rejection and Undo.
 - Fix dense overlap cards exceeding their lanes and short cards obscuring adjacent entries; expand into available lanes, add readable horizontal scrolling and synchronize week headings.
-- Stop release publication and restore preparation metadata at the maintainer's request.
 
 ## 0.3.3-beta.1 — Unreleased
 
@@ -110,4 +109,4 @@ First public beta. Earlier 1.x version numbers were internal development labels.
 - JSON backup/import and event-only ICS export.
 - Optional companion widget for Plasma 6.
 
-Fresh-account installation validation was explicitly omitted for this beta. See KNOWN_ISSUES.md and TESTING.md.
+Installation in a fresh user account has not been validated for this beta. See KNOWN_ISSUES.md and TESTING.md.

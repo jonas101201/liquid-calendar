@@ -1,6 +1,6 @@
 # Targeted maintenance refactor — released as 0.3.8.1
 
-Scope: reduce duplicated implementation while preserving the existing public behavior after 0.3.7. No new feature, visual redesign, database format change or personal-data migration. Published as **0.3.8.1** (beta prerelease) at the maintainer's request. The 0.3.8-beta.1 preparation was not published separately. See [the release record](RELEASE_0.3.8.1.md).
+Scope: reduce duplicated implementation while preserving the existing public behavior after 0.3.7. No new feature, visual redesign, database format change or personal-data migration. Published as **0.3.8.1** (beta prerelease). The 0.3.8-beta.1 preparation was not published separately. See [the release record](RELEASE_0.3.8.1.md).
 
 ## Changes
 
@@ -15,4 +15,4 @@ Scope: reduce duplicated implementation while preserving the existing public beh
 
 Eight of nine controlled synthetic before/after renders were pixel-identical, including the editor, date picker, quick entry, templates, task view and weekly-repeat controls. The week render differed only in the six-pixel horizontal-scrollbar band (animation timing); its content was pixel-identical. Captures used the same hash seed and version so storage iteration order/version labels could not hide a layout change.
 
-Both source archive manifests and all extracted shared-component copies were verified. The extracted TAR's app completed its smoke launch using a temporary database; the source installer help/import check also passed without performing an installation. Fresh-account installation testing remains excluded. Test databases are temporary; updater operations copy backed-up program files only and do not open personal calendar records.
+Both source archive manifests and all extracted shared-component copies were verified. The extracted TAR's app completed its smoke launch using a temporary database; the source installer help/import check also passed without performing an installation. Installation in a fresh user account has not been tested. Test databases are temporary; updater operations copy backed-up program files only and do not open personal calendar records.
