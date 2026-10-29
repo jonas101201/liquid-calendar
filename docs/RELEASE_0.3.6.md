@@ -1,6 +1,6 @@
 # 0.3.6-beta.1 release record
 
-Release date: **28 October 2026**, at the maintainer's request.
+Release date: **28 October 2026**.
 
 [Release and downloads](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.3.6-beta.1) · [Release notes](../RELEASE_NOTES.md) · [Known issues](../KNOWN_ISSUES.md)
 
@@ -17,7 +17,7 @@ This is the first published 0.3.x beta, combining the original 0.3.0 baseline an
 
 ## Verification
 
-Source snapshot [ff0988d](https://github.com/jonas101201/liquid-calendar/commit/ff0988d6478d9f260b5df96a2f1b85065ab7e908) passed [hosted tests](https://github.com/jonas101201/liquid-calendar/actions/runs/40774771194) on Python 3.10/3.12/3.14 and [security analysis](https://github.com/jonas101201/liquid-calendar/actions/runs/40774765474). Coverage includes 122 Python tests, eight JavaScript suites, actual Qt creation/merge/menu interactions, isolated widget editing and smoke launches against temporary synthetic databases. Final release checks are attached to the tagged commit. Fresh-account installation testing remains excluded.
+Source snapshot [ff0988d](https://github.com/jonas101201/liquid-calendar/commit/ff0988d6478d9f260b5df96a2f1b85065ab7e908) passed [hosted tests](https://github.com/jonas101201/liquid-calendar/actions/runs/40774771194) on Python 3.10/3.12/3.14 and [security analysis](https://github.com/jonas101201/liquid-calendar/actions/runs/40774765474). Coverage includes 122 Python tests, eight JavaScript suites, actual Qt creation/merge/menu interactions, isolated widget editing and smoke launches against temporary synthetic databases. Final release checks are attached to the tagged commit. Installation in a fresh user account has not been tested.
 
 The release tag fixes the exact source used to build ZIP/TAR/SHA256SUMS. Each archive includes MANIFEST.sha256. Only source allowlisted by the builder is packaged; personal data, backups and Qt runtimes are excluded. Existing published tags/assets are not replaced.
 

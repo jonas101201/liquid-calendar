@@ -50,4 +50,4 @@ Each functional patch after the initial 0.3.0 development baseline received the 
 
 The **0.3.7-beta.1** bug-fix patch was released on 28 October 2026. It corrects exact-date search, atomic scheduling and supported date endpoints; the next feature milestone remains 0.4.0. See the [audit record](docs/BUG_AUDIT_0.3.7.md).
 
-The maintenance refactor was published on 28 October 2026 under the maintainer-requested version **0.3.8.1**. The 0.3.8-beta.1 development label was not published separately. This is maintenance of the third milestone; the next feature milestone remains 0.4.0. See the [release record](docs/RELEASE_0.3.8.1.md).
+The maintenance refactor was published on 28 October 2026 as **0.3.8.1**. The 0.3.8-beta.1 development label was not published separately. This is maintenance of the third milestone; the next feature milestone remains 0.4.0. See the [release record](docs/RELEASE_0.3.8.1.md).

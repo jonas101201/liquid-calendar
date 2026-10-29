@@ -1,6 +1,6 @@
 # 0.3.7-beta.1 release record
 
-Release date: **28 October 2026**, at the maintainer's request.
+Release date: **28 October 2026**.
 
 [Release and downloads](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.3.7-beta.1) · [Release notes](../RELEASE_NOTES.md) · [Known issues](../KNOWN_ISSUES.md)
 
@@ -13,7 +13,7 @@ Release date: **28 October 2026**, at the maintainer's request.
 
 ## Verification
 
-131 Python tests, eight JavaScript suites, actual Qt interaction/render checks including date endpoints, isolated widget editor and temporary-database smoke launches passed. A separate read-only agent verified initial corrections, reproduced additional bugs, and re-reviewed the final fixes. See [the audit record](BUG_AUDIT_0.3.7.md). Final hosted tests and security analysis are attached to the tagged commit. Tests use synthetic data only; fresh-account installation remains excluded. This is targeted verification, not a guarantee of universal bug freedom.
+131 Python tests, eight JavaScript suites, actual Qt interaction/render checks including date endpoints, isolated widget editor and temporary-database smoke launches passed. Independent review verified the initial corrections, reproduced additional bugs and rechecked the final fixes. See [the audit record](BUG_AUDIT_0.3.7.md). Final hosted tests and security analysis are attached to the tagged commit. Tests use synthetic data only; installation in a fresh user account has not been tested. This is targeted verification, not a guarantee of universal bug freedom.
 
 ZIP and TAR are built from the exact tagged source commit using the source allowlist. SHA256SUMS covers both archives; each archive includes MANIFEST.sha256. Personal databases, backups and runtime dependencies are excluded. Existing published tags/assets are never replaced.
 

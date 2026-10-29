@@ -12,19 +12,19 @@ The release includes source ZIP and TAR archives plus SHA256SUMS. It is marked a
 
 ## 0.2.0 release record
 
-The maintainer brought publication forward from 29 October to **28 October 2026**. See [the release record](docs/RELEASE_0.2.0.md). The former scheduled follow-up is no longer needed.
+Version 0.2.0-beta.1 was released on **28 October 2026**. See [the release record](docs/RELEASE_0.2.0.md).
 
 ## 0.3.6 release record
 
-The maintainer renewed release authorization on 28 October 2026. Version 0.3.6-beta.1 is the first published 0.3.x beta, including all six development patches after the 0.3.0 baseline. See [the release record](docs/RELEASE_0.3.6.md). Earlier published tags/assets remain unchanged; intermediate development versions were not published separately.
+Version 0.3.6-beta.1 is the first published 0.3.x beta, including all six development patches after the 0.3.0 baseline. See [the release record](docs/RELEASE_0.3.6.md). Earlier published tags/assets remain unchanged; intermediate development versions were not published separately.
 
 ## 0.3.7 release record
 
-The maintainer requested publication of the audited bug-fix patch on 28 October 2026. See [the release record](docs/RELEASE_0.3.7.md) and [independent audit](docs/BUG_AUDIT_0.3.7.md). Existing published tags and assets remain unchanged.
+The audited bug-fix patch was released on 28 October 2026. See [the release record](docs/RELEASE_0.3.7.md) and [independent audit](docs/BUG_AUDIT_0.3.7.md). Existing published tags and assets remain unchanged.
 
 ## 0.3.8.1 release record
 
-The maintainer requested publication under the exact version **0.3.8.1** on 28 October 2026. The earlier 0.3.8-beta.1 preparation was not published separately; the release is still marked as a prerelease. Shared sources pass the sync check before packaging and installation. See [the release record](docs/RELEASE_0.3.8.1.md) and [refactor record](docs/REFACTOR_0.3.8.md).
+Version **0.3.8.1** was released on 28 October 2026. The earlier 0.3.8-beta.1 preparation was not published separately; the release is still marked as a prerelease. Shared sources pass the sync check before packaging and installation. See [the release record](docs/RELEASE_0.3.8.1.md) and [refactor record](docs/REFACTOR_0.3.8.md).
 
 ## Preparing a future release
 
