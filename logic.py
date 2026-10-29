@@ -11,7 +11,7 @@ import unicodedata
 import uuid
 
 CATEGORIES = ["Personal", "Work", "Important", "Leisure"]
-COLORS = ['#a498ff', '#6edfc2', '#ffbd83', '#f49ac4']
+COLORS = ['#7ceafa', '#6edfc2', '#ffbd83', '#f49ac4']
 WEEKDAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
 GERMAN_WEEKDAYS = ['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag']
 MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']

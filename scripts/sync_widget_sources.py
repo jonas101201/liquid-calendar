@@ -5,7 +5,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SHARED_FILES = (
-    'Calendar.js',
+    'Calendar.js', 'Theme.js',
     'DatePicker.qml',
     'TimePicker.qml',
     'ActionMenu.qml',

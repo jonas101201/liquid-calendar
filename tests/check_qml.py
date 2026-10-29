@@ -8,6 +8,8 @@ from PySide6.QtWidgets import QApplication
 from PySide6.QtQml import QQmlApplicationEngine,QQmlExpression
 from PySide6.QtCore import QUrl,QTimer,QEventLoop,qInstallMessageHandler,QLocale
 from PySide6.QtQuick import QQuickWindow
+from PySide6.QtGui import QPalette,QColor
+from unittest.mock import patch
 from PySide6.QtTest import QTest
 from PySide6.QtCore import Qt,QPoint
 QLocale.setDefault(QLocale('en_GB'));app=QApplication([]);logs=[];qInstallMessageHandler(lambda typ,ctx,text:logs.append(text))
@@ -33,16 +35,149 @@ assert {v['id'] for v in search(fixtures,'Thursday',today)}=={'tomorrow'}
 assert {v['id'] for v in search(fixtures,'Müller',today)}=={e['id'] for e in fixtures}
 engine=QQmlApplicationEngine();engine.rootContext().setContextProperty('planner',b);engine.load(QUrl.fromLocalFile(str(p/'qml/App.qml')));assert engine.rootObjects(),logs
 win=engine.rootObjects()[0]
-def settle():
- loop=QEventLoop();QTimer.singleShot(180,loop.quit);loop.exec()
+def settle(ms=180):
+ loop=QEventLoop();QTimer.singleShot(ms,loop.quit);loop.exec()
 def expr(code):
  x=QQmlExpression(engine.rootContext(),win,'review('+json.dumps(code)+')');v=x.evaluate();assert not x.hasError(),x.error().toString();return v[0]
 win.setWidth(980);win.setHeight(680)
 out=p/'screenshots';out.mkdir(exist_ok=True)
+settle(80)
+assert expr('navigationRail.selectedItem===navigationItems.itemAt(0) && navigationHighlight.visible')
+assert expr('!dayList.ScrollBar.vertical.visible')
+# Desktop shortcuts have one owner, including while Calendar's month is visible.
+b.setView('month');win.requestActivate();settle(300)
+QTest.keyClick(win,Qt.Key_N,Qt.ControlModifier);settle(260)
+assert expr('editorSurface.review("editor.visible")')
+expr('editorSurface.review("editor.close()")');settle(160)
+QTest.keyClick(win,Qt.Key_F,Qt.ControlModifier);settle(300);assert b.view=='search'
+QTest.keyClick(win,Qt.Key_L,Qt.ControlModifier);settle(260);assert expr('datePopup.visible')
+QTest.keyClick(win,Qt.Key_N,Qt.ControlModifier);settle(40)
+assert expr('!editorSurface.review("editor.visible")')
+expr('datePopup.close()');settle(160)
+# Appearance controls are reachable and update both shell and calendar.
+b.setView('settings');settle(300)
+assert expr('Math.abs(settingsVerticalScroll.x+settingsVerticalScroll.width-settingsScroll.width)<1')
+# Opacity is a lightweight preview while held; persist once on release, without rebuilding calendar models.
+expr('settingsScroll.contentItem.contentY=Math.max(0,Math.min(settingsScroll.contentItem.contentHeight-settingsScroll.height,settingsScroll.contentItem.contentY+appearanceOpacity.mapToItem(settingsScroll,0,0).y-settingsScroll.height/2))');settle(80)
+def opacity_point(x):
+ return QPoint(round(expr(f'appearanceOpacity.mapToItem(win.contentItem,appearanceOpacity.width*{x},appearanceOpacity.height/2).x')),round(expr('appearanceOpacity.mapToItem(win.contentItem,0,appearanceOpacity.height/2).y')))
+calendar_refreshes=[]
+def count_refresh():calendar_refreshes.append(True)
+b.changed.connect(count_refresh)
+with patch.object(st,'set_settings',wraps=st.set_settings) as writes:
+ QTest.mousePress(win,Qt.LeftButton,Qt.NoModifier,opacity_point(.1))
+ for step in range(1,61):
+  QTest.mouseMove(win,opacity_point(.1+.8*step/60));settle(2)
+ assert expr('appearanceOpacity.pressed && win.surfaceOpacity>.85')
+ assert writes.call_count==0 and calendar_refreshes==[]
+ QTest.mouseRelease(win,Qt.LeftButton,Qt.NoModifier,opacity_point(.9));settle(250)
+ assert writes.call_count==1 and calendar_refreshes==[]
+ assert abs(b.glassOpacity-expr('win.surfaceOpacity'))<.001
+ writes.reset_mock()
+ for _ in range(4):QTest.keyClick(win,Qt.Key_Left);settle(15)
+ assert writes.call_count==0
+ settle(250);assert writes.call_count==1 and calendar_refreshes==[]
+b.changed.disconnect(count_refresh)
+expr('settingsScroll.contentItem.contentY=0');settle(30)
+print('Opacity drag has zero writes/model refreshes while held, one release write and debounced keyboard persistence.')
+expr('appearanceChoices.itemAt(2).clicked()');settle(200)
+assert st.settings()['accent']=='#72ebce'
+assert expr('String(editorSurface.accent)')=='#72ebce'
+expr('appearanceOpacity.value=.84;appearanceOpacity.moved()');settle(250)
+assert abs(st.settings()['glassOpacity']-.84)<.001
+assert expr('win.surfaceOpacity')==.84
+# Each design is selectable, persistent, and represented by the matching preview.
+expr('darkThemeChoice.clicked()');settle(200)
+assert b.theme=='dark' and expr('darkThemeChoice.checked && !lightThemeChoice.checked && !win.light')
+expr('lightThemeChoice.clicked()');settle(200)
+assert st.settings()['theme']=='light' and expr('win.light && lightThemeChoice.previewLight')
+assert expr('appearanceOpacity.from===.72')
+expr('systemThemeChoice.clicked()');settle(200)
+assert b.theme=='auto' and expr('systemThemeChoice.checked && win.light===win.systemLight')
+original_palette=app.palette();test_palette=QPalette(original_palette)
+test_palette.setColor(QPalette.Window,QColor('#081d31'));app.setPalette(test_palette);settle(200)
+assert expr('!win.light && !systemThemeChoice.previewLight')
+test_palette.setColor(QPalette.Window,QColor('#70e0ee'));app.setPalette(test_palette);settle(200)
+assert expr('win.light && systemThemeChoice.previewLight')
+b.setTheme('dark');settle(200);assert expr('!win.light')
+app.setPalette(original_palette);b.setTheme('dark')
+# Filter menus and their checked states follow the active theme and accent.
+b.setView('tasks');settle(300);expr('sortMenu.open()');settle(180)
+assert expr('sortMenu.light===win.light && String(sortMenu.accent)===String(win.accent)')
+expr('sortMenu.itemAt(2).triggered();sortMenu.close()');settle(160)
+assert b.taskOrder=='project' and expr('sortMenu.itemAt(2).checked')
+b.setTaskOrder('default')
+b.setAppearance('#7ceafa',.60);b.setView('today');settle(300)
+print('Dark/light/system choices, live desktop palette changes and themed sort menus passed.')
+# Each accent recolors the entire palette and calendar glass in both themes.
+def luminance(color):
+ values=[color.redF(),color.greenF(),color.blueF()]
+ return sum(weight*(value/12.92 if value<=.04045 else ((value+.055)/1.055)**2.4) for weight,value in zip([.2126,.7152,.0722],values))
+for theme in ['dark','light']:
+ b.setTheme(theme);settle(100)
+ previous=None
+ for accent in ['#7ceafa','#8cbcff','#72ebce','#c2adff','#ffa8cf']:
+  b.setAppearance(accent,.60);settle(170)
+  panel=expr('win.panel');ink=expr('win.ink');muted=expr('win.muted')
+  assert panel!=previous;previous=panel
+  assert expr('Math.abs(win.panel.hslHue-win.tint.hslHue)<.01')
+  assert expr('editorSurface.review("String(calendarGlass.tint)")')==accent
+  assert expr('String(quickPopup.background.tint)')==accent
+  for text in [ink,muted]:
+   values=sorted([luminance(text),luminance(panel)])
+   assert (values[1]+.05)/(values[0]+.05)>=4.5
+b.setAppearance('#7ceafa',.60);b.setTheme('dark');settle(180)
+print('All five accents recolor surfaces and popup glass in both themes with readable text contrast.')
+# Closing during the enter transition must continue from the visible frame.
+expr('win.openQuick()');settle(25)
+before_opacity=expr('quickPopup.opacity');before_scale=expr('quickPopup.scale')
+expr('quickPopup.close()');settle(1)
+assert expr('quickPopup.opacity')<=before_opacity+.03
+assert expr('quickPopup.scale')<=before_scale+.003
+settle(160)
+print('Native shortcut ownership, appearance controls and interrupted popup close passed.')
 for theme in ['dark','light']:
  b.setTheme(theme)
  for view in ['today','week','agenda','month','tasks','search','settings']:
   b.setView(view);settle();QQuickWindow.grabWindow(win).save(str(out/f'{theme}-{view}.png'))
+# Calendar owns both presentations and remembers the last one across navigation.
+assert expr('navigationItems.count')==5
+assert expr('navigationItems.model.some(function(item){return item.id==="week";})') is False
+b.selectDate('2026-10-28');b.setView('month');settle()
+expr('calendarWeekButton.clicked()');settle();assert b.view=='week'
+assert expr('navigationItems.itemAt(1).primary') is True
+b.setView('tasks');expr('navigationItems.itemAt(1).clicked()');settle();assert b.view=='week'
+expr('calendarMonthButton.clicked()');settle();assert b.view=='month'
+assert expr('editorSurface.mode')==0
+expr('editorSurface.navigate(1)');settle();assert b.selected=='2026-11-01'
+expr('editorSurface.navigate(-1)');settle();assert b.selected=='2026-10-01'
+expr('calendarWeekButton.clicked()');b.navigate(1);settle();assert b.selected=='2026-10-08'
+b.selectDate(today.isoformat());b.setView('month');settle()
+print('Consolidated Calendar navigation and month/week switching passed.')
+# Sample real animation frames, then interrupt them with reduced motion.
+b.setAnimations(True);b.setView('today');settle(320)
+b.setView('tasks');settle(60)
+assert expr('viewArrival.running && workspace.opacity>.35 && workspace.opacity<1')
+assert expr('navigationHighlight.y>0 && navigationHighlight.y<navigationRail.selectedItem.y')
+settle(320)
+assert expr('workspace.opacity===1 && workspaceShift.y===0 && navigationHighlight.y===navigationRail.selectedItem.y')
+for view in ['month','week','tasks','today']:
+ b.setView(view);settle(35)
+b.setAnimations(False);settle(10)
+assert expr('!viewArrival.running && workspace.opacity===1 && workspaceShift.y===0')
+b.setView('search');settle(10)
+assert expr('navigationHighlight.y===navigationRail.selectedItem.y')
+expr('win.openQuick()');settle(10)
+assert expr('quickPopup.opacity===1 && quickPopup.scale===1')
+expr('quickPopup.close()');settle(10);assert expr('!quickPopup.visible')
+b.setAnimations(True);expr('win.openQuick()');settle(55)
+assert expr('quickPopup.opacity>0 && quickPopup.opacity<1 && quickPopup.scale<1')
+expr('quickPopup.close()');settle(160)
+expr('win.openQuick()');settle(260)
+assert expr('quickPopup.opacity===1 && quickPopup.scale===1')
+expr('quickPopup.close()');settle(160)
+b.selectDate(today.isoformat());b.setView('month');settle(300)
+print('Sliding selections, interrupted view transitions and popup/reduced-motion frames passed.')
 assert expr('editorSurface.review('+json.dumps('root.dateText(Cal.parse("2026-10-28"),"dddd, dd. MMMM")')+')')=='Wednesday, 28. October'
 b.edit('today',today.isoformat(),False);settle()
 assert expr('editorSurface.review("titleField.text")')=='Besprechung mit Müller'
@@ -189,6 +324,34 @@ QQuickWindow.grabWindow(win).save('/tmp/liquid-calendar-merge-preview.png')
 expr('editorSurface.review("confirmMerge.clicked()")');settle()
 assert len(st.read())==1 and st.read()[0]['notes']=='First note\n\nSecond note'
 b.undo();assert sorted(st.read(),key=lambda e:e['id'])==[a,c]
+# Unsaved form changes enter the preview and commit together; Cancel writes nothing.
+b.edit(a['id'],a['date'],False);settle(220)
+expr('editorSurface.review('+json.dumps('titleField.text="Unsaved design";timeField.text="08:30";durationField.value=120;categoryBox.currentIndex=3;locationField.text="New studio";notesField.text="Unsaved note";root.openMerge()')+')');settle(220)
+assert expr('editorSurface.review("mergeDialog.preview.event.title")')=='Unsaved design / Planning'
+assert expr('editorSurface.review("mergeDialog.preview.event.minutes")')==120
+assert expr('editorSurface.review("mergeDialog.preview.event.notes")')=='Unsaved note\n\nSecond note'
+assert sorted(st.read(),key=lambda e:e['id'])==[a,c]
+expr('editorSurface.review("mergeDialog.close()")');settle(160)
+assert expr('editorSurface.review("titleField.text")')=='Unsaved design'
+expr('editorSurface.review("root.openMerge()")');settle(220)
+expr('editorSurface.review("confirmMerge.clicked()")');settle(220)
+assert st.read()[0]['title']=='Unsaved design / Planning' and st.read()[0]['category']==3
+assert st.read()[0]['location']=='New studio · '+c['location']
+b.undo();assert sorted(st.read(),key=lambda e:e['id'])==[a,c]
+# The edited date controls candidate selection and the destination after saving.
+next_day=e('next-day',date='2026-10-29',title='Next day event')
+b.commit([a,c,next_day]);b.edit(a['id'],a['date'],False);settle(220)
+expr('editorSurface.review('+json.dumps('dateField.text="2026-10-29";root.openMerge()')+')');settle(220)
+assert expr('editorSurface.review("mergeDialog.choices.length")')==1
+expr('editorSurface.review("confirmMerge.clicked()")');settle(220)
+assert b.selected=='2026-10-29'
+b.undo();assert sorted(st.read(),key=lambda e:e['id'])==[a,c,next_day]
+b.edit(a['id'],a['date'],False);settle(220)
+expr('editorSurface.review('+json.dumps('titleField.text="";root.openMerge()')+')');settle(160)
+assert expr('editorSurface.review("!mergeDialog.visible && editor.visible && editor.validation.length>0")')
+assert sorted(st.read(),key=lambda e:e['id'])==[a,c,next_day]
+expr('editorSurface.review("editor.close()")');settle(160)
+print('Unsaved merge preview/commit/Cancel, edited-date candidates and invalid draft protection passed.')
 # Dense lanes, short neighboring entries and horizontally aligned week headings.
 dense=[e('parallel-'+str(n),title='Parallel event '+str(n)) for n in range(5)]
 dense.extend([e('short-a',time='11:00',minutes=5),e('short-b',time='11:05',minutes=5)])
@@ -197,8 +360,42 @@ assert expr('timeline.contentWidth>timeline.width')
 assert expr('timeline.contentX>0 && timeline.contentX<=timeline.gutter+2.5*timeline.columnWidth && timeline.contentX+timeline.width>=timeline.gutter+2.5*timeline.columnWidth')
 expr('timeline.contentX=300');settle()
 assert expr('weekHeader.x===timeline.gutter-timeline.contentX')
+assert expr('timeAxis.parent===timeline && timeAxis.x===0 && timeAxis.width===timeline.gutter')
+assert expr('timeAxis.mapToItem(win.contentItem,0,0).x===timeline.mapToItem(win.contentItem,0,0).x')
 expr('timeline.contentX=timeline.gutter+2*timeline.columnWidth;timeline.contentY=8*timeline.hourHeight');settle()
 QQuickWindow.grabWindow(win).save('/tmp/liquid-calendar-overlap-preview.png')
+# Pressing the track and dragging must update the view before mouse release.
+def scrollbar_point(name,x,y):
+ return QPoint(round(expr(f'{name}.mapToItem(win.contentItem,{name}.width*{x},{name}.height*{y}).x')),round(expr(f'{name}.mapToItem(win.contentItem,{name}.width*{x},{name}.height*{y}).y')))
+expr('timeline.contentX=0;timeline.contentY=0');settle()
+point=scrollbar_point('weekHorizontalScroll',.8,.5)
+QTest.mousePress(win,Qt.LeftButton,Qt.NoModifier,point);settle(30)
+assert expr('weekHorizontalScroll.dragging && timeline.contentX>0')
+pressed_x=expr('timeline.contentX')
+QTest.mouseMove(win,scrollbar_point('weekHorizontalScroll',.25,.5));settle(30)
+assert expr('weekHorizontalScroll.dragging') and expr('timeline.contentX')<pressed_x
+QTest.mouseRelease(win,Qt.LeftButton,Qt.NoModifier,scrollbar_point('weekHorizontalScroll',.25,.5));settle(20)
+assert expr('!weekHorizontalScroll.dragging')
+point=scrollbar_point('weekVerticalScroll',.5,.8)
+QTest.mousePress(win,Qt.LeftButton,Qt.NoModifier,point);settle(30)
+assert expr('weekVerticalScroll.dragging && timeline.contentY>0')
+pressed_y=expr('timeline.contentY')
+QTest.mouseMove(win,scrollbar_point('weekVerticalScroll',.5,.25));settle(30)
+assert expr('weekVerticalScroll.dragging') and expr('timeline.contentY')<pressed_y
+QTest.mouseRelease(win,Qt.LeftButton,Qt.NoModifier,scrollbar_point('weekVerticalScroll',.5,.25));settle(20)
+assert expr('!weekVerticalScroll.dragging')
+# Keep thumb offset when it is grabbed, rather than jumping its centre to the pointer.
+expr('timeline.contentX=0');settle(20)
+point=QPoint(round(expr('weekHorizontalScroll.mapToItem(win.contentItem,weekHorizontalScroll.leftPadding+8,weekHorizontalScroll.height/2).x')),round(expr('weekHorizontalScroll.mapToItem(win.contentItem,0,weekHorizontalScroll.height/2).y')))
+QTest.mousePress(win,Qt.LeftButton,Qt.NoModifier,point);settle(20)
+assert expr('weekHorizontalScroll.dragging && timeline.contentX===0')
+QTest.mouseMove(win,QPoint(point.x()+45,point.y()));settle(20)
+assert expr('timeline.contentX>0')
+QTest.mouseRelease(win,Qt.LeftButton,Qt.NoModifier,QPoint(point.x()+45,point.y()));settle(20)
+QTest.keyClick(win,Qt.Key_End);settle(20)
+assert expr('Math.abs(timeline.contentX-(timeline.contentWidth-timeline.width))<2')
+QTest.keyClick(win,Qt.Key_Home);settle(20);assert expr('timeline.contentX===0')
+print('Calendar scrollbars move on track press and held drag; thumb offset and keyboard endpoints passed.')
 print('Merge dialog preview/save/Undo and dense week layout with aligned scrolling passed.')
 # Reproduce screenshot: a selected recurring occurrence must expose Merge.
 series_a=e('weekly-merge',repeat='weekly',weekdays=[2,4]);series_b=e('daily-merge',repeat='daily',title='Daily planning',time='09:30')

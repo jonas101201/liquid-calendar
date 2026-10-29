@@ -1,6 +1,18 @@
 # Testing
 
-## Current release: 0.3.8.1 maintenance refactor
+## Current release: 0.3.9 interface and editing checks
+
+Adaptive palette checks cover all five accents in light and dark themes, verify hue propagation to calendar/popup glass and check text contrast against panel colors. Opacity-drag regression checks remain enabled.
+
+Opacity regression checks sample 60 real pointer moves: no settings writes or calendar refresh notifications while held, one write on release and one debounced write for a keyboard burst. Appearance notification and duplicate-write suppression have separate unit coverage.
+
+Theme checks exercise all three design choices, persisted selection, live desktop-palette changes in System mode and themed filter/sort menus. Light/dark previews are visually checked at both supported screenshot sizes.
+
+The UI audit adds native keyboard shortcut dispatch, modal guards, appearance controls and persistence/failure handling, frozen week time labels and interrupted popup closure. There are 144 Python tests. Merge regressions cover unsaved form values, edited-date candidate selection, Cancel without writes, invalid drafts, immutable identity, concurrent changes and moved series occurrences (including another date of the same series). The independent Qt review additionally covers opacity limits and keyboard control in both themes, palette propagation and persistence through a fresh Bridge. See [the UI audit](docs/UI_AUDIT_2026-10-29.md).
+
+The actual QML check covers consolidated Calendar navigation, intermediate animation frames, rapid section changes, popup close/reopen, and reduced motion interrupting a running section transition. It also presses and drags both calendar scrollbars before releasing the mouse, checks thumb grab offsets and keyboard endpoints, and verifies initial selection and overflow visibility. It uses an isolated database and synthetic events.
+
+## Historical baseline: 0.3.8.1 maintenance refactor
 
 133 Python tests, all eight JavaScript suites, actual app/widget QML checks and synthetic before/after screenshots cover the extracted controls and occurrence-helper reuse. Two distribution checks verify that stale widget copies are rejected and synchronization preserves widget-specific files. See [the refactor record](docs/REFACTOR_0.3.8.md). The release version is 0.3.8.1, marked as a beta prerelease.
 

@@ -2,6 +2,31 @@
 
 **0.3.6-beta.1** is the cumulative public release of the 0.3.x development work. Versions 0.3.0–0.3.5 below are unpublished historical snapshots. Patch numbers were assigned retrospectively on 28 October 2026, one per functional code patch after the initial 0.3.0 baseline. Source links identify the original implementation commits, which retain their original version strings. No commits or published tags were rewritten. Documentation-only commits are not numbered separately.
 
+## 0.3.9 — 2026-10-29
+
+Beta prerelease.
+
+- Derive the complete light/dark interface palette from the selected accent: backdrop, glass panels, input fields, menus, timeline axis, hover states and theme previews. Category and conflict colors keep their semantic roles.
+
+- Keep opacity dragging local to the glass preview, persist once on release and debounce keyboard adjustments. Appearance changes emit a dedicated visual signal instead of rebuilding calendar data, and repeated identical settings are not rewritten.
+
+- Add distinct live previews for Dark glass, Light glass and System appearance. System mode follows the desktop palette brightness. Apply the selected theme/accent to all filter and project menus, including checked sort options.
+
+- Include unsaved editor changes in merge previews and the atomic final merge. Use the edited date/all-day mode for candidates, preserve series identity and conflict checks, and restore both original saved events with one Undo.
+
+- Give native calendar shortcuts a single owner and block background actions while dialogs are open.
+- Restore app-wide accent and glass-opacity controls in Settings, persist their values, and align picker/menu colors with the chosen accent.
+- Keep the week time axis visible while scrolling; anchor the Settings scrollbar at the right edge.
+- Close interrupted popup entrances from their current frame to prevent a flash.
+
+- Replace neutral gray desktop surfaces with clearer ocean-blue glass and ice/cyan accents. Calendar scrollbars respond immediately to track presses and thumb dragging, with larger hit areas and keyboard navigation.
+
+- Add sliding navigation and calendar selection, gentle section entrances, glass hover reflections and softly expanding desktop dialogs. Reduced motion disables these transitions.
+
+- Consolidate month and week under Calendar, remembering the selected presentation when returning from another section.
+- Remove the duplicate desktop calendar header and provide one shared period toolbar.
+- Add translucent surfaces, softly lit glass edges and a flowing backdrop in both light and dark themes, respecting reduced-motion preferences.
+
 ## 0.3.8.1 — 2026-10-28
 
 Beta prerelease. The 0.3.8-beta.1 preparation was not published separately.

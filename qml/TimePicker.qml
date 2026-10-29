@@ -8,6 +8,7 @@ Popup {
     property bool light:false
     property color ink:light?"#202631":"#f0f2f6"
     property color accent:light?"#6652ce":"#b2a5f4"
+    property color panel:light?"#fafbfe":"#242833"
     property color field:light?"#edf0f5":"#303541"
     property color line:light?"#191c2b42":"#24ffffff"
     component PickerButton: Button {
@@ -22,15 +23,15 @@ Popup {
     signal picked(string value)
     width:Math.min(parent?parent.width-12:320,320)
     modal:true;focus:true;padding:16
-    background:Rectangle {radius:16;color:picker.light?"#fafbfe":"#242833";border.color:picker.light?"#6652ce":"#b2a5f4"}
+    background:Rectangle {radius:16;color:picker.panel;border.color:picker.accent}
     function openFor(value){var parts=/^([01]\d|2[0-3]):([0-5]\d)$/.exec(value);hours.value=parts?Number(parts[1]):9;minutes.value=parts?Number(parts[2]):0;open();}
     function choose(){picked(Cal.pad(hours.value)+":"+Cal.pad(minutes.value));close();}
     contentItem:ColumnLayout {
         spacing:12
-        Label {text:"Start time · 24-hour";color:picker.light?"#202631":"#f0f2f6";font.bold:true}
+        Label {text:"Start time · 24-hour";color:picker.ink;font.bold:true}
         RowLayout {
             PickerSpin {id:hours;from:0;to:23;editable:true;wrap:true;Accessible.name:"Start hour";Layout.fillWidth:true}
-            Label {text:":";color:picker.light?"#202631":"#f0f2f6"}
+            Label {text:":";color:picker.ink}
             PickerSpin {id:minutes;from:0;to:59;stepSize:5;editable:true;wrap:true;Accessible.name:"Start minute";Layout.fillWidth:true}
         }
         RowLayout {

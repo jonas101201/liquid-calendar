@@ -16,6 +16,28 @@ class TestBridge(unittest.TestCase):
  def setUp(self):
   self.temp=tempfile.TemporaryDirectory();self.store=Store(pathlib.Path(self.temp.name)/'db.sqlite');self.bridge=Bridge(self.store,True)
  def tearDown(self):self.bridge.reload_timer.stop();self.bridge.reminder_timer.stop();self.temp.cleanup()
+ def test_appearance_round_trip_and_invalid_values(self):
+  self.bridge.setAppearance('#72ebce',.84)
+  restored=Bridge(self.store,True)
+  try:
+   self.assertEqual(restored.accentColor,'#72ebce');self.assertEqual(restored.glassOpacity,.84)
+  finally:restored.reload_timer.stop();restored.reminder_timer.stop()
+  before=self.store.settings()
+  for accent,opacity in [('invalid',.8),('#7ceafa',.1),('#7ceafa',float('nan'))]:
+   self.bridge.setAppearance(accent,opacity);self.assertEqual(self.store.settings(),before)
+ def test_appearance_notifies_visuals_without_calendar_reload_or_duplicate_writes(self):
+  calendar=[];visual=[]
+  self.bridge.changed.connect(lambda:calendar.append(True))
+  self.bridge.appearanceChanged.connect(lambda:visual.append(True))
+  with patch.object(self.store,'set_settings',wraps=self.store.set_settings) as writes:
+   self.bridge.setAppearance('#72ebce',.84);self.bridge.setAppearance('#72ebce',.84)
+   self.assertEqual(writes.call_count,1)
+  self.assertEqual(calendar,[]);self.assertEqual(visual,[True])
+ def test_appearance_write_failure_preserves_active_settings(self):
+  before=self.store.settings()
+  with patch.object(self.store,'set_settings',side_effect=OSError('synthetic write failure')):
+   self.bridge.setAppearance('#72ebce',.84)
+  self.assertEqual(self.store.settings(),before);self.assertEqual(self.bridge.accentColor,'#7ceafa')
  def test_widget_gate_on_dbus_failure(self):
   home=pathlib.Path(self.temp.name);(home/'.local/share/plasma/plasmoids/org.jonas.liquidglass.calendar').mkdir(parents=True)
   with patch('app.Path.home',return_value=home),patch('app.subprocess.run',return_value=Mock(returncode=1,stdout='')):
@@ -164,3 +186,71 @@ class DateBoundaryTests(unittest.TestCase):
   self.assertTrue(all(not r['date'] or r['date']>='1000-01-01' for r in self.bridge.weekDays))
 
 if __name__=='__main__':unittest.main(verbosity=2)
+
+class TestMergeEditorDraft(unittest.TestCase):
+ setUp=TestBridge.setUp
+ tearDown=TestBridge.tearDown
+ def seed(self):
+  a=event(title='Saved title',location='Office');b=event(id='b',title='Second',time='10:00',notes='Other notes')
+  self.store.merge([a,b],[]);self.bridge.reload();return a,b
+ def test_preview_commit_and_single_undo_use_draft(self):
+  a,b=self.seed();draft=dict(a,title='Edited title',notes='Draft notes',location='Studio',time='08:30',minutes=120,category=3,reminder=60)
+  args=[json.dumps(e) for e in (a,b,draft)]
+  preview=self.bridge.mergePreview(*args)['event']
+  self.assertEqual(sorted(self.store.read(),key=lambda e:e['id']),[a,b])
+  self.assertEqual(preview['title'],'Edited title / Second');self.assertEqual(preview['time'],'08:30');self.assertEqual(preview['minutes'],150)
+  self.assertEqual(preview['notes'],'Draft notes\n\nOther notes');self.assertEqual(preview['location'],'Studio');self.assertEqual(preview['category'],3)
+  self.assertTrue(self.bridge.mergeEvents(*args));self.assertEqual(sorted(self.store.read(),key=lambda e:e['id']),[preview])
+  self.bridge.undo();self.assertEqual(sorted(self.store.read(),key=lambda e:e['id']),[a,b])
+ def test_choices_follow_edited_date_and_all_day(self):
+  a,b=self.seed();other=event(id='next-day',date='2026-10-29',allDay=True)
+  self.store.merge([a,b,other],[a,b]);self.bridge.reload();draft=dict(a,date='2026-10-29',allDay=True)
+  choices=self.bridge.mergeChoices(json.dumps(a),json.dumps(draft));self.assertEqual([e['id'] for e in choices],['next-day'])
+  self.assertTrue(self.bridge.mergeEvents(json.dumps(a),json.dumps(other),json.dumps(draft)))
+  merged=next(e for e in self.store.read() if e['id']=='a');self.assertEqual(merged['date'],'2026-10-29');self.assertTrue(merged['allDay'])
+ def test_invalid_draft_or_identity_never_writes(self):
+  a,b=self.seed()
+  for changes in [dict(title=''),dict(id='forged'),dict(occurrenceOf='forged'),dict(repeat='daily'),dict(exceptions={'2026-10-29':{'cancelled':True}})]:
+   draft=dict(a,**changes)
+   self.assertIn('error',self.bridge.mergePreview(json.dumps(a),json.dumps(b),json.dumps(draft)))
+   self.assertFalse(self.bridge.mergeEvents(json.dumps(a),json.dumps(b),json.dumps(draft)))
+   self.assertEqual(sorted(self.store.read(),key=lambda e:e['id']),[a,b])
+ def test_whole_series_cannot_be_merged_as_an_edited_once_event(self):
+  a,b=self.seed();series=dict(a,repeat='daily');self.store.merge([series,b],[a,b]);self.bridge.reload()
+  self.assertFalse(self.bridge.mergeEvents(json.dumps(series),json.dumps(b),json.dumps(a)))
+  self.assertEqual(sorted(self.store.read(),key=lambda e:e['id']),[series,b])
+ def test_concurrent_source_changes_preserved_with_editor_draft(self):
+  a,b=self.seed();remote=dict(a,notes='Remote edit');self.store.merge([remote,b],[a,b])
+  self.assertFalse(self.bridge.mergeEvents(json.dumps(a),json.dumps(b),json.dumps(dict(a,title='Local edit'))))
+  self.assertEqual(sorted(self.store.read(),key=lambda e:e['id']),[remote,b])
+ def test_rescheduled_occurrence_cancels_original_day_only(self):
+  series=event(repeat='weekly');b=event(id='b',date='2026-10-29')
+  self.store.merge([series,b],[]);self.bridge.reload();source=occurrence_draft(series,'2026-10-28');draft=dict(source,date='2026-10-29',notes='Unsaved occurrence note')
+  self.assertTrue(self.bridge.mergeEvents(json.dumps(source),json.dumps(b),json.dumps(draft)))
+  saved=self.store.read();parent=next(e for e in saved if e['id']=='a');merged=next(e for e in saved if e['id']==source['id'])
+  self.assertFalse(occurs(parent,parse('2026-10-28')));self.assertTrue(occurs(parent,parse('2026-11-04')))
+  self.assertEqual(merged['date'],'2026-10-29');self.assertEqual(merged['notes'],'Unsaved occurrence note')
+  self.bridge.undo();self.assertEqual(sorted(self.store.read(),key=lambda e:e['id']),[series,b])
+
+ def test_moved_occurrence_can_merge_with_same_series_on_target_day(self):
+  series=event(repeat='daily');self.store.merge([series],[]);self.bridge.reload()
+  source=occurrence_draft(series,'2026-10-28');draft=dict(source,date='2026-10-29',title='Moved occurrence')
+  choices=self.bridge.mergeChoices(json.dumps(source),json.dumps(draft));self.assertEqual(len(choices),1)
+  self.assertEqual(choices[0]['occurrenceOf'],'a');self.assertEqual(choices[0]['occurrenceDate'],'2026-10-29')
+  self.assertTrue(self.bridge.mergeEvents(json.dumps(source),json.dumps(choices[0]),json.dumps(draft)))
+  parent=next(e for e in self.store.read() if e['id']=='a')
+  self.assertFalse(occurs(parent,parse('2026-10-28')));self.assertFalse(occurs(parent,parse('2026-10-29')))
+  self.assertTrue(occurs(parent,parse('2026-10-30')))
+  self.bridge.undo();self.assertEqual(self.store.read(),[series])
+
+ def test_parallel_identical_merge_with_distinct_occurrence_ids_rejected(self):
+  series=event(repeat='daily');other=event(id='b');self.store.merge([series,other],[]);self.bridge.reload()
+  remote=Bridge(self.store,True)
+  try:
+   first=occurrence_draft(series,'2026-10-28');second=occurrence_draft(series,'2026-10-28')
+   self.assertNotEqual(first['id'],second['id'])
+   self.assertTrue(remote.mergeEvents(json.dumps(first),json.dumps(other),json.dumps(dict(first,title='Remote edit'))))
+   after=self.store.read()
+   self.assertFalse(self.bridge.mergeEvents(json.dumps(second),json.dumps(other),json.dumps(dict(second,title='Local edit'))))
+   self.assertEqual(self.store.read(),after)
+  finally:remote.reload_timer.stop();remote.reminder_timer.stop()
