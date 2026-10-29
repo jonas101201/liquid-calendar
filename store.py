@@ -40,12 +40,14 @@ class Store:
             with self.connect() as source,closing(sqlite3.connect(target)) as dest:source.backup(dest)
         self._backup_date=dt.date.today()
         for old in sorted(self.backup_dir.glob('calendar-*.sqlite'))[:-14]:old.unlink()
-    def merge(self,desired,base,allow_occurrences=False,project_name=None,planning_slot=None):
+    def merge(self,desired,base,allow_occurrences=False,project_name=None,planning_slot=None,unchanged_sources=None):
         validate(desired);validate(base);self.backup()
         desired_map={e['id']:copy.deepcopy(e) for e in desired};base_map={e['id']:e for e in base}
         with self.connect() as c:
             c.execute('BEGIN IMMEDIATE')
             before=self.read_conn(c);remote={e['id']:e for e in before}
+            if unchanged_sources and any(remote.get(ident)!=source for ident,source in unchanged_sources.items()):
+                raise ConflictError("A merge source has changed. Reopen the events before merging.")
             if planning_slot is not None and not slot_available(before,*planning_slot):
                 raise ConflictError("This time slot is no longer available. Search again.")
             if project_name is not None:

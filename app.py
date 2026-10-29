@@ -46,6 +46,7 @@ DEFAULT_DB=Path.home()/'.local/share/plasmashell/QML/OfflineStorage/Databases/dd
 class Bridge(QObject):
     changed=Signal(); errorChanged=Signal(); editRequested=Signal('QVariantMap'); noticeChanged=Signal()
     createRequested=Signal('QVariantMap')
+    appearanceChanged=Signal()
     def __init__(self,store,smoke=False):
         super().__init__()
         self.store=store
@@ -221,6 +222,21 @@ class Bridge(QObject):
     def setAnimations(self,enabled):
         try:self._settings['animations']=enabled;self.store.set_settings(self._settings);self.changed.emit()
         except Exception as e:self.fail(e)
+    @Property(str,notify=appearanceChanged)
+    def accentColor(self):return self._settings.get('accent','#7ceafa')
+    @Property(float,notify=appearanceChanged)
+    def glassOpacity(self):return float(self._settings.get('glassOpacity',.60))
+    @Slot(str,float)
+    def setAppearance(self,accent,opacity):
+        try:
+            if accent not in ['#7ceafa','#8cbcff','#72ebce','#c2adff','#ffa8cf'] or not .60<=opacity<=.96:
+                raise ValueError('Choose a supported accent and opacity between 60% and 96%.')
+            settings=dict(self._settings,accent=accent,glassOpacity=opacity)
+            if settings==self._settings:return
+            self.store.set_settings(settings)
+            self._settings=settings
+            self.appearanceChanged.emit()
+        except Exception as e:self.fail(e)
     @Property(str,notify=changed)
     def theme(self):return self._settings.get('theme','dark')
     @Property(bool,notify=changed)
@@ -276,11 +292,11 @@ class Bridge(QObject):
             current=self.store.read();compatible=self.check_compatibility();templates=self.store.templates()
             if current!=self._events or compatible!=self._compatible or templates!=self._templates:self._events=current;self._compatible=compatible;self._templates=templates;self.changed.emit()
         except Exception as e:self.fail(e)
-    def commit(self,desired,base=None,label="Saved",allow_occurrences=False,project_name=None,planning_slot=None):
+    def commit(self,desired,base=None,label="Saved",allow_occurrences=False,project_name=None,planning_slot=None,unchanged_sources=None):
         if not self._compatible:
             self.fail("Update the desktop calendar using “Connect” first. The app is read-only until connected.");return None
         try:
-            before,after=self.store.merge(desired,self._events if base is None else base,allow_occurrences=allow_occurrences,project_name=project_name,planning_slot=planning_slot)
+            before,after=self.store.merge(desired,self._events if base is None else base,allow_occurrences=allow_occurrences,project_name=project_name,planning_slot=planning_slot,unchanged_sources=unchanged_sources)
             self._undo=(before,after) if before!=after else self._undo
             if before!=after:self._undo_project_filter=None
             self._events=after;self._error='';self.errorChanged.emit();self.changed.emit();self.note(label);return after
@@ -329,15 +345,29 @@ class Bridge(QObject):
             if any(e.get('seriesId')==snapshot['id'] for e in base):
                 raise ValueError("Events linked to series occurrences cannot be merged.")
         return snapshot
+    def merge_editor_draft(self,source,draft_snapshot):
+        if source['task'] or source['repeat']!='none' or source.get('seriesId'):
+            raise ValueError("Choose independent events or individual occurrences, not entire series or tasks.")
+        if not draft_snapshot:return source
+        draft=json.loads(draft_snapshot)
+        validate([draft])
+        editable={'title','date','time','minutes','allDay','category','location','notes','reminder','repeat','until'}
+        identity=lambda entry:{k:v for k,v in entry.items() if k not in editable}
+        if identity(draft)!=identity(source):
+            raise ValueError("The event identity or series metadata cannot be changed by merging.")
+        if draft['task'] or draft['repeat']!='none' or draft.get('seriesId'):
+            raise ValueError("Merge individual non-repeating events or occurrences. Keep Repeat set to Once.")
+        return draft
     @Slot(str,result='QVariantList')
-    def mergeChoices(self,first_snapshot):
+    @Slot(str,str,result='QVariantList')
+    def mergeChoices(self,first_snapshot,draft_snapshot=''):
         try:
-            first=self.merge_source(json.loads(first_snapshot),self._events)
+            first=self.merge_editor_draft(self.merge_source(json.loads(first_snapshot),self._events),draft_snapshot)
             choices=[]
             for e in self._events:
                 if e['task'] or e.get('seriesId') or e['allDay']!=first['allDay'] or not occurs(e,parse(first['date'])):continue
                 if e['repeat']!='none':
-                    if e['id']==first.get('occurrenceOf'):continue
+                    if e['id']==first.get('occurrenceOf') and first['date']==first.get('occurrenceDate'):continue
                     candidate=occurrence_draft(e,first['date'])
                 else:
                     if e['id']==first['id'] or any(child.get('seriesId')==e['id'] for child in self._events):continue
@@ -346,19 +376,22 @@ class Bridge(QObject):
             return sorted(choices,key=lambda e:(e['time'],e['title'].casefold(),e['id']))
         except Exception as e:self.fail(e);return []
     @Slot(str,str,result='QVariantMap')
-    def mergePreview(self,first_snapshot,second_snapshot):
+    @Slot(str,str,str,result='QVariantMap')
+    def mergePreview(self,first_snapshot,second_snapshot,draft_snapshot=''):
         try:
-            first=self.merge_source(json.loads(first_snapshot),self._events)
+            first=self.merge_editor_draft(self.merge_source(json.loads(first_snapshot),self._events),draft_snapshot)
             second=self.merge_source(json.loads(second_snapshot),self._events)
             return {'event':merge_events(first,second),'error':''}
         except Exception as e:return {'error':str(e)}
     @Slot(str,str,result=bool)
-    def mergeEvents(self,first_snapshot,second_snapshot):
+    @Slot(str,str,str,result=bool)
+    def mergeEvents(self,first_snapshot,second_snapshot,draft_snapshot=""):
         try:
             base=copy.deepcopy(self._events)
             first=self.merge_source(json.loads(first_snapshot),base)
             second=self.merge_source(json.loads(second_snapshot),base)
-            merged=merge_events(first,second)
+            draft=self.merge_editor_draft(first,draft_snapshot)
+            merged=merge_events(draft,second)
             removed={e['id'] for e in (first,second) if not e.get('occurrenceOf')}
             desired=[copy.deepcopy(e) for e in base if e['id'] not in removed]
             for source in (first,second):
@@ -366,7 +399,9 @@ class Bridge(QObject):
                     parent=next(e for e in desired if e['id']==source['occurrenceOf'])
                     parent.setdefault('exceptions',{})[source['occurrenceDate']]={'cancelled':True}
             desired.append(merged)
-            return self.commit(desired,base,label="Events merged · Undo restores both") is not None
+            source_ids={source.get('occurrenceOf',source['id']) for source in (first,second)}
+            originals={event['id']:event for event in base if event['id'] in source_ids}
+            return self.commit(desired,base,label="Events merged · Undo restores both",unchanged_sources=originals) is not None
         except Exception as e:self.fail(e);return False
     @Slot(str,str,bool)
     def edit(self,ident,date,single=True):

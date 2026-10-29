@@ -4,6 +4,7 @@ import QtQuick.Layouts
 import QtQuick.LocalStorage as SQL
 
 import "Calendar.js" as Cal
+import "Theme.js" as Theme
 
 Item {
     id: root
@@ -12,9 +13,10 @@ Item {
     clip: true
     readonly property bool compact: height < 620
     readonly property bool narrow: width < 480
-    readonly property color accentInk: light ? Qt.darker(accent,1.75) : Qt.lighter(accent,1.12)
-    readonly property color panel: light ? "#fafbfe" : "#1a1d25"
-    readonly property color field: light ? "#edf0f5" : "#242833"
+    readonly property color accentInk: light ? Qt.darker(accent,2.35) : Qt.lighter(accent,1.12)
+    readonly property var uiColors:Theme.palette(light,accent)
+    readonly property color panel:uiColors.panel
+    readonly property color field:uiColors.field
     readonly property color danger: light ? "#ae204d" : "#ffabc6"
     property var events: []
     property date today: new Date()
@@ -35,9 +37,9 @@ Item {
     readonly property bool modalOpen: editor.visible||transfer.visible||options.visible||filters.visible||dateJump.visible||deleteConfirm.visible||mergeDialog.visible
     property string error: ""
     property real glassOpacity: 0.80
-    readonly property real minimumOpacity: light ? 0.92 : 0.76
+    readonly property real minimumOpacity: light ? 0.72 : 0.60
     readonly property real renderOpacity: Math.max(minimumOpacity,glassOpacity)
-    property color accent: "#a498ff"
+    property color accent: "#7ceafa"
     readonly property var colors: [accent, "#6edfc2", "#ffbd83", "#f49ac4"]
     readonly property var categories: ["Personal", "Work", "Important", "Leisure"]
     property bool light: false
@@ -45,9 +47,9 @@ Item {
     property bool motionEnabled:true
     property var persistence: null
     onModalOpenChanged:if(!modalOpen&&persistence)events=persistence.events
-    readonly property color ink: light ? "#18243a" : "#f5f7ff"
-    readonly property color muted: light ? "#46546a" : "#ccd6e8"
-    readonly property color line: light ? "#220e254e" : "#32dbe5ff"
+    readonly property color ink:uiColors.ink
+    readonly property color muted:uiColors.muted
+    readonly property color line:uiColors.line
     readonly property date gridStart: Cal.monday(page)
     readonly property date weekStart: Cal.monday(selected)
     readonly property var dayItems: Cal.instances(events, selected, 1, "", categoryFilter,kindFilter)
@@ -127,20 +129,22 @@ Item {
                     events=loaded;
                 }
                 var prefs=tx.executeSql('SELECT value FROM state WHERE key=?',['preferences']);
-                if(prefs.rows.length) { var p=JSON.parse(prefs.rows.item(0).value); glassOpacity=Math.max(.2,Math.min(.98,p.opacity||.80)); accent=p.accent||'#a498ff'; }
+                if(prefs.rows.length) { var p=JSON.parse(prefs.rows.item(0).value); glassOpacity=Math.max(.2,Math.min(.98,p.opacity||.80)); accent=p.accent||'#7ceafa'; }
             });
             dataReady=true;
         } catch(e) { error="Could not load calendar data: "+e; }
     }
     Timer { id:undoExpiry; interval:60000; onTriggered:root.deletedEntry=null }
-    Shortcut { enabled:!root.editorOnly&&!root.modalOpen; sequence:"Ctrl+F"; onActivated: { searchInput.forceActiveFocus(); searchInput.selectAll(); } }
-    Shortcut { enabled:!root.editorOnly&&!root.modalOpen; sequence:"Ctrl+N"; onActivated: { if(!editor.visible&&!transfer.visible) root.openEvent(null); } }
-    Shortcut { enabled:!root.editorOnly&&!root.modalOpen; sequence:"Ctrl+L"; onActivated: { dateJump.error=""; jumpInput.text=Cal.key(root.selected); dateJump.open(); jumpInput.forceActiveFocus(); } }
+    Shortcut { enabled:!root.persistence&&!root.editorOnly&&!root.modalOpen; sequence:"Ctrl+F"; onActivated: { searchInput.forceActiveFocus(); searchInput.selectAll(); } }
+    Shortcut { enabled:!root.persistence&&!root.editorOnly&&!root.modalOpen; sequence:"Ctrl+N"; onActivated: { if(!editor.visible&&!transfer.visible) root.openEvent(null); } }
+    Shortcut { enabled:!root.persistence&&!root.editorOnly&&!root.modalOpen; sequence:"Ctrl+L"; onActivated: { dateJump.error=""; jumpInput.text=Cal.key(root.selected); dateJump.open(); jumpInput.forceActiveFocus(); } }
     Timer { interval:60000; running:true; repeat:true; onTriggered:root.today=new Date() }
 
     component GlassButton: Button {
         id: control
         property color tint: root.ink
+        scale:control.down&&root.motionEnabled?.97:1
+        Behavior on scale {enabled:root.motionEnabled;NumberAnimation {duration:180;easing.type:Easing.OutCubic}}
         leftPadding: 10
         rightPadding: 10
         topPadding: 6
@@ -148,7 +152,7 @@ Item {
         implicitHeight: Math.max(34, contentItem.implicitHeight+topPadding+bottomPadding)
         implicitWidth: Math.max(34, contentItem.implicitWidth+leftPadding+rightPadding)
         contentItem: Text { textFormat:Text.PlainText; clip:true; text:control.text; opacity:control.enabled?1:.5; color:control.tint; font.pixelSize:12; font.weight:Font.Medium; horizontalAlignment:Text.AlignHCenter; verticalAlignment:Text.AlignVCenter; elide:Text.ElideRight }
-        background:LiquidSurface {light:root.light;motionEnabled:root.motionEnabled;radius:9;shadowStrength:0;glassOpacity:root.light?(control.hovered?.9:.6):(control.hovered?.45:.2);border.color:control.activeFocus||control.highlighted?root.accent:root.line}
+        background:LiquidSurface {light:root.light;tint:root.accent;motionEnabled:root.motionEnabled;radius:9;shadowStrength:0;highlight:control.hovered?1:0;glassOpacity:root.light?(control.hovered?.9:.6):(control.hovered?.45:.2);border.color:control.activeFocus||control.highlighted?root.accent:root.line}
     }
     component GlassField: GlassTextField { inkColor:root.ink; accentColor:root.accent; fieldColor:root.field; lineColor:root.line; mutedColor:root.muted }
     component GlassCheck: GlassCheckBox { inkColor:root.ink; accentColor:root.accent; fieldColor:root.field; lineColor:root.line }
@@ -177,11 +181,13 @@ Item {
             background: Rectangle { radius:7; color:parent.highlighted?Qt.rgba(root.accent.r,root.accent.g,root.accent.b,.24):"transparent" }
         }
         popup: Popup {
+            enter:GlassTransition {motionEnabled:root.motionEnabled}
+            exit:GlassTransition {entering:false;motionEnabled:root.motionEnabled}
             y:combo.height+4
             width:combo.width
             padding:4
             implicitHeight:Math.min(contentItem.implicitHeight+8,root.height-40)
-            background:LiquidSurface {light:root.light;motionEnabled:root.motionEnabled;radius:16;glassOpacity:1;shadowStrength:.2}
+            background:LiquidSurface {light:root.light;tint:root.accent;motionEnabled:root.motionEnabled;radius:16;glassOpacity:1;shadowStrength:.2}
             contentItem:ListView { clip:true; implicitHeight:contentHeight; model:combo.popup.visible?combo.delegateModel:null; currentIndex:combo.highlightedIndex; ScrollIndicator.vertical:ScrollIndicator {} }
         }
     }
@@ -206,7 +212,7 @@ Item {
         }
     }
 
-    LiquidSurface {visible:!root.editorOnly;anchors.fill:parent;light:root.light;motionEnabled:root.motionEnabled;glassOpacity:root.renderOpacity;radius:28}
+    LiquidSurface {id:calendarGlass;visible:!root.editorOnly;anchors.fill:parent;light:root.light;tint:root.accent;motionEnabled:root.motionEnabled;glassOpacity:root.renderOpacity;radius:28}
     ColumnLayout {
         id: calendarLayout
         visible:!root.editorOnly
@@ -214,7 +220,7 @@ Item {
         anchors.margins: root.compact ? 14 : 18
         spacing: root.compact ? 5 : 8
         RowLayout {
-            Layout.fillWidth:true
+            visible:!root.persistence;Layout.fillWidth:true
             ColumnLayout {
                 Layout.fillWidth:true; Layout.minimumWidth:0; spacing:3
                 Label { text:"YOUR CALENDAR"; color:root.accentInk; font.pixelSize:10; font.letterSpacing:2; font.weight:Font.DemiBold }
@@ -225,7 +231,7 @@ Item {
             GlassButton { text:"⋯"; onClicked:options.open(); Accessible.name:"Settings and backup" }
         }
         RowLayout {
-            Layout.fillWidth:true
+            visible:!root.persistence;Layout.fillWidth:true
             Repeater {
                 model:["Month","Week","Agenda"]
                 delegate:GlassButton { required property int index; required property string modelData; text:modelData; highlighted:root.mode===index; tint:root.mode===index?root.accentInk:root.muted; onClicked: { searchInput.clear(); kindBox.currentIndex=0; root.mode=index; } }
@@ -382,7 +388,7 @@ Item {
             Layout.fillWidth:true; Layout.fillHeight:true; Layout.minimumHeight:60; Layout.preferredHeight:root.compact?60:140; clip:true; spacing:7
             model:root.globalMode?root.results:root.mode===2?root.agendaItems:root.mode===1?Cal.instances(root.events,root.weekStart,7,"",root.categoryFilter,root.kindFilter):root.dayItems
             delegate:EventCard { required property var modelData; width:agenda.width; entry:modelData; showDate:root.globalMode||root.mode!==0 }
-            ScrollBar.vertical:ScrollBar { }
+            ScrollBar.vertical:GlassScrollBar {light:root.light;accent:root.accentInk;motionEnabled:root.motionEnabled}
             Label { visible:agenda.count===0; anchors.centerIn:parent; width:Math.max(0,parent.width-20); text:root.globalMode?"No matching entries.\nTry a different search or filter.":"Room for your plans.\nStart with + Event."; color:root.muted; horizontalAlignment:Text.AlignHCenter; font.pixelSize:root.compact?11:13; lineHeight:1.3; wrapMode:Text.Wrap; textFormat:Text.PlainText }
         }
         RowLayout {
@@ -399,9 +405,11 @@ Item {
     }
 
     Popup {
+        enter:GlassTransition {motionEnabled:root.motionEnabled}
+        exit:GlassTransition {entering:false;motionEnabled:root.motionEnabled}
         id:filters
         parent:root; anchors.centerIn:parent; width:Math.min(root.width-24,360); modal:true; focus:true
-        background:LiquidSurface {light:root.light;motionEnabled:root.motionEnabled;radius:18;glassOpacity:1}
+        background:LiquidSurface {light:root.light;tint:root.accent;motionEnabled:root.motionEnabled;radius:18;glassOpacity:1}
         contentItem:ColumnLayout {
             spacing:10
             Label { text:"Your view"; color:root.ink; font.pixelSize:18; font.weight:Font.DemiBold }
@@ -417,10 +425,12 @@ Item {
         }
     }
     Popup {
+        enter:GlassTransition {motionEnabled:root.motionEnabled}
+        exit:GlassTransition {entering:false;motionEnabled:root.motionEnabled}
         id:dateJump
         property string error:""
         parent:root; anchors.centerIn:parent; width:Math.min(root.width-24,380); modal:true; focus:true
-        background:LiquidSurface {light:root.light;motionEnabled:root.motionEnabled;radius:18;glassOpacity:1}
+        background:LiquidSurface {light:root.light;tint:root.accent;motionEnabled:root.motionEnabled;radius:18;glassOpacity:1}
         function go() {
             var dates=Cal.dateSuggestions(jumpInput.text,root.today);
             if(!dates.length) { error="Try 2027-03-15, 15.03.2027 or tomorrow."; return; }
@@ -440,11 +450,15 @@ Item {
         }
     }
     Popup {
+        enter:GlassTransition {motionEnabled:root.motionEnabled}
+        exit:GlassTransition {entering:false;motionEnabled:root.motionEnabled}
         id:editor
         Popup {
+            enter:GlassTransition {motionEnabled:root.motionEnabled}
+            exit:GlassTransition {entering:false;motionEnabled:root.motionEnabled}
             id:templateNamePopup;parent:editor.contentItem;anchors.centerIn:parent;width:Math.min(parent.width-8,420);modal:true;focus:true;padding:16
             property string error:""
-            background:LiquidSurface {light:root.light;radius:16;glassOpacity:1}
+            background:LiquidSurface {light:root.light;tint:root.accent;motionEnabled:root.motionEnabled;radius:16;glassOpacity:1}
             contentItem:ColumnLayout {
                 spacing:10
                 Label {text:"Save event template";color:root.ink;font.pixelSize:18}
@@ -458,9 +472,9 @@ Item {
                 }
             }
         }
-        DatePicker {id:untilPicker;parent:editor.contentItem;anchors.centerIn:parent;light:root.light;onPicked:function(value){untilField.text=value;}}
-        DatePicker {id:datePicker;parent:editor.contentItem;anchors.centerIn:parent;light:root.light;onPicked:function(value){dateField.text=value;}}
-        TimePicker {id:timePicker;parent:editor.contentItem;anchors.centerIn:parent;light:root.light;onPicked:function(value){timeField.text=value;}}
+        DatePicker {id:untilPicker;parent:editor.contentItem;anchors.centerIn:parent;light:root.light;ink:root.ink;accent:root.accentInk;panel:root.panel;field:root.field;line:root.line;onPicked:function(value){untilField.text=value;}}
+        DatePicker {id:datePicker;parent:editor.contentItem;anchors.centerIn:parent;light:root.light;ink:root.ink;accent:root.accentInk;panel:root.panel;field:root.field;line:root.line;onPicked:function(value){dateField.text=value;}}
+        TimePicker {id:timePicker;parent:editor.contentItem;anchors.centerIn:parent;light:root.light;ink:root.ink;accent:root.accentInk;panel:root.panel;field:root.field;line:root.line;onPicked:function(value){timeField.text=value;}}
         property var selectedWeekdays:[]
         function weeklyDays(){var date=Cal.parse(dateField.text);return selectedWeekdays.length?selectedWeekdays:[Cal.isoWeekday(date||new Date())];}
         function toggleWeekday(day){
@@ -475,7 +489,7 @@ Item {
         property var checklist:[]
         parent:root; anchors.centerIn:parent; width:Math.min(root.width-16,520); height:Math.min(root.height-16,660)
         modal:true; focus:true; closePolicy:Popup.CloseOnEscape
-        background:LiquidSurface {light:root.light;motionEnabled:root.motionEnabled;radius:18;glassOpacity:1}
+        background:LiquidSurface {light:root.light;tint:root.accent;motionEnabled:root.motionEnabled;radius:18;glassOpacity:1}
         contentItem:ColumnLayout {
             spacing:9
             RowLayout {
@@ -517,9 +531,9 @@ Item {
                             }
                         }
                         GlassButton {text:"Choose existing project ▾";visible:root.events.some(function(e){return e.task&&e.project;});onClicked:projectChoices.open()
-                            Menu {id:projectChoices
+                            ActionMenu {light:root.light;accent:root.accentInk;id:projectChoices
                                 Repeater {model:root.events.filter(function(e){return e.task&&e.project;}).map(function(e){return e.project;}).filter(function(v,i,a){return a.indexOf(v)===i;}).sort()
-                                    delegate:MenuItem {required property string modelData;text:modelData;onTriggered:projectField.text=modelData}
+                                    delegate:ActionMenuItem {light:root.light;accent:root.accentInk;required property string modelData;text:modelData;onTriggered:projectField.text=modelData}
                                 }
                             }
                         }
@@ -579,10 +593,10 @@ Item {
             RowLayout {
                 GlassButton { visible:editor.eventId!==""; text:"Delete …"; tint:root.danger; onClicked:deleteConfirm.open() }
                 GlassButton {id:editorToolsButton;visible:editor.eventId!==""|| (!!root.persistence&&!task.checked);text:"More ▾";Accessible.name:"Entry actions";onClicked:editorActions.open()
-                    ActionMenu {id:editorActions;parent:editorToolsButton;light:root.light;y:editorToolsButton.height+4
-                        ActionMenuItem {id:duplicateButton;light:root.light;visible:editor.eventId!=="";text:"Duplicate";onTriggered:{editor.eventId="";editor.draftOriginal=null;titleField.text=Array.from(titleField.text+" – Copy").slice(0,200).join("");}}
-                        ActionMenuItem {id:mergeButton;objectName:"mergeEventsAction";light:root.light;text:"Merge with another event…";visible:!!root.persistence&&!!editor.draftOriginal&&!editor.draftOriginal.task&&editor.draftOriginal.repeat==="none"&&!editor.draftOriginal.seriesId&&!root.events.some(function(child){return child.seriesId===editor.eventId;});onTriggered:root.openMerge()}
-                        ActionMenuItem {id:templateButton;light:root.light;visible:!!root.persistence&&!task.checked;text:"Save template…";onTriggered:{templateNameField.text=titleField.text;templateNamePopup.error="";templateNamePopup.open();}}
+                    ActionMenu {accent:root.accentInk;id:editorActions;parent:editorToolsButton;light:root.light;y:editorToolsButton.height+4
+                        ActionMenuItem {accent:root.accentInk;id:duplicateButton;light:root.light;visible:editor.eventId!=="";text:"Duplicate";onTriggered:{editor.eventId="";editor.draftOriginal=null;titleField.text=Array.from(titleField.text+" – Copy").slice(0,200).join("");}}
+                        ActionMenuItem {accent:root.accentInk;id:mergeButton;objectName:"mergeEventsAction";light:root.light;text:"Merge with another event…";visible:!!root.persistence&&!!editor.draftOriginal&&!editor.draftOriginal.task&&editor.draftOriginal.repeat==="none"&&!editor.draftOriginal.seriesId&&!root.events.some(function(child){return child.seriesId===editor.eventId;});onTriggered:root.openMerge()}
+                        ActionMenuItem {accent:root.accentInk;id:templateButton;light:root.light;visible:!!root.persistence&&!task.checked;text:"Save template…";onTriggered:{templateNameField.text=titleField.text;templateNamePopup.error="";templateNamePopup.open();}}
                     }
                 }
                 Item { Layout.fillWidth:true }
@@ -590,20 +604,7 @@ Item {
                     id:saveButton
                     text:"Save"; highlighted:true; tint:root.accentInk
                     onClicked: {
-                        var previous=editor.draftOriginal||root.events.filter(function(e){return e.id===editor.eventId;})[0];
-                        var undated=task.checked&&!scheduled.checked;
-                        var e=Object.assign({},previous||{},{id:editor.eventId||Date.now().toString(36)+'-'+Math.random().toString(36).slice(2),title:titleField.text.trim(),date:undated?"":dateField.text,time:undated?"":timeField.text,minutes:durationField.value,allDay:undated?false:allDay.checked,task:task.checked,done:previous?previous.done:false,repeat:undated?"none":["none","daily","weekly","monthly","yearly"][repeatBox.currentIndex],until:!undated&&repeatBox.currentIndex>0?untilField.text:"",category:categoryBox.currentIndex,location:locationField.text,notes:notesField.text,reminder:undated?-1:[-1,0,5,10,30,60,1440][reminderBox.currentIndex]});
-                        if(e.repeat==="weekly")e.weekdays=editor.weeklyDays().slice();else delete e.weekdays;
-                        if(e.repeat==="weekly"&&e.until&&Cal.valid(e)&&!Cal.unskippedNext(e,Cal.parse(e.date))){editor.validation="No selected weekdays fall within this date range.";return;}
-                        if(undated){e.exceptions={};e.reminder=-1;}
-                        if(task.checked) {
-                            if(priorityBox.currentIndex||(previous&&previous.priority!==undefined))e.priority=priorityBox.currentIndex;
-                            if(projectField.text.trim()||(previous&&previous.project!==undefined))e.project=projectField.text.trim();
-                            if(editor.checklist.length||(previous&&previous.checklist!==undefined))e.checklist=JSON.parse(JSON.stringify(editor.checklist));
-                        } else {delete e.priority;delete e.project;delete e.checklist;}
-                        if(task.checked&&e.project==="*"){editor.validation="Choose a different project name; * is reserved.";return;}
-                        if(task.checked&&!Cal.validTaskDetails(e)){editor.validation="Every checklist step needs a title of 1–200 characters. Fill in or remove empty steps.";return;}
-                        if(!Cal.valid(e)) { editor.validation="Check the title and, for scheduled entries, the date, time and repeat end date. Notes can contain up to 10,000 characters."; return; }
+                        var e=root.currentDraft();if(!e)return;
                         var next=root.events.filter(function(v){return v.id!==e.id;}); next.push(e);
                         if(root.store(next)) { if(e.date)root.select(Cal.parse(e.date));else{searchInput.clear();kindBox.currentIndex=3;} editor.close(); } else editor.validation=root.error;
                     }
@@ -611,25 +612,49 @@ Item {
             }
         }
     }
+    function currentDraft() {
+        var previous=editor.draftOriginal||root.events.filter(function(e){return e.id===editor.eventId;})[0];
+        var undated=task.checked&&!scheduled.checked;
+        var e=Object.assign({},previous||{},{id:editor.eventId||Date.now().toString(36)+'-'+Math.random().toString(36).slice(2),title:titleField.text.trim(),date:undated?"":dateField.text,time:undated?"":timeField.text,minutes:durationField.value,allDay:undated?false:allDay.checked,task:task.checked,done:previous?previous.done:false,repeat:undated?"none":["none","daily","weekly","monthly","yearly"][repeatBox.currentIndex],until:!undated&&repeatBox.currentIndex>0?untilField.text:"",category:categoryBox.currentIndex,location:locationField.text,notes:notesField.text,reminder:undated?-1:[-1,0,5,10,30,60,1440][reminderBox.currentIndex]});
+        if(e.repeat==="weekly")e.weekdays=editor.weeklyDays().slice();else delete e.weekdays;
+        if(e.repeat==="weekly"&&e.until&&Cal.valid(e)&&!Cal.unskippedNext(e,Cal.parse(e.date))){editor.validation="No selected weekdays fall within this date range.";return;}
+        if(undated){e.exceptions={};e.reminder=-1;}
+        if(task.checked) {
+            if(priorityBox.currentIndex||(previous&&previous.priority!==undefined))e.priority=priorityBox.currentIndex;
+            if(projectField.text.trim()||(previous&&previous.project!==undefined))e.project=projectField.text.trim();
+            if(editor.checklist.length||(previous&&previous.checklist!==undefined))e.checklist=JSON.parse(JSON.stringify(editor.checklist));
+        } else {delete e.priority;delete e.project;delete e.checklist;}
+        if(task.checked&&e.project==="*"){editor.validation="Choose a different project name; * is reserved.";return;}
+        if(task.checked&&!Cal.validTaskDetails(e)){editor.validation="Every checklist step needs a title of 1–200 characters. Fill in or remove empty steps.";return;}
+        if(!Cal.valid(e)) { editor.validation="Check the title and, for scheduled entries, the date, time and repeat end date. Notes can contain up to 10,000 characters."; return; }
+        return e;
+    }
     function openMerge() {
+        var draft=currentDraft();if(!draft)return;
+        if(draft.task||draft.repeat!=="none") {editor.validation="Merge individual events or occurrences. Keep Repeat set to Once.";return;}
+        editor.validation="";
+        mergeDialog.draft=JSON.stringify(draft);
         mergeDialog.first=JSON.stringify(editor.draftOriginal);
-        mergeDialog.choices=persistence.mergeChoices(mergeDialog.first);
+        mergeDialog.choices=persistence.mergeChoices(mergeDialog.first,mergeDialog.draft);
         mergeChoice.currentIndex=mergeDialog.choices.length?0:-1;
         mergeDialog.message="";mergeDialog.open();
     }
     Dialog {
+        enter:GlassTransition {motionEnabled:root.motionEnabled}
+        exit:GlassTransition {entering:false;motionEnabled:root.motionEnabled}
         id:mergeDialog;objectName:"mergeEventsDialog";parent:root;anchors.centerIn:parent;modal:true
         width:Math.max(280,Math.min(root.width-20,500));height:Math.min(root.height-20,520)
         property string first:""
+        property string draft:""
         property var choices:[]
         property string message:""
         readonly property string second:mergeChoice.currentIndex>=0&&mergeChoice.currentIndex<choices.length?JSON.stringify(choices[mergeChoice.currentIndex]):""
-        readonly property var preview:second&&root.persistence?root.persistence.mergePreview(first,second):({error:"No compatible events on this day. Choose an event or an individual occurrence."})
-        background:LiquidSurface {light:root.light;motionEnabled:root.motionEnabled;radius:18;glassOpacity:1}
+        readonly property var preview:second&&root.persistence?root.persistence.mergePreview(first,second,draft):({error:"No compatible events on this day. Choose an event or an individual occurrence."})
+        background:LiquidSurface {light:root.light;tint:root.accent;motionEnabled:root.motionEnabled;radius:18;glassOpacity:1}
         contentItem:ColumnLayout {
             spacing:12
             Label {text:"Merge events";color:root.ink;font.pixelSize:20}
-            Label {text:"Uses saved entries. Save any edits before merging. Choose a second event on the same date. Only selected occurrences are combined; future repeats stay unchanged.";color:root.muted;Layout.fillWidth:true;wrapMode:Text.Wrap}
+            Label {text:"Includes your current editor changes. Choose a second event on the edited date. Only selected occurrences are combined; future repeats stay unchanged.";color:root.muted;Layout.fillWidth:true;wrapMode:Text.Wrap}
             GlassCombo {id:mergeChoice;objectName:"mergeEventChoice";Layout.fillWidth:true;model:mergeDialog.choices.map(function(e){return (e.allDay?"All day":e.time)+" · "+e.title+(e.occurrenceOf?" · This occurrence":"");});Accessible.name:"Event to merge"}
             ScrollView {
                 Layout.fillWidth:true;Layout.fillHeight:true;contentWidth:availableWidth;clip:true
@@ -640,16 +665,18 @@ Item {
             RowLayout {
                 GlassButton {text:"Cancel";onClicked:mergeDialog.close()}
                 Item {Layout.fillWidth:true}
-                GlassButton {id:confirmMerge;objectName:"confirmMerge";text:"Merge two events";highlighted:true;enabled:!!mergeDialog.preview.event;onClicked:{if(root.persistence.mergeEvents(mergeDialog.first,mergeDialog.second)){mergeDialog.close();editor.close();}else mergeDialog.message=root.persistence.error;}}
+                GlassButton {id:confirmMerge;objectName:"confirmMerge";text:"Merge two events";highlighted:true;enabled:!!mergeDialog.preview.event;onClicked:{var targetDate=mergeDialog.preview.event.date;if(root.persistence.mergeEvents(mergeDialog.first,mergeDialog.second,mergeDialog.draft)){root.select(Cal.parse(targetDate));mergeDialog.close();editor.close();}else mergeDialog.message=root.persistence.error;}}
             }
         }
     }
     Dialog {
+        enter:GlassTransition {motionEnabled:root.motionEnabled}
+        exit:GlassTransition {entering:false;motionEnabled:root.motionEnabled}
         id:deleteConfirm; parent:root; anchors.centerIn:parent; modal:true; title:"Delete entry"
         width:Math.max(300,Math.min(root.width-20,420))
         height:header.implicitHeight+contentItem.implicitHeight+footer.implicitHeight+topPadding+bottomPadding
         contentItem:Label { text:repeatBox.currentIndex>0?"The entire series will be deleted. You can undo the last change in the app.":"This entry will be deleted. You can undo the last change in the app."; color:root.ink; wrapMode:Text.Wrap }
-        background:LiquidSurface {light:root.light;motionEnabled:root.motionEnabled;radius:18;glassOpacity:1}
+        background:LiquidSurface {light:root.light;tint:root.accent;motionEnabled:root.motionEnabled;radius:18;glassOpacity:1}
         header:Label { text:deleteConfirm.title; color:root.ink; font.pixelSize:18; font.weight:Font.DemiBold; padding:14; wrapMode:Text.Wrap }
         footer:DialogButtonBox {
             background:Rectangle { color:root.panel; radius:16 }
@@ -670,8 +697,10 @@ Item {
         }
     }
     Popup {
+        enter:GlassTransition {motionEnabled:root.motionEnabled}
+        exit:GlassTransition {entering:false;motionEnabled:root.motionEnabled}
         id:options; parent:root; anchors.centerIn:parent; width:Math.min(root.width-20,430); modal:true; focus:true
-        background:LiquidSurface {light:root.light;motionEnabled:root.motionEnabled;radius:18;glassOpacity:1}
+        background:LiquidSurface {light:root.light;tint:root.accent;motionEnabled:root.motionEnabled;radius:18;glassOpacity:1}
         height:Math.min(root.height-24,540)
         contentItem:ColumnLayout {
             spacing:10
@@ -690,7 +719,7 @@ Item {
                     RowLayout {
                         Layout.fillWidth:true
                         Repeater {
-                            model:["#a498ff","#7dcfff","#6edfc2","#f49ac4","#ffbd83"]
+                            model:["#7ceafa","#8cbcff","#72ebce","#c2adff","#ffa8cf"]
                             delegate:Button {
                                 required property int index
                                 required property string modelData
@@ -712,11 +741,13 @@ Item {
     }
 
     Popup {
+        enter:GlassTransition {motionEnabled:root.motionEnabled}
+        exit:GlassTransition {entering:false;motionEnabled:root.motionEnabled}
         id:transfer; parent:root; anchors.centerIn:parent; width:root.width-20; height:root.height-30; modal:true; focus:true
         property bool importing:false
         property string title:""
         property string message:""
-        background:LiquidSurface {light:root.light;motionEnabled:root.motionEnabled;radius:18;glassOpacity:1}
+        background:LiquidSurface {light:root.light;tint:root.accent;motionEnabled:root.motionEnabled;radius:18;glassOpacity:1}
         contentItem:ColumnLayout {
             Label { Layout.fillWidth:true; text:transfer.title; color:root.ink; font.pixelSize:18; wrapMode:Text.Wrap }
             Label { Layout.fillWidth:true; text:transfer.importing?"Paste JSON. New IDs are added; existing IDs remain unchanged.":"Select all (Ctrl+A), copy (Ctrl+C) and save to a .json or .ics file."; color:root.muted; font.pixelSize:11; wrapMode:Text.Wrap }

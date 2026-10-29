@@ -11,6 +11,7 @@ Popup {
     property color accent:light?"#6652ce":"#b2a5f4"
     property date monthDate:new Date(new Date().getFullYear(),new Date().getMonth(),1,12)
     property string selectedDate:""
+    property color panel:light?"#fafbfe":"#242833"
     property color field:light?"#edf0f5":"#303541"
     property color line:light?"#191c2b42":"#24ffffff"
     component PickerButton: Button {
@@ -25,7 +26,7 @@ Popup {
     signal picked(string value)
     width:Math.min(parent?parent.width-12:360,360)
     modal:true;focus:true;padding:14
-    background:Rectangle {radius:16;color:picker.light?"#fafbfe":"#242833";border.color:picker.accent;border.width:1}
+    background:Rectangle {radius:16;color:picker.panel;border.color:picker.accent;border.width:1}
     function openFor(value){var date=Cal.parse(value)||new Date();selectedDate=Cal.key(date);monthDate=Cal.month(date,0);open();}
     function choose(value){selectedDate=value;picked(value);close();}
     function shift(amount){var next=Cal.month(monthDate,amount);if(next.getFullYear()>=1000&&next.getFullYear()<=9999)monthDate=next;}
