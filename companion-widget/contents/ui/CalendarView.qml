@@ -197,11 +197,11 @@ Item {
         RowLayout {
             anchors.fill:parent; anchors.margins:10; spacing:10
             Rectangle { Layout.preferredWidth:3; Layout.fillHeight:true; radius:2; color:root.colors[card.entry.event.category] }
-            GlassCheck { visible:card.entry.event.task; checked:card.entry.event.done; onClicked:root.toggleTask(card.entry.event,card.entry.date); Accessible.name:card.entry.event.repeat!=="none"&&card.entry.event.done?"Reopen completed series":"Task completed" }
+            GlassCheck { visible:card.entry.event.task; checked:card.entry.event.done; onClicked:root.toggleTask(card.entry.event,card.entry.occurrenceDate||card.entry.date); Accessible.name:card.entry.event.repeat!=="none"&&card.entry.event.done?"Reopen completed series":"Task completed" }
             ColumnLayout {
                 Layout.fillWidth:true; Layout.minimumWidth:0; spacing:4
                 Label { Layout.fillWidth:true; textFormat:Text.PlainText; text:card.entry.event.title; color:root.ink; font.pixelSize:13; font.weight:Font.DemiBold; font.strikeout:card.entry.event.task&&card.entry.event.done; elide:Text.ElideRight }
-                Label { Layout.fillWidth:true; textFormat:Text.PlainText; text:Cal.isUndated(card.entry.event)?"Undated · "+card.entry.event.minutes+" min":(card.showDate?root.dateText(Cal.parse(card.entry.date),root.globalMode?"dd.MM.yyyy":"ddd, dd MMM")+" · ":"")+(card.entry.event.allDay?"All day":card.entry.event.time+" · "+card.entry.event.minutes+" min")+(card.entry.event.location?" · "+card.entry.event.location:"")+(card.entry.event.repeat!=="none"?" · Series":""); color:root.muted; font.pixelSize:11; elide:Text.ElideRight }
+                Label { Layout.fillWidth:true; textFormat:Text.PlainText; text:Cal.isUndated(card.entry.event)?"Undated · "+card.entry.event.minutes+" min":(card.showDate?root.dateText(Cal.parse(card.entry.date),root.globalMode?"dd.MM.yyyy":"ddd, dd MMM")+" · ":"")+(card.entry.event.allDay?"All day":(card.entry.carry?"Continued · 00:00":card.entry.event.time)+" · "+(card.entry.carry?card.entry.segmentMinutes:card.entry.event.minutes)+" min")+(card.entry.event.location?" · "+card.entry.event.location:"")+(card.entry.event.repeat!=="none"?" · Series":""); color:root.muted; font.pixelSize:11; elide:Text.ElideRight }
             }
             GlassButton { text:root.globalMode&&!Cal.isUndated(card.entry.event)?"Go to day":"Open"; onClicked:root.globalMode&&!Cal.isUndated(card.entry.event)?root.jumpResult(card.entry):root.openEvent(card.entry.event); Accessible.name:(root.globalMode&&!Cal.isUndated(card.entry.event)?"Jump to day: ":"Edit entry: ")+card.entry.event.title }
         }

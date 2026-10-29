@@ -18,3 +18,14 @@ assert.match(c.ics([{...ev,time:'23:30',minutes:90}]),/DTEND:20261029T010000/);
 assert.match(c.ics([{...ev,allDay:true}]),/DTEND;VALUE=DATE:20261029/);
 assert.equal(c.ics([{...ev,task:true}]).includes('BEGIN:VEVENT'),false);
 console.log('16 Kalenderprüfungen bestanden.');
+
+const night={...ev,time:'23:30',minutes:120,repeat:'weekly'};
+const carry=c.instances([night],c.parse('2026-10-29'),1,'',-1);
+assert.equal(carry.length,1);assert.equal(carry[0].date,'2026-10-29');assert.equal(carry[0].occurrenceDate,'2026-10-28');assert.equal(carry[0].carry,true);assert.equal(carry[0].segmentMinutes,90);
+assert.equal(c.instances([{...night,minutes:30}],c.parse('2026-10-29'),1,'',-1).length,0);
+assert.equal(c.instances([{...night,allDay:true}],c.parse('2026-10-29'),1,'',-1).length,0);
+assert.equal(c.instances([{...night,exceptions:{'2026-10-28':{cancelled:true}}}],c.parse('2026-10-29'),1,'',-1).length,0);
+const daily=c.instances([{...night,repeat:'daily'}],c.parse('2026-10-29'),1,'',-1);
+assert.equal(daily.length,2);assert.notEqual(daily[0].occurrenceDate,daily[1].occurrenceDate);
+assert.equal(c.instances([night],c.parse('1000-01-01'),1,'',-1).length,0);
+console.log('Overnight carry-in identity, midnight/all-day exclusions, cancellations and daily occurrences passed.');

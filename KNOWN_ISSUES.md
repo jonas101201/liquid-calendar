@@ -1,8 +1,12 @@
 # Known issues and beta limitations
 
-Applies to **Liquid Calendar 0.3.9**, a beta prerelease. Last updated: **2026-10-29**.
+Applies to **Liquid Calendar 0.3.9.1**, a beta prerelease. Last updated: **2026-10-29**.
 
 This page distinguishes current limitations from issues fixed in earlier beta versions. It is not a guarantee that the beta is free of bugs.
+
+## Fixed in 0.3.9.1
+
+The Calendar Month/Week control now supports held-pointer dragging. Month-card Open edits the selected repeating occurrence rather than the whole series, while Series keeps whole-series editing available. Overnight continuations are visible on the following day and retain the source occurrence date for edits and completion. See the [follow-up audit](docs/BUG_AUDIT_0.3.9_FOLLOWUP.md).
 
 ## Fixed in 0.3.9
 

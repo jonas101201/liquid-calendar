@@ -79,6 +79,10 @@ Item {
         searchInput.clear(); kindBox.currentIndex=0; mode=0; select(d);
     }
     function jumpResult(entry) { jump(Cal.parse(entry.date)); }
+    function editEntry(entry,single) {
+        if(persistence)persistence.edit(entry.event.id,entry.occurrenceDate||entry.date||entry.event.date,single);
+        else openEvent(entry.event);
+    }
     function undoDelete() {
         if(!deletedEntry)return;
         var next=events.slice();
@@ -202,13 +206,14 @@ Item {
         RowLayout {
             anchors.fill:parent; anchors.margins:10; spacing:10
             Rectangle { Layout.preferredWidth:3; Layout.fillHeight:true; radius:2; color:root.colors[card.entry.event.category] }
-            GlassCheck { visible:card.entry.event.task; checked:card.entry.event.done; onClicked:root.toggleTask(card.entry.event,card.entry.date); Accessible.name:card.entry.event.repeat!=="none"&&card.entry.event.done?"Reopen completed series":"Task completed" }
+            GlassCheck {objectName:"calendarEntryTaskToggle";visible:card.entry.event.task; checked:card.entry.event.done; onClicked:root.toggleTask(card.entry.event,card.entry.occurrenceDate||card.entry.date); Accessible.name:card.entry.event.repeat!=="none"&&card.entry.event.done?"Reopen completed series":"Task completed" }
             ColumnLayout {
                 Layout.fillWidth:true; Layout.minimumWidth:0; spacing:4
                 Label { Layout.fillWidth:true; textFormat:Text.PlainText; text:card.entry.event.title; color:root.ink; font.pixelSize:13; font.weight:Font.DemiBold; font.strikeout:card.entry.event.task&&card.entry.event.done; elide:Text.ElideRight }
-                Label { Layout.fillWidth:true; textFormat:Text.PlainText; text:Cal.isUndated(card.entry.event)?"Undated · "+card.entry.event.minutes+" min":(card.showDate?root.dateText(Cal.parse(card.entry.date),root.globalMode?"dd.MM.yyyy":"ddd, dd MMM")+" · ":"")+(card.entry.event.allDay?"All day":card.entry.event.time+" · "+card.entry.event.minutes+" min")+(card.entry.event.location?" · "+card.entry.event.location:"")+(card.entry.event.repeat!=="none"?" · Series":""); color:root.muted; font.pixelSize:11; elide:Text.ElideRight }
+                Label {objectName:"calendarEntryDetails";Layout.fillWidth:true;textFormat:Text.PlainText;text:Cal.isUndated(card.entry.event)?"Undated · "+card.entry.event.minutes+" min":(card.showDate?root.dateText(Cal.parse(card.entry.date),root.globalMode?"dd.MM.yyyy":"ddd, dd MMM")+" · ":"")+(card.entry.event.allDay?"All day":(card.entry.carry?"Continued · 00:00":card.entry.event.time)+" · "+(card.entry.carry?card.entry.segmentMinutes:card.entry.event.minutes)+" min")+(card.entry.event.location?" · "+card.entry.event.location:"")+(card.entry.event.repeat!=="none"?" · Series":""); color:root.muted; font.pixelSize:11; elide:Text.ElideRight }
             }
-            GlassButton { text:root.globalMode&&!Cal.isUndated(card.entry.event)?"Go to day":"Open"; onClicked:root.globalMode&&!Cal.isUndated(card.entry.event)?root.jumpResult(card.entry):root.openEvent(card.entry.event); Accessible.name:(root.globalMode&&!Cal.isUndated(card.entry.event)?"Jump to day: ":"Edit entry: ")+card.entry.event.title }
+            GlassButton {visible:!!root.persistence&&card.entry.event.repeat!=="none";text:"Series";objectName:"calendarEntrySeries";Accessible.name:"Edit entire series: "+card.entry.event.title;onClicked:root.editEntry(card.entry,false)}
+            GlassButton { text:root.globalMode&&!Cal.isUndated(card.entry.event)?"Go to day":"Open"; objectName:"calendarEntryOpen";onClicked:root.globalMode&&!Cal.isUndated(card.entry.event)?root.jumpResult(card.entry):root.editEntry(card.entry,true); Accessible.name:(root.globalMode&&!Cal.isUndated(card.entry.event)?"Jump to day: ":"Edit entry: ")+card.entry.event.title }
         }
     }
 

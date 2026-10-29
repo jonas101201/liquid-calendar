@@ -1,6 +1,10 @@
 # Testing
 
-## Current release: 0.3.9 interface and editing checks
+## Current release: 0.3.9.1 interaction follow-up
+
+Month/Week drag checks hold the left mouse button, move the indicator before release, test bounds and release outside the switch, preserve click/Space activation and cancel when the view is hidden. They run with motion enabled and disabled. Month-card checks physically click Open, Series and completion for a repeating overnight task, verifying the original occurrence date and Undo. JavaScript tests cover overnight carry-in, exact-midnight/all-day exclusions, cancelled sources and distinct daily occurrences. See [the follow-up audit](docs/BUG_AUDIT_0.3.9_FOLLOWUP.md).
+
+## 0.3.9 interface and editing baseline
 
 Adaptive palette checks cover all five accents in light and dark themes, verify hue propagation to calendar/popup glass and check text contrast against panel colors. Opacity-drag regression checks remain enabled.
 

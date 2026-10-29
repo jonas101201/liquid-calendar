@@ -23,7 +23,7 @@ English remains the primary interface language. The language milestone introduce
 
 ## Bug-fix releases and version naming
 
-The current release is **0.3.9** (beta prerelease), including adaptive Liquid Glass themes, UI fixes and draft-aware merging after the third feature milestone. The next milestone is **0.4.0**, with configurable planning hours, breaks and task splitting. See the [release record](docs/RELEASE_0.3.6.md).
+The current release is **0.3.9.1** (beta prerelease), including adaptive Liquid Glass themes, UI fixes and draft-aware merging after the third feature milestone. The next milestone is **0.4.0**, with configurable planning hours, breaks and task splitting. See the [release record](docs/RELEASE_0.3.6.md).
 
 Each beta milestone can receive bug-fix releases as needed. These do not count as additional milestones in the ten-beta roadmap.
 
@@ -55,3 +55,7 @@ The maintenance refactor was published on 28 October 2026 as **0.3.8.1**. The 0.
 ## 0.3.9 interface and editing update
 
 Released on **29 October 2026** as [0.3.9](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.3.9). This update improves the existing 0.3.x interface and editing workflow; it does not complete the planned 0.4.0 flexible-planning milestone.
+
+## 0.3.9.1 interaction fixes
+
+Released on **29 October 2026** as [0.3.9.1](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.3.9.1). This patch adds held-pointer dragging to the Month/Week selector and fixes month-view occurrence editing and overnight continuations. The next feature milestone remains 0.4.0.

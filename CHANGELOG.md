@@ -2,6 +2,16 @@
 
 **0.3.6-beta.1** is the cumulative public release of the 0.3.x development work. Versions 0.3.0–0.3.5 below are unpublished historical snapshots. Patch numbers were assigned retrospectively on 28 October 2026, one per functional code patch after the initial 0.3.0 baseline. Source links identify the original implementation commits, which retain their original version strings. No commits or published tags were rewritten. Documentation-only commits are not numbered separately.
 
+## 0.3.9.1 — 2026-10-29
+
+Beta prerelease.
+
+- Show overnight events on the following day in month/widget calendars, mark them as Continued and retain the source occurrence date for editing and task completion.
+
+- Open the selected repeating occurrence from the month view, consistently with Today and Week. A separate Series action retains access to whole-series editing.
+
+- Make the Calendar Month/Week selection draggable with the mouse held down. The glass indicator follows the pointer and snaps to the chosen view on release, while clicks and keyboard activation remain available.
+
 ## 0.3.9 — 2026-10-29
 
 Beta prerelease.
