@@ -387,19 +387,48 @@ ApplicationWindow {
             RowLayout {
                 visible:planner.view==="today"||win.calendarVisible
                 Surface {
+                    id:calendarModeSwitch
                     visible:win.calendarVisible;implicitWidth:154;implicitHeight:42;radius:14;shadowStrength:0
+                    readonly property real firstX:calendarModeRow.x+calendarMonthButton.x
+                    readonly property real lastX:calendarModeRow.x+calendarWeekButton.x
                     LiquidSurface {
                         id:calendarModeHighlight
                         y:calendarModeRow.y
                         width:planner.view==="week"?calendarWeekButton.width:calendarMonthButton.width;height:38;radius:12;shadowStrength:0
                         light:win.light;tint:win.tint;motionEnabled:win.motionEnabled&&!win.appearanceAdjusting
-                        x:calendarModeRow.x+(planner.view==="week"?calendarWeekButton.x:calendarMonthButton.x)
+                        x:calendarModePointer.dragging?calendarModePointer.previewX:(planner.view==="week"?calendarModeSwitch.lastX:calendarModeSwitch.firstX)
                         color:win.accentFill
-                        Behavior on x {enabled:win.motionEnabled;NumberAnimation {duration:240;easing.type:Easing.OutCubic}}
+                        Behavior on x {enabled:win.motionEnabled&&!calendarModePointer.dragging;NumberAnimation {duration:240;easing.type:Easing.OutCubic}}
                     }
                     Row {id:calendarModeRow;anchors.centerIn:parent;spacing:2
-                        Action {id:calendarMonthButton;floatingSelection:true;text:"Month";primary:planner.view==="month";Accessible.name:"Calendar month view";onClicked:{editorSurface.mode=0;planner.setView("month");}}
-                        Action {id:calendarWeekButton;floatingSelection:true;text:"Week";primary:planner.view==="week";Accessible.name:"Calendar week view";onClicked:planner.setView("week")}
+                        Action {id:calendarMonthButton;floatingSelection:true;text:"Month";primary:calendarModePointer.dragging?calendarModePointer.previewIndex===0:planner.view==="month";Accessible.name:"Calendar month view";onClicked:{editorSurface.mode=0;planner.setView("month");}}
+                        Action {id:calendarWeekButton;floatingSelection:true;text:"Week";primary:calendarModePointer.dragging?calendarModePointer.previewIndex===1:planner.view==="week";Accessible.name:"Calendar week view";onClicked:planner.setView("week")}
+                    }
+                    MouseArea {
+                        id:calendarModePointer
+                        anchors.fill:parent;acceptedButtons:Qt.LeftButton;preventStealing:true
+                        cursorShape:pressed?Qt.ClosedHandCursor:Qt.PointingHandCursor
+                        property bool dragging:false
+                        property real pressX:0
+                        property real grabOffset:0
+                        property real previewX:0
+                        readonly property int previewIndex:previewX>(calendarModeSwitch.firstX+calendarModeSwitch.lastX)/2?1:0
+                        function clampX(x){return Math.max(calendarModeSwitch.firstX,Math.min(calendarModeSwitch.lastX,x));}
+                        onPressed:function(mouse){
+                            pressX=mouse.x;dragging=false;previewX=calendarModeHighlight.x;
+                            grabOffset=mouse.x>=calendarModeHighlight.x&&mouse.x<=calendarModeHighlight.x+calendarModeHighlight.width?mouse.x-calendarModeHighlight.x:calendarModeHighlight.width/2;
+                        }
+                        onPositionChanged:function(mouse){
+                            if(!pressed)return;
+                            if(Math.abs(mouse.x-pressX)>=Qt.styleHints.startDragDistance)dragging=true;
+                            if(dragging)previewX=clampX(mouse.x-grabOffset);
+                        }
+                        onReleased:function(mouse){
+                            var index=dragging?previewIndex:(mouse.x>calendarModeRow.x+calendarMonthButton.width+calendarModeRow.spacing/2?1:0);
+                            var button=index===1?calendarWeekButton:calendarMonthButton;
+                            button.forceActiveFocus();button.clicked();dragging=false;
+                        }
+                        onCanceled:dragging=false
                     }
                 }
                 Action {text:"‹";Accessible.name:"Previous period";onClicked:planner.view==="month"?editorSurface.navigate(-1):planner.navigate(-1)}

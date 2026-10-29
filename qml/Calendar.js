@@ -62,11 +62,15 @@ function occurs(e,d) {
 function instances(events,start,days,query,category,kind) {
     var out=[], q=(query||'').trim();
     for(var n=0;n<days;n++) {
-        var d=add(start,n), s=key(d);
+        var d=add(start,n), s=key(d), previous=add(d,-1);
         events.forEach(function(e) {
             if (category>=0 && e.category!==category) return;
             if (!kindMatches(e,kind) || (q && !matches(e,q))) return;
-            if (occurs(e,d)) out.push({event:e, date:s, sort:s+(e.allDay?'00:00':e.time)});
+            if (occurs(e,d)) out.push({event:e,date:s,occurrenceDate:s,carry:false,sort:s+(e.allDay?'00:00':e.time)});
+            var end=!e.allDay?Number(e.time.slice(0,2))*60+Number(e.time.slice(3))+e.minutes:0;
+            if(end>1440&&occurs(e,previous)) {
+                out.push({event:e,date:s,occurrenceDate:key(previous),carry:true,segmentMinutes:end-1440,sort:s+'00:00'});
+            }
         });
     }
     out.sort(function(a,b) { return a.sort.localeCompare(b.sort) || a.event.title.localeCompare(b.event.title); });

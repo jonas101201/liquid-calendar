@@ -7,11 +7,11 @@ from logic import *
 from PySide6.QtWidgets import QApplication
 from PySide6.QtQml import QQmlApplicationEngine,QQmlExpression
 from PySide6.QtCore import QUrl,QTimer,QEventLoop,qInstallMessageHandler,QLocale
-from PySide6.QtQuick import QQuickWindow
+from PySide6.QtQuick import QQuickWindow,QQuickItem
 from PySide6.QtGui import QPalette,QColor
 from unittest.mock import patch
 from PySide6.QtTest import QTest
-from PySide6.QtCore import Qt,QPoint
+from PySide6.QtCore import Qt,QPoint,QPointF
 QLocale.setDefault(QLocale('en_GB'));app=QApplication([]);logs=[];qInstallMessageHandler(lambda typ,ctx,text:logs.append(text))
 temp=tempfile.TemporaryDirectory(prefix='reviewer-language-');p=pathlib.Path(temp.name);shutil.copytree(src/'qml',p/'qml')
 s=(p/'qml/App.qml').read_text().replace('id:win','id:win\n function review(code){return eval(code);}',1);(p/'qml/App.qml').write_text(s)
@@ -154,6 +154,27 @@ expr('editorSurface.navigate(-1)');settle();assert b.selected=='2026-10-01'
 expr('calendarWeekButton.clicked()');b.navigate(1);settle();assert b.selected=='2026-10-08'
 b.selectDate(today.isoformat());b.setView('month');settle()
 print('Consolidated Calendar navigation and month/week switching passed.')
+# Drag the selected calendar pill, rather than a scrollbar, while the left button is held.
+def calendar_point(name):
+ return QPoint(round(expr(f'{name}.mapToItem(win.contentItem,{name}.width/2,{name}.height/2).x')),round(expr(f'{name}.mapToItem(win.contentItem,0,{name}.height/2).y')))
+for motion in [True,False]:
+ b.setAnimations(motion);b.setView('month');settle(280)
+ start=calendar_point('calendarMonthButton');end=calendar_point('calendarWeekButton')
+ QTest.mousePress(win,Qt.LeftButton,Qt.NoModifier,start);QTest.mouseMove(win,QPoint(end.x()+35,end.y()));settle(30)
+ assert expr('calendarModePointer.pressed && calendarModePointer.dragging && calendarModeHighlight.x===calendarModeSwitch.lastX')
+ assert b.view=='month'
+ QTest.mouseRelease(win,Qt.LeftButton,Qt.NoModifier,QPoint(end.x()+35,end.y()));settle(280);assert b.view=='week'
+ QTest.mousePress(win,Qt.LeftButton,Qt.NoModifier,end);QTest.mouseMove(win,QPoint(start.x()-35,start.y()));settle(30)
+ assert expr('calendarModeHighlight.x===calendarModeSwitch.firstX')
+ QTest.mouseRelease(win,Qt.LeftButton,Qt.NoModifier,QPoint(start.x()-35,start.y()));settle(280);assert b.view=='month'
+ QTest.mouseClick(win,Qt.LeftButton,Qt.NoModifier,end);settle(280);assert b.view=='week'
+ expr('calendarMonthButton.forceActiveFocus()');QTest.keyClick(win,Qt.Key_Space);settle(280);assert b.view=='month'
+ QTest.mousePress(win,Qt.LeftButton,Qt.NoModifier,start);QTest.mouseMove(win,end);settle(30)
+ b.setView('tasks');settle(30)
+ assert expr('!calendarModePointer.dragging') and b.view=='tasks'
+ QTest.mouseRelease(win,Qt.LeftButton,Qt.NoModifier,end)
+b.setAnimations(True);b.setView('month');settle(280)
+print('Held Month/Week pill drag, bounds, click, keyboard and cancellation passed with and without motion.')
 # Sample real animation frames, then interrupt them with reduced motion.
 b.setAnimations(True);b.setView('today');settle(320)
 b.setView('tasks');settle(60)
@@ -420,6 +441,36 @@ assert expr('editorSurface.review("templateButton.y")')==0
 QQuickWindow.grabWindow(win).save('/tmp/liquid-calendar-hidden-menu-fixed.png')
 expr('editorSurface.review("editorActions.close();editor.close()")');settle()
 print('Selected occurrences merge without changing future repeats; hidden menu rows take zero space.')
+# Actual month-card buttons must distinguish one occurrence from its whole series.
+night=e('overnight',date='2026-10-28',time='23:30',minutes=120,repeat='weekly',task=True)
+b.commit([night]);b.selectDate('2026-11-05');b.setView('month');expr('editorSurface.review('+json.dumps('searchInput.clear();kindBox.currentIndex=0;categoryFilter=-1')+')');settle(300)
+assert expr('editorSurface.review("agenda.count")')==1
+assert expr('editorSurface.review('+json.dumps('dayCount(Cal.parse("2026-10-29"))')+')')==1
+def find_calendar_control(item,name):
+ if item.objectName()==name:return item
+ for child in item.childItems():
+  found=find_calendar_control(child,name)
+  if found is not None:return found
+ return None
+def click_calendar_control(name):
+ control=find_calendar_control(win.contentItem(),name);assert control is not None and control.isVisible()
+ point=control.mapToScene(QPointF(control.width()/2,control.height()/2))
+ QTest.mouseClick(win,Qt.LeftButton,Qt.NoModifier,QPoint(round(point.x()),round(point.y())));settle(260)
+assert 'Continued · 00:00 · 90 min' in find_calendar_control(win.contentItem(),'calendarEntryDetails').property('text')
+click_calendar_control('calendarEntryOpen')
+assert expr('editorSurface.review("editor.draftOriginal.occurrenceDate")')=='2026-11-04'
+assert expr('editorSurface.review("editor.draftOriginal.repeat")')=='none'
+expr('editorSurface.review("editor.close()")');settle(160)
+click_calendar_control('calendarEntrySeries')
+assert expr('editorSurface.review("editor.draftOriginal.id")')=='overnight'
+assert expr('editorSurface.review("editor.draftOriginal.repeat")')=='weekly'
+expr('editorSurface.review("editor.close()")');settle(160)
+click_calendar_control('calendarEntryTaskToggle')
+saved=st.read();parent=next(e for e in saved if e['id']=='overnight');child=next(e for e in saved if e.get('seriesId')=='overnight')
+assert child['done'] and child['date']=='2026-11-04'
+assert occurs(parent,parse('2026-10-28')) and not occurs(parent,parse('2026-11-04')) and occurs(parent,parse('2026-11-11'))
+b.undo();assert st.read()==[night]
+print('Month overnight display, source-occurrence edit/completion and separate Series button passed.')
 # Supported date endpoints must not break week headers, navigation or QML loading.
 b.commit([]);b.setView('week');b.selectDate('9999-12-31');settle()
 assert len(b.weekDays)==7 and b.weekDays[-1]['date']==''
