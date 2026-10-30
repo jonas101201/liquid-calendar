@@ -76,6 +76,7 @@ Source: [`f702a8d`](https://github.com/jonas101201/liquid-calendar/commit/f702a8
 
 - Add desktop event merge with preview, combined content, transactional stale-edit rejection and Undo.
 - Fix dense overlap cards exceeding their lanes and short cards obscuring adjacent entries; expand into available lanes, add readable horizontal scrolling and synchronize week headings.
+ main
 
 ## 0.3.3-beta.1 — Unreleased
 
