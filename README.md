@@ -2,13 +2,13 @@
 
 A local desktop calendar and task planner for **Fedora Linux / KDE Plasma 6**. English interface, no account required.
 
-**Repository version: 0.3.9.2 Beta** · Updated **2026-10-30** · **GPL-3.0-or-later**
+**Current beta: 0.3.9.2 Beta 2** · Released **2026-10-30** · **GPL-3.0-or-later**
 
-[Latest packaged release: 0.3.9.1](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.3.9.1) · [Release notes](RELEASE_NOTES.md) · [Known issues](KNOWN_ISSUES.md) · [Roadmap](ROADMAP.md)
+[Download 0.3.9.2 Beta 2](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.3.9.2-beta.2) · [Release notes](RELEASE_NOTES.md) · [Known issues](KNOWN_ISSUES.md) · [Roadmap](ROADMAP.md)
 
 ![Today view with synthetic example data](docs/screenshots/today.png)
 
-**0.3.9.2** reworks previously incorrect event merging and nested-event display. Related events remain separate, contained events appear inside their longer background card, and mutual group overlaps no longer trigger conflict warnings. Cleaner cards protect the outer title and retain individually editable details. See [what changed](RELEASE_NOTES.md).
+**0.3.9.2 Beta 2** includes a separate Flatpak package and reworks previously incorrect event merging and nested-event display. Related events remain separate, contained events appear inside their longer background card, and mutual group overlaps no longer trigger conflict warnings. Cleaner cards protect the outer title and retain individually editable details. See [what changed](RELEASE_NOTES.md).
 
 ## Features
 
@@ -25,7 +25,7 @@ A local desktop calendar and task planner for **Fedora Linux / KDE Plasma 6**. E
 
 Saved events and individual repeat occurrences can be linked through **More ▾ → Link with another event…**, with a two-card preview and Undo. For School 07:00–14:00 and Exam 09:00–10:00, the exam appears as an independent card inside School. Both remain editable, movable and removable; **Unlink group** keeps both. Unrelated overlapping bookings still receive separate lanes and conflict indicators. See [event linking](docs/EVENT_LINKS.md).
 
-The latest packaged download is still 0.3.9.1; it does not contain the 0.3.9.2 source changes.
+The release contains native source archives and a separate Flatpak bundle. The Flatpak keeps its own data by default; import a JSON backup to bring in existing events/tasks.
 
 **0.3.7-beta.1** fixes exact-date search, concurrent task scheduling and supported date-boundary failures. See [the bug audit](docs/BUG_AUDIT_0.3.7.md) and [release record](docs/RELEASE_0.3.7.md).
 
@@ -35,11 +35,15 @@ The latest packaged download is still 0.3.9.1; it does not contain the 0.3.9.2 s
 
 See the [roadmap](ROADMAP.md) for the ten beta milestones, planned features and bug-fix versioning rules.
 
+## Flatpak beta
+
+A separate Flatpak bundle is included in the release; build sources are also provided. It uses sandbox-local data and desktop portals for reminders/autostart; existing calendars can be imported through JSON. See [Flatpak installation and build instructions](flatpak/README.md). This does not replace the native installer or publish a Flathub listing.
+
 ## Install
 
 Requirements: Fedora/KDE Plasma 6, **Python 3.10–3.14**, venv/pip support, network access to PyPI and the system Qt platform libraries. `notify-send` is needed for notifications. Other systems are not validated.
 
-Download an archive from the [0.3.9.1 release](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.3.9.1), extract it and open a terminal in its folder:
+Download a source archive from the [0.3.9.2 Beta 2 release](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.3.9.2-beta.2), extract it and open a terminal in its folder:
 
 ```bash
 python3 installieren.py
