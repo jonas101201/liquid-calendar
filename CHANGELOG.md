@@ -2,6 +2,15 @@
 
 **0.3.6-beta.1** is the cumulative public release of the 0.3.x development work. Versions 0.3.0–0.3.5 below are unpublished historical snapshots. Patch numbers were assigned retrospectively on 28 October 2026, one per functional code patch after the initial 0.3.0 baseline. Source links identify the original implementation commits, which retain their original version strings. No commits or published tags were rewritten. Documentation-only commits are not numbered separately.
 
+## 0.3.9.3 — 2026-10-31
+
+Beta prerelease.
+
+- Publish only validated, complete automatic SQLite backups. Repair incomplete daily files left by previous failures, preserve valid snapshots, serialize concurrent creators and retry after copy/publish errors.
+- Preserve nested-event start times during horizontal date dragging; apply 15-minute deltas only for vertical movement, including non-quarter-hour starts.
+- Close remote Flatpak autostart requests on timeout, follow alternative returned handles and allow subsequent requests without orphaned dialogs.
+- Add interrupted-copy, repair, atomic-publish and concurrent-client regressions, real nested-card mouse drags, and private D-Bus cancellation/retry checks.
+
 ## 0.3.9.2-beta.2 — 2026-10-30
 
 Beta prerelease. Publishes the corrected event-linking source below and the first separate Flatpak package. The previous merge/display implementation was incorrect for contained related events and could obscure outer titles; both behavior and card design have been reworked.
