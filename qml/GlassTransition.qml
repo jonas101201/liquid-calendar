@@ -11,6 +11,6 @@ Transition {
     }
     property ParallelAnimation closing:ParallelAnimation {
         NumberAnimation {property:"opacity";to:0;duration:motion.motionEnabled?110:0;easing.type:Easing.OutCubic}
-        NumberAnimation {property:"scale";to:.985;duration:motion.motionEnabled?110:0;easing.type:Easing.OutCubic}
+        NumberAnimation {property:"scale";to:.97;duration:motion.motionEnabled?110:0;easing.type:Easing.OutCubic}
     }
 }

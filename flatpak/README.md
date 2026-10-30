@@ -5,7 +5,7 @@ Application ID: `io.github.jonas101201.LiquidCalendar`. The current package uses
 ## Install the local bundle
 
 ```bash
-flatpak install --user ./liquid-calendar-0.3.9.2-beta.2-x86_64.flatpak
+flatpak install --user ./liquid-calendar-0.3.9.3-x86_64.flatpak
 flatpak run io.github.jonas101201.LiquidCalendar
 ```
 
@@ -21,7 +21,7 @@ By default the Flatpak uses its own database under:
 
 It does not read or migrate the existing Plasma calendar automatically. To bring events/tasks across, export JSON from the native app and import it using Flatpak Settings. JSON event backups do not include the separate template library. Keep the original installation until the imported data has been checked. File import/export uses the desktop's file chooser; the manifest grants no general home or network access.
 
-Reminders use the Notification portal asynchronously. The app records a notification only after the portal acknowledges it; acknowledgment does not guarantee that the desktop displayed it (for example during Do Not Disturb). Autostart uses the Background portal and may require a desktop permission prompt. Its displayed state is the last acknowledged request; changing permission outside the app may require enabling it again. Login launches the app through its desktop entry.
+Reminders use the Notification portal asynchronously. The app records a notification only after the portal acknowledges it; acknowledgment does not guarantee that the desktop displayed it (for example during Do Not Disturb). Autostart uses the Background portal and may require a desktop permission prompt. Timed-out requests are closed remotely before retrying; alternative returned request handles are supported. Its displayed state is the last acknowledged request; changing permission outside the app may require enabling it again. Login launches the app through its desktop entry.
 
 The companion Plasma widget is installed separately with the native installer. It cannot be installed or reloaded by the Flatpak. An advanced, optional shared-storage launch is available:
 
@@ -57,4 +57,4 @@ The BaseApp cleanup and explicit pruning remove WebEngine, NumPy, code generator
 - Native QML and nested-card checks run offscreen with temporary databases; AppStream metadata is validated locally.
 - The installed bundle is smoke-tested with `--smoke-test`, which selects a temporary database.
 
-The beta bundle is distributed through the [0.3.9.2 Beta 2 GitHub release](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.3.9.2-beta.2). It is not a Flathub publication or a signed update channel. File-chooser interaction and real login/autostart prompts still require an interactive desktop acceptance check. No production database is used in the automated checks.
+The beta bundle is distributed through the [0.3.9.3 GitHub prerelease](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.3.9.3). It is not a Flathub publication or a signed update channel. File-chooser interaction and real login/autostart prompts still require an interactive desktop acceptance check. No production database is used in the automated checks.

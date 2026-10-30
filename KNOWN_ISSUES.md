@@ -1,14 +1,26 @@
 # Known issues and beta limitations
 
-Applies to **Liquid Calendar 0.3.9.2 Beta 2** (`0.3.9.2-beta.2`). Last updated: **2026-10-30**.
+Applies to **Liquid Calendar 0.3.9.3** (beta prerelease). Last updated: **2026-10-31**.
 
 This page distinguishes current limitations from issues fixed in earlier beta versions. It is not a guarantee that the beta is free of bugs.
+
+## Fixed in 0.3.9.3
+
+An additional early-popup-close scale increase found during Flatpak validation is also corrected.
+
+The three failures reproduced against 0.3.9.2 Beta 2 are corrected:
+
+- **Automatic backups:** SQLite copies are written to a unique temporary file, validated and atomically published. Empty/corrupt daily files left by earlier failures are repaired before saving; failed copies remain retryable. Concurrent clients serialize first-of-day creation and preserve an existing valid daily snapshot.
+- **Nested-event dragging:** horizontal-only rescheduling preserves the exact start time, including times outside the quarter-hour grid. Vertical movement applies 15-minute deltas from the original time rather than the header-displaced visual position.
+- **Flatpak autostart:** timeout closes the remote portal request, removes the local listener and allows a clean retry. Returned alternative request handles are followed for responses and cancellation.
+
+See the [audit and resolution record](docs/BUG_AUDIT_0.3.9.2_BETA_2_FOLLOWUP.md). Existing damaged snapshots cannot be reconstructed retroactively; recovery creates a valid snapshot of the current live data.
 
 ## Confirmed open bugs
 
 The Flatpak beta uses asynchronous Notification portal calls and is not affected by the two native `notify-send` issues below. Its interactive file-picker and login/autostart acceptance checks remain separate from the isolated tests; see [Flatpak limitations](flatpak/README.md).
 
-These native notification issues remain present in 0.3.9.2 Beta 2; the Flatpak uses a different portal backend. Confirmed with isolated synthetic records on **2026-10-30**; an independent review reproduced both.
+These native notification issues remain present in 0.3.9.3; the Flatpak uses a different portal backend. Confirmed with isolated synthetic records on **2026-10-30**; an independent review reproduced both.
 
 ### Native reminder titles beginning with a hyphen can suppress delivery
 

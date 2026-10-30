@@ -15,5 +15,5 @@
   <url type="bugtracker">https://github.com/jonas101201/liquid-calendar/issues</url>
   <url type="vcs-browser">https://github.com/jonas101201/liquid-calendar</url>
   <content_rating type="oars-1.1"/>
-  <releases><release version="0.3.9.2-beta.2" date="2026-10-30" type="development"><description><p>Reworked linked events, nested display and calendar interaction fixes.</p></description></release></releases>
+  <releases><release version="0.3.9.3" date="2026-10-31" type="development"><description><p>Repair interrupted backups, preserve nested-event drag times and cancel timed-out autostart requests.</p></description></release><release version="0.3.9.2-beta.2" date="2026-10-30" type="development"><description><p>Reworked linked events, nested display and calendar interaction fixes.</p></description></release></releases>
 </component>

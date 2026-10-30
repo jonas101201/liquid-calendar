@@ -1,31 +1,21 @@
-# Liquid Calendar 0.3.9.2 Beta 2
+# Liquid Calendar 0.3.9.3
 
-Beta prerelease · **30 October 2026**. [Release and downloads](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.3.9.2-beta.2).
+Beta prerelease · **31 October 2026**. [Release and downloads](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.3.9.3).
 
-## Reworked event merging and display
+## Fixed
 
-The previous implementation was incorrect for intentionally related events. It combined separate contents or displayed related events as conflicting, side-by-side bookings. A contained card could also cover its outer event's title. These behaviors have been reworked.
+- **Smooth early popup closing:** closing a popup during its opening animation no longer briefly increases its scale.
 
-- **Separate records:** each event retains its title, time, duration, details, category and reminder. Use **More → Link with another event…** to preview and save a relationship.
-- **Nested display:** School 07:00–14:00 can contain an independent Exam 09:00–10:00 card in one outer lane. Mutual group overlap warnings are suppressed; unrelated conflicts remain visible.
-- **Individual editing:** open, move or delete either event independently. Unlink group preserves both events and saves valid editor changes. Undo restores the previous saved state.
-- **Cleaner cards:** title-first typography, muted time ranges, subtle accents and balanced spacing replace repeated icons and group labels. The outer header stays clear.
-- **Recurring occurrences:** only selected occurrences are detached; future repetitions retain their schedules.
+- **Reliable automatic backups:** interrupted copies no longer leave an accepted empty daily backup. Copies are validated before atomic publication; existing empty/corrupt daily files are repaired before saving. Concurrent clients retain the first valid daily snapshot, and failures remain retryable.
+- **Correct nested-event rescheduling:** dragging an inner event horizontally to another day preserves its start time. The previously reproduced 09:30 → 09:45 drift is fixed. Vertical dragging applies 15-minute movement increments while preserving an existing non-quarter-hour time offset.
+- **Flatpak autostart cancellation:** a timed-out permission request is closed remotely, so the old dialog does not remain active after the app gives up. Alternative returned handles are followed and a subsequent request can succeed.
 
-## Additional corrections
+## Validation and downloads
 
-Undated task saves no longer contaminate the month filter; Today/date jumps clear hidden month searches. Exports read fresh shared records and atomically replace files. Failed preference writes preserve the active saved values. Date-boundary checks, ICS daylight-saving calculations, Unicode line folding and export-error presentation are corrected.
+182 Python tests, eight JavaScript suites, real native/Flatpak QML interactions, private D-Bus portal checks, isolated widget editing, AppStream validation, source-copy synchronization, smoke launches and archive/asset checksums form the validation set. Tests use synthetic records and temporary databases.
 
-## Validation and limits
+Native source ZIP/TAR archives, a separate Flatpak bundle, a build receipt and SHA256SUMS are included. The Flatpak uses separate storage by default; transfer existing events/tasks through JSON. It is not a Flathub release. See [Flatpak instructions](flatpak/README.md).
 
-176 Python tests, eight JavaScript suites, actual native QML interactions, a dedicated nested-card geometry/edit-target check in Dark and Light, isolated widget editing, shared-source synchronization and smoke launch form the validation set. Synthetic databases are used throughout. See [testing](TESTING.md).
+The two native notify-send issues remain documented in [Known issues](KNOWN_ISSUES.md). Interactive file-picker/login acceptance and installation in a fresh user account have not been tested. Previously damaged backup history cannot be reconstructed; repair snapshots the current live data. Existing release tags/assets remain unchanged.
 
-Short, equal or partially overlapping linked intervals remain separate cards; containing segments need at least 90 minutes of display space. JSON preserves links; ICS exports independent events without app-specific grouping. Previously destructively combined records cannot be automatically reconstructed. Reminder delivery defects remain open; see [Known issues](KNOWN_ISSUES.md).
-
-## Flatpak beta
-
-A separate Flatpak bundle is included. It uses KDE/PySide runtime sharing, sandbox-local storage, asynchronous notification and autostart portals, and a separate menu entry. The existing native calendar is not imported automatically: transfer events/tasks using JSON. The optional Plasma widget remains separately installed; advanced shared-storage permissions are documented in [the Flatpak guide](flatpak/README.md). A first installation may need the shared KDE runtime; the bundle size does not include it.
-
-Downloads include the native source ZIP/TAR archives, the Flatpak bundle, a build receipt and SHA256SUMS. The Flatpak is not published on Flathub. Interactive file-picker and real login/autostart acceptance checks remain outside the isolated automated tests. Installation in a fresh user account has not been tested.
-
-Fully quit with **Ctrl+Q** before reopening an updated installation. Existing release tags and downloads remain unchanged.
+Fully quit with **Ctrl+Q** before reopening an updated installation. See [the audit resolution](docs/BUG_AUDIT_0.3.9.2_BETA_2_FOLLOWUP.md).

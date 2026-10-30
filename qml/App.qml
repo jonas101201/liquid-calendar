@@ -594,7 +594,13 @@ ApplicationWindow {
                                         keys:["liquid-calendar-event"]
                                         Rectangle {anchors.left:parent.left;width:1;height:parent.height;color:win.line}
                                         Rectangle {anchors.fill:parent;color:parent.containsDrag?Qt.rgba(win.tint.r,win.tint.g,win.tint.b,.2):modelData.today?Qt.rgba(win.tint.r,win.tint.g,win.tint.b,.07):"transparent"}
-                                        onDropped:function(drop){var source=drop.source;var minute=Math.max(0,Math.min(1425,Math.round((drop.y-8)/timeline.hourHeight*4)*15));planner.move(source.record.id,source.record.occurrenceDate,modelData.date,minute,source.record.fingerprint);drop.acceptProposedAction();}
+                                        onDropped:function(drop){
+                                            var source=drop.source;
+                                            var steps=Math.round((drop.y-8-source.homeY)/timeline.hourHeight*4);
+                                            var minute=Math.max(0,Math.min(1439,source.record.start+steps*15));
+                                            planner.move(source.record.id,source.record.occurrenceDate,modelData.date,minute,source.record.fingerprint);
+                                            drop.acceptProposedAction();
+                                        }
                                     }
                                 }
                                 Canvas {

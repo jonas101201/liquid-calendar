@@ -1,5 +1,9 @@
 # Testing
 
+## 0.3.9.3 regression checks
+
+182 Python tests include genuine interrupted SQLite copies, repair of empty/corrupt daily snapshots, rename failure/retry, preservation of an existing valid snapshot and concurrent creators. The actual nested-card Qt check covers horizontal, vertical and combined drags, including a 09:37 start. The private D-Bus service records remote Close calls, suppresses late permission grants after cancellation and verifies a successful retry with an alternative handle. All records and services are synthetic.
+
 ## Flatpak beta checks
 
 176 Python regressions pass both natively and in the installed Flatpak. The private D-Bus test verifies portal marshalling, asynchronous notification acknowledgment, literal titles and background autostart permission results. The package and native smoke checks use temporary databases. Nested geometry/edit-target checks run with the BaseApp's Python/PySide in the sandbox; AppStream metadata validates. See [Flatpak scope and desktop acceptance limits](flatpak/README.md).

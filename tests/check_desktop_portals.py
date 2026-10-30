@@ -11,17 +11,24 @@ from desktop_portals import DesktopPortals,PATH,SERVICE
 if not os.environ.get('LIQUID_PORTAL_TEST_BUS'):raise SystemExit('Use LIQUID_PORTAL_TEST_BUS=1 dbus-run-session -- python tests/check_desktop_portals.py')
 application=QCoreApplication([]);bus=QDBusConnection.sessionBus()
 assert bus.registerService(SERVICE),bus.lastError().message()
-requests=[];notifications=[];deny_next=False
+requests=[];notifications=[];deny_next=False;response_delay=20;alternate_handle=False;closed=[];grants=[]
 @ClassInfo(**{'D-Bus Interface':'org.freedesktop.portal.Request'})
 class Request(QObject):
     Response=Signal('uint','QVariantMap')
+    @Slot()
+    def Close(self):self.closed=True;closed.append(self.path)
 class Background(QObject):
     @Slot(str,'QVariantMap',result=QDBusObjectPath)
     def RequestBackground(self,parent,options):
         path=PATH+'/request/'+bus.baseService().lstrip(':').replace('.','_')+'/'+options['handle_token']
-        request=Request();requests.append(request)
-        assert bus.registerObject(path,'org.freedesktop.portal.Request',request,QDBusConnection.ExportAllSignals)
-        QTimer.singleShot(20,lambda:request.Response.emit(1 if deny_next else 0,{'background':True,'autostart':bool(options['autostart'])}))
+        if alternate_handle:path+='_alternative'
+        request=Request();request.path=path;request.closed=False;requests.append(request)
+        assert bus.registerObject(path,'org.freedesktop.portal.Request',request,QDBusConnection.ExportAllSignals|QDBusConnection.ExportAllSlots)
+        def respond():
+            if request.closed:return
+            if not deny_next:grants.append(path)
+            request.Response.emit(1 if deny_next else 0,{'background':True,'autostart':bool(options['autostart'])})
+        QTimer.singleShot(response_delay,respond)
         return QDBusObjectPath(path)
     @Slot(str,'QVariantMap')
     def AddNotification(self,key,options):notifications.append((key,options))
@@ -47,6 +54,19 @@ portal.set_autostart(False);wait(lambda:len(background_results)==2);assert backg
 deny_next=True
 portal.set_autostart(True);wait(lambda:len(background_results)==3);assert not background_results[-1][0] and background_results[-1][2]
 deny_next=False
+# A timeout must close the remote dialog and prevent a late permission grant.
+response_delay=120;previous_grants=len(grants)
+portal.set_autostart(True);portal.background.timer.start(25)
+wait(lambda:len(background_results)==4)
+assert not background_results[-1][0] and 'timed out' in background_results[-1][2]
+wait(lambda:bool(closed));assert portal.background is None
+loop=QEventLoop();QTimer.singleShot(200,loop.quit);loop.exec()
+assert len(grants)==previous_grants and len(background_results)==4
+# A later request works, even if an older backend returns another handle.
+response_delay=20;alternate_handle=True
+portal.set_autostart(True);wait(lambda:len(background_results)==5)
+assert background_results[-1]==(True,True,''),background_results
+alternate_handle=False
 portal.notify('test-key','--help','Synthetic title is literal text');wait(lambda:bool(notification_results));assert notification_results==[('test-key',True,'')]
 assert notifications==[('test-key',{'title':'--help','body':'Synthetic title is literal text'})],notifications
-print('Private D-Bus portal: autostart enable/disable, asynchronous notification and literal title passed.')
+print('Private D-Bus portal: autostart enable/disable/timeout cancellation and alternative handles, asynchronous notification and literal title passed.')

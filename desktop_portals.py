@@ -13,7 +13,7 @@ class BackgroundRequest(QObject):
         self.token='calendar_'+uuid.uuid4().hex
         sender=bus.baseService().lstrip(':').replace('.','_')
         self.path=PATH+'/request/'+sender+'/'+self.token
-        self.timer=QTimer(self);self.timer.setSingleShot(True);self.timer.timeout.connect(lambda:self.finish(False,False,'Background permission request timed out.'))
+        self.timer=QTimer(self);self.timer.setSingleShot(True);self.timer.timeout.connect(self.timeout)
     def start(self):
         if not self.bus.connect(SERVICE,self.path,'org.freedesktop.portal.Request','Response',self,SLOT('response(uint,QVariantMap)')):
             self.finish(False,False,'Could not listen for background permission.');return
@@ -24,6 +24,14 @@ class BackgroundRequest(QObject):
         def complete():
             reply=watcher.reply()
             if reply.type()==QDBusMessage.ErrorMessage:self.finish(False,False,reply.errorMessage())
+            elif not self.done and reply.arguments():
+                handle=reply.arguments()[0]
+                actual=handle.path() if hasattr(handle,'path') else str(handle)
+                if actual!=self.path:
+                    self.bus.disconnect(SERVICE,self.path,'org.freedesktop.portal.Request','Response',self,SLOT('response(uint,QVariantMap)'))
+                    self.path=actual
+                    if not self.bus.connect(SERVICE,self.path,'org.freedesktop.portal.Request','Response',self,SLOT('response(uint,QVariantMap)')):
+                        self.cancel_remote();self.finish(False,False,'Could not listen for background permission.')
             watcher.deleteLater()
         watcher.finished.connect(complete)
     @Slot('uint','QVariantMap')
@@ -33,6 +41,13 @@ class BackgroundRequest(QObject):
         autostart=bool(results.get('autostart',False))
         if self.enabled and (not allowed or not autostart):self.finish(False,False,'Autostart permission was not granted.');return
         self.finish(True,autostart,'')
+    def cancel_remote(self):
+        message=QDBusMessage.createMethodCall(SERVICE,self.path,'org.freedesktop.portal.Request','Close')
+        self.bus.asyncCall(message,8000)
+    def timeout(self):
+        if self.done:return
+        self.cancel_remote()
+        self.finish(False,False,'Background permission request timed out; the request was cancelled.')
     def finish(self,ok,autostart,error):
         if self.done:return
         self.done=True;self.timer.stop()
