@@ -1,14 +1,16 @@
 # Known issues and beta limitations
 
-Applies to **Liquid Calendar 0.3.9.2** source (beta). The latest packaged release is **0.3.9.1**. Last updated: **2026-10-30**.
+Applies to **Liquid Calendar 0.3.9.2 Beta 2** (`0.3.9.2-beta.2`). Last updated: **2026-10-30**.
 
 This page distinguishes current limitations from issues fixed in earlier beta versions. It is not a guarantee that the beta is free of bugs.
 
 ## Confirmed open bugs
 
-These issues remain present in both the published 0.3.9.1 and the 0.3.9.2 source. Confirmed with isolated synthetic records on **2026-10-30**; an independent review reproduced both.
+The Flatpak beta uses asynchronous Notification portal calls and is not affected by the two native `notify-send` issues below. Its interactive file-picker and login/autostart acceptance checks remain separate from the isolated tests; see [Flatpak limitations](flatpak/README.md).
 
-### Reminder titles beginning with a hyphen can suppress delivery
+These native notification issues remain present in 0.3.9.2 Beta 2; the Flatpak uses a different portal backend. Confirmed with isolated synthetic records on **2026-10-30**; an independent review reproduced both.
+
+### Native reminder titles beginning with a hyphen can suppress delivery
 
 - **Reproduce:** create an event titled `--help` with an enabled reminder and keep the app running until it is due.
 - **Actual behavior:** the title is passed to `notify-send` without an end-of-options separator. `notify-send` interprets `--help` as an option, exits successfully without displaying the reminder, and the app records it as delivered. Other option-like titles can also be misinterpreted.
@@ -16,7 +18,7 @@ These issues remain present in both the published 0.3.9.1 and the 0.3.9.2 source
 - **Workaround:** start reminder titles with a letter or number rather than `-`.
 - **Status:** open; notification argument handling needs correction and a regression test.
 
-### Slow notification delivery blocks the interface
+### Native slow notification delivery blocks the interface
 
 - **Reproduce:** a due reminder runs while `notify-send` or its notification service responds slowly. An isolated event-loop check with a simulated 350 ms notification call delayed a 20 ms Qt timer until approximately 352 ms.
 - **Actual behavior:** reminder delivery uses a blocking subprocess on the GUI thread. The interface cannot process input during that call. The timeout is up to eight seconds per due reminder; several due reminders can accumulate delays.
@@ -24,9 +26,9 @@ These issues remain present in both the published 0.3.9.1 and the 0.3.9.2 source
 - **Workaround:** pause reminders if notification delivery repeatedly stalls. This disables notifications until reminders are enabled again.
 - **Status:** open; delivery needs asynchronous processing with correct success/failure tracking.
 
-## Corrected in 0.3.9.2 source; still present in the 0.3.9.1 download
+## Fixed in 0.3.9.2 Beta 2; still present in 0.3.9.1
 
-The following bugs affect the published **v0.3.9.1** snapshot. Corrections are included in the **0.3.9.2 source**; the existing **0.3.9.1 release archives do not include them**. See the [follow-up audit](docs/BUG_AUDIT_0.3.9.1_FOLLOWUP.md).
+The following bugs affect the published **v0.3.9.1** snapshot. Corrections are included in **0.3.9.2 Beta 2**; the existing **0.3.9.1 release archives do not include them**. See the [follow-up audit](docs/BUG_AUDIT_0.3.9.1_FOLLOWUP.md).
 
 | Issue | Reproduction and impact | Workaround in the published version |
 | --- | --- | --- |
@@ -54,16 +56,16 @@ The public 0.3.6 beta can return an unrelated date for an exact search matching 
 ## Current limitations
 
 - **Platform support:** the target is Fedora Linux with KDE Plasma 6. Windows, macOS and other Linux desktops are not validated. Successful offscreen CI checks do not establish full desktop compatibility.
-- **Installation:** Python 3.10–3.14, venv/pip support and network access to PyPI are required. The installer is not an offline installer; Qt platform libraries must be supplied by the operating system.
+- **Native installation:** Python 3.10–3.14, venv/pip support and network access to PyPI are required. The installer is not an offline installer; Qt platform libraries must be supplied by the operating system.
 - **Language:** the interface is English only. There is no language selector or complete localization framework yet. German date-query aliases remain available as input compatibility.
 - **Synchronization:** data is stored locally. Account sync, mobile apps and collaborative calendars are not implemented.
 - **Reminders:** the app must remain open or run in the system tray. Notifications use `notify-send`. Closing the window may keep reminders running; **Ctrl+Q** fully quits.
 - **Planning:** time suggestions cover 09:00–18:00. Times are local floating times; timezone-aware invitations and travel-time planning are not supported.
 - **Import and export:** JSON import adds new IDs and preserves existing IDs. ICS export includes events, not tasks. ICS import is not implemented.
-- **Shared storage:** app and widget use the same local Plasma database. If an incompatible active widget is detected, editing is blocked until **Connect** reloads it. This briefly refreshes the desktop and panels.
+- **Shared storage:** the native app and widget use the same local Plasma database. Flatpak uses isolated data by default and requires explicit permissions for optional shared-widget mode. If an incompatible active widget is detected, editing is blocked until **Connect** reloads it. This briefly refreshes the desktop and panels.
 - **Undo:** app-wide Undo covers the last local app change and refuses to overwrite a newer edit of the same entry. It is not an unlimited history or backup restoration tool.
 
-## Reworked event linking in 0.3.9.2
+## Reworked event linking in 0.3.9.2 Beta 2
 
 The earlier display incorrectly treated related contained events as competing overlaps, and inner cards could cover the outer title. Both problems are corrected in this source update.
 
@@ -73,7 +75,7 @@ Creating a link currently requires two unlinked events on the same date with mat
 
 JSON backups preserve links. ICS exports the events separately without the app-specific grouping relationship. Older destructive merges cannot be automatically separated because the original independent fields were not retained. Existing records are not reconstructed or migrated.
 
-See [event linking](docs/EVENT_LINKS.md) for the workflow. This behavior is included in 0.3.9.2 source, not the existing 0.3.9.1 download.
+See [event linking](docs/EVENT_LINKS.md) for the workflow. This behavior is included in 0.3.9.2 Beta 2; existing 0.3.9.1 downloads remain unchanged.
 
 ## Event merge scope in the published 0.3.9.1
 
