@@ -2,6 +2,9 @@
 import copy
 import datetime as dt
 import json
+import os
+import tempfile
+import fcntl
 from pathlib import Path
 import sqlite3
 from contextlib import contextmanager, closing
@@ -32,14 +35,37 @@ class Store:
         return validate(json.loads(row[0])) if row else []
     def read(self):
         with self.connect() as c:return self.read_conn(c)
+    @classmethod
+    def valid_backup(cls,path):
+        if not path.is_file() or path.stat().st_size==0:return False
+        try:
+            with closing(sqlite3.connect(path.resolve().as_uri()+'?mode=ro',uri=True,timeout=8)) as connection:
+                if connection.execute('PRAGMA quick_check').fetchall()!=[('ok',)]:return False
+                cls.read_conn(connection);cls.templates_conn(connection)
+            return True
+        except (OSError,ValueError,sqlite3.Error):return False
     def backup(self):
-        if self._backup_date==dt.date.today():return
+        today=dt.date.today()
+        if self._backup_date==today:return
         self.backup_dir.mkdir(parents=True,exist_ok=True)
-        target=self.backup_dir/('calendar-'+dt.date.today().strftime('%Y%m%d')+'.sqlite')
-        if not target.exists():
-            with self.connect() as source,closing(sqlite3.connect(target)) as dest:source.backup(dest)
-        self._backup_date=dt.date.today()
-        for old in sorted(self.backup_dir.glob('calendar-*.sqlite'))[:-14]:old.unlink()
+        target=self.backup_dir/('calendar-'+today.strftime('%Y%m%d')+'.sqlite')
+        # Serialize first-of-day creation across the native app and shared clients.
+        with (self.backup_dir/'.backup.lock').open('a') as lock:
+            fcntl.flock(lock,fcntl.LOCK_EX)
+            if not self.valid_backup(target):
+                descriptor,name=tempfile.mkstemp(prefix='.'+target.stem+'-',suffix='.sqlite',dir=self.backup_dir)
+                os.close(descriptor);temporary=Path(name)
+                try:
+                    with self.connect() as source,closing(sqlite3.connect(temporary)) as destination:source.backup(destination)
+                    if not self.valid_backup(temporary):raise OSError('The automatic backup did not pass validation.')
+                    with temporary.open('rb') as saved:os.fsync(saved.fileno())
+                    os.replace(temporary,target)
+                    descriptor=os.open(self.backup_dir,os.O_RDONLY|os.O_DIRECTORY)
+                    try:os.fsync(descriptor)
+                    finally:os.close(descriptor)
+                finally:temporary.unlink(missing_ok=True)
+            self._backup_date=today
+            for old in sorted(self.backup_dir.glob('calendar-*.sqlite'))[:-14]:old.unlink()
     def merge(self,desired,base,allow_occurrences=False,project_name=None,planning_slot=None,unchanged_sources=None):
         validate(desired);validate(base);self.backup()
         desired_map={e['id']:copy.deepcopy(e) for e in desired};base_map={e['id']:e for e in base}
