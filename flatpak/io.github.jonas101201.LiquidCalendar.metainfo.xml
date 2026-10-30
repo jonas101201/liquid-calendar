@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.jonas101201.LiquidCalendar</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <name>Liquid Calendar</name>
+  <summary>Plan events and tasks in a local glass calendar</summary>
+  <description>
+    <p>A local desktop calendar with month, week and agenda views, undated tasks, projects, checklists, reminders and event templates.</p>
+    <p>Link related events while retaining independent details and display contained events inside their longer time frame. Export JSON backups and ICS events without an account.</p>
+  </description>
+  <launchable type="desktop-id">io.github.jonas101201.LiquidCalendar.desktop</launchable>
+  <developer id="io.github.jonas101201"><name>jonas101201</name></developer>
+  <url type="homepage">https://github.com/jonas101201/liquid-calendar</url>
+  <url type="bugtracker">https://github.com/jonas101201/liquid-calendar/issues</url>
+  <url type="vcs-browser">https://github.com/jonas101201/liquid-calendar</url>
+  <content_rating type="oars-1.1"/>
+  <releases><release version="0.3.9.2-beta.2" date="2026-10-30" type="development"><description><p>Reworked linked events, nested display and calendar interaction fixes.</p></description></release></releases>
+</component>
