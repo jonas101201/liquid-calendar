@@ -40,7 +40,7 @@ class TestBridge(unittest.TestCase):
   self.assertEqual(self.store.settings(),before);self.assertEqual(self.bridge.accentColor,'#7ceafa')
  def test_widget_gate_on_dbus_failure(self):
   home=pathlib.Path(self.temp.name);(home/'.local/share/plasma/plasmoids/org.jonas.liquidglass.calendar').mkdir(parents=True)
-  with patch('app.Path.home',return_value=home),patch('app.subprocess.run',return_value=Mock(returncode=1,stdout='')):
+  with patch('app.FLATPAK',False),patch('app.Path.home',return_value=home),patch('app.subprocess.run',return_value=Mock(returncode=1,stdout='')):
    bridge=Bridge(self.store,False)
   try:
    self.assertFalse(bridge.widgetCompatible);self.assertIsNone(bridge.commit([event()]));self.assertEqual(self.store.read(),[])
