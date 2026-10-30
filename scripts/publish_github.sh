@@ -30,5 +30,6 @@ if gh release view "$release_tag" --repo "$release_repo" >/dev/null 2>&1; then
     echo 'This release already exists; refusing to replace published assets.' >&2
     exit 1
 fi
-gh release create "$release_tag" --repo "$release_repo" --verify-tag --prerelease --title "Liquid Calendar ${release_version/-beta./ Beta }" --notes-file RELEASE_NOTES.md "dist/liquid-calendar-$release_version.tar.gz" "dist/liquid-calendar-$release_version.zip" dist/SHA256SUMS
+mapfile -t release_assets < <(python3 -c 'import json; print("\n".join("dist/"+name for name in json.load(open("dist/release.json"))["assets"]))')
+gh release create "$release_tag" --repo "$release_repo" --verify-tag --prerelease --title "Liquid Calendar ${release_version/-beta./ Beta }" --notes-file RELEASE_NOTES.md "${release_assets[@]}"
 gh release view "$release_tag" --repo "$release_repo" --json url --jq .url
