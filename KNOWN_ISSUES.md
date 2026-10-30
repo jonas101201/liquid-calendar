@@ -1,12 +1,12 @@
 # Known issues and beta limitations
 
-Applies to **Liquid Calendar 0.3.9.1**, a beta prerelease. Last updated: **2026-10-30**.
+Applies to **Liquid Calendar 0.3.9.2** source (beta). The latest packaged release is **0.3.9.1**. Last updated: **2026-10-30**.
 
 This page distinguishes current limitations from issues fixed in earlier beta versions. It is not a guarantee that the beta is free of bugs.
 
 ## Confirmed open bugs
 
-These issues remain present in both the published 0.3.9.1 and the current development working tree. Confirmed with isolated synthetic records on **2026-10-30**; an independent review reproduced both.
+These issues remain present in both the published 0.3.9.1 and the 0.3.9.2 source. Confirmed with isolated synthetic records on **2026-10-30**; an independent review reproduced both.
 
 ### Reminder titles beginning with a hyphen can suppress delivery
 
@@ -24,9 +24,9 @@ These issues remain present in both the published 0.3.9.1 and the current develo
 - **Workaround:** pause reminders if notification delivery repeatedly stalls. This disables notifications until reminders are enabled again.
 - **Status:** open; delivery needs asynchronous processing with correct success/failure tracking.
 
-## Confirmed bugs in the published 0.3.9.1 — corrections pending release
+## Corrected in 0.3.9.2 source; still present in the 0.3.9.1 download
 
-The following bugs affect the published **v0.3.9.1** snapshot. Corrections exist in the development working tree; they are **not part of the published release**. Updating or reinstalling the existing release does not include these corrections. See the [follow-up audit](docs/BUG_AUDIT_0.3.9.1_FOLLOWUP.md).
+The following bugs affect the published **v0.3.9.1** snapshot. Corrections are included in the **0.3.9.2 source**; the existing **0.3.9.1 release archives do not include them**. See the [follow-up audit](docs/BUG_AUDIT_0.3.9.1_FOLLOWUP.md).
 
 | Issue | Reproduction and impact | Workaround in the published version |
 | --- | --- | --- |
@@ -63,7 +63,19 @@ The public 0.3.6 beta can return an unrelated date for an exact search matching 
 - **Shared storage:** app and widget use the same local Plasma database. If an incompatible active widget is detected, editing is blocked until **Connect** reloads it. This briefly refreshes the desktop and panels.
 - **Undo:** app-wide Undo covers the last local app change and refuses to overwrite a newer edit of the same entry. It is not an unlimited history or backup restoration tool.
 
-## Event merge scope
+## Reworked event linking in 0.3.9.2
+
+The earlier display incorrectly treated related contained events as competing overlaps, and inner cards could cover the outer title. Both problems are corrected in this source update.
+
+Version 0.3.9.2 replaces the previously incorrect destructive merging and conflicting linked-card display with **More → Link with another event…**. Two separate cards retain individual titles, times, details, categories and reminders. Shared labels identify the relationship. In the week view, a fully contained timed member is inset into its longer background event, with both occupying one outer lane. Linked members do not produce mutual conflict warnings; unrelated bookings still do. Equal, very short or partially overlapping intervals retain separate cards. Both can be edited, moved or deleted individually; **Unlink group** removes the relationship while retaining both entries and current editor changes. One Undo reverses the most recent operation.
+
+Creating a link currently requires two unlinked events on the same date with matching all-day mode. Individual recurring occurrences can be linked without changing future repeats; tasks and whole series are excluded. Existing groups must be unlinked before choosing a different partner. Moving an event to another date preserves the relationship; badges identify links across dates, while containment is calculated from the visible segments on each day. A containing segment needs at least 90 minutes of display space; if a filter hides its parent, the child renders as a normal card. Deleting a member or converting it into a task/series clears a leftover singleton link.
+
+JSON backups preserve links. ICS exports the events separately without the app-specific grouping relationship. Older destructive merges cannot be automatically separated because the original independent fields were not retained. Existing records are not reconstructed or migrated.
+
+See [event linking](docs/EVENT_LINKS.md) for the workflow. This behavior is included in 0.3.9.2 source, not the existing 0.3.9.1 download.
+
+## Event merge scope in the published 0.3.9.1
 
 Desktop **More → Merge with another event…** includes current editor changes and combines events or selected occurrences matching the edited date and all-day mode. Only selected source occurrences are cancelled; future repeats remain unchanged and the result is standalone. Tasks, whole-series edits and already detached occurrences are excluded. Invalid drafts and concurrent source changes block the operation without partial writes. Cancel preserves the editor draft and writes nothing. One Undo restores both original saved sources.
 
