@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 import sqlite3
 from contextlib import contextmanager, closing
-from logic import validate, fingerprint, validate_templates, slot_available
+from logic import validate, fingerprint, validate_templates, slot_available, clean_groups
 
 class ConflictError(ValueError):pass
 
@@ -74,7 +74,7 @@ class Store:
                         remote[source['id']]=source
                         new['seriesId']=new.pop('occurrenceOf');new['originalDate']=new.pop('occurrenceDate');new.pop('originHash',None)
                     remote[ident]=new
-            after=list(remote.values());validate(after)
+            after=clean_groups(list(remote.values()));validate(after)
             c.execute('INSERT OR REPLACE INTO state VALUES (?,?)',('events',json.dumps(after,ensure_ascii=False)))
         return before,after
     def patch(self,before,after):
