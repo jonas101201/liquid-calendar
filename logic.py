@@ -39,6 +39,7 @@ def validate(events):
         if not isinstance(e,dict):raise ValueError("Invalid entry.")
         if not isinstance(e.get('id'),str) or not e['id'] or len(e['id'])>150 or e['id'] in ids:raise ValueError("Invalid or duplicate event ID.")
         ids.add(e['id'])
+        if 'groupId' in e and (not isinstance(e['groupId'],str) or not 1<=len(e['groupId'])<=150):raise ValueError('Invalid event group.')
         if not isinstance(e.get('title'),str) or not e['title'].strip() or len(e['title'])>200:raise ValueError("Enter a title of up to 200 characters.")
         undated=is_undated(e)
         if undated:
@@ -109,7 +110,7 @@ def kind_matches(e,kind):
 
 def occurrence(e,day):
     minute=0 if is_undated(e) else int(e['time'][:2])*60+int(e['time'][3:])
-    return dict(event=copy.deepcopy(e),id=e['id'],date=day.isoformat() if day else '',unscheduled=is_undated(e),title=e['title'],time=e['time'],minutes=e['minutes'],start=minute,end=minute+e['minutes'],allDay=e['allDay'],task=e['task'],done=e['done'],color=COLORS[e['category']],location=e['location'],repeated=e['repeat']!='none',fingerprint=fingerprint(e),conflict=False,lane=0,lanes=1,occurrenceDate=day.isoformat() if day else '',carry=False,segmentMinutes=e['minutes'],priority=e.get('priority',0),project=e.get('project',''),checklist=copy.deepcopy(e.get('checklist',[])),checklistDone=sum(item['done'] for item in e.get('checklist',[])))
+    return dict(event=copy.deepcopy(e),id=e['id'],date=day.isoformat() if day else '',unscheduled=is_undated(e),title=e['title'],time=e['time'],minutes=e['minutes'],start=minute,end=minute+e['minutes'],allDay=e['allDay'],task=e['task'],done=e['done'],color=COLORS[e['category']],location=e['location'],repeated=e['repeat']!='none',fingerprint=fingerprint(e),conflict=False,lane=0,lanes=1,occurrenceDate=day.isoformat() if day else '',carry=False,segmentMinutes=e['minutes'],nested=False,hasNested=False,parentId='',parentTitle='',parentStart=0,parentEnd=1440,nestedLane=0,nestedLanes=1,priority=e.get('priority',0),project=e.get('project',''),checklist=copy.deepcopy(e.get('checklist',[])),checklistDone=sum(item['done'] for item in e.get('checklist',[])))
 
 def instances(events,start,days,kind='all',category=-1):
     result=[]
@@ -149,22 +150,54 @@ def instances(events,start,days,kind='all',category=-1):
         lanes=[[] for _ in range(lane_count)]
         for v in group:lanes[v['lane']].append(v)
         starts=[[v['start'] for v in lane] for lane in lanes]
-        previous_end=-1
-        for index,v in enumerate(group):
+        for v in group:
             v['lanes']=max(1,lane_count)
-            v['conflict']=previous_end>v['start'] or (index+1<len(group) and group[index+1]['start']<v['end'])
-            previous_end=max(previous_end,v['end'])
             for lane in range(v['lane']+1,lane_count):
                 last=bisect.bisect_left(starts[lane],v['layoutEnd'])-1
                 if last>=0 and lanes[lane][last]['layoutEnd']>v['start']:break
                 v['laneSpan']+=1
+    def relation(v):
+        event=v['event']
+        return ('group',event['groupId']) if event.get('groupId') and not event['task'] and event['repeat']=='none' else ('event',event['id'])
+    def mark_conflicts(entries):
+        # Two strongest distinct groups suffice to find an external interval.
+        # Both passes are linear; group members never conflict with each other.
+        for reverse in (False,True):
+            leaders=[]
+            for v in (reversed(entries) if reverse else entries):
+                key=relation(v)
+                if any(other!=key and (score>-v['end'] if reverse else score>v['start']) for score,other in leaders):v['conflict']=True
+                score=-v['start'] if reverse else v['end']
+                previous=next((score for score,other in leaders if other==key),score)
+                leaders=[item for item in leaders if item[1]!=key]
+                leaders.append((max(score,previous),key));leaders.sort(reverse=True);leaders=leaders[:2]
     for entries in daily.values():
+        mark_conflicts(entries)
+        linked={}
+        for v in entries:
+            if relation(v)[0]=='group':linked.setdefault(relation(v),[]).append(v)
+        nested=[]
+        for members in linked.values():
+            if len(members)<2:continue
+            # Only a true containing interval becomes a background card.
+            parent=max(members,key=lambda v:(v['end']-v['start'],-v['start'],v['id']))
+            children=[v for v in members if v is not parent]
+            if parent['segmentMinutes']<90 or not all(parent['start']<=v['start'] and parent['end']>=v['end'] and (parent['start']<v['start'] or parent['end']>v['end']) for v in children):continue
+            parent['hasNested']=True
+            # Imported groups may have several simultaneous children.
+            assign(children)
+            for child in children:
+                child.update(nested=True,parentId=parent['id'],parentTitle=parent['title'],parentStart=parent['start'],parentEnd=parent['end'],nestedLane=child['lane'],nestedLanes=child['lanes'])
+                nested.append((child,parent))
         group=[];group_end=-1
         for v in entries:
+            if v['nested']:continue
             if group and v['start']>=group_end:
                 assign(group);group=[];group_end=-1
             group.append(v);group_end=max(group_end,v['layoutEnd'])
         assign(group)
+        for child,parent in nested:
+            child.update(lane=parent['lane'],lanes=parent['lanes'],laneSpan=parent['laneSpan'])
     return result
 
 def date_hints(text,today):
@@ -172,6 +205,7 @@ def date_hints(text,today):
     q=normalize(text).strip();result=[]
     if not q:return result
     def put(day,label,kind='day'):
+        if not 1000<=day.year<=9999:return
         if all(v['date']!=day.isoformat() for v in result):result.append({'date':day.isoformat(),'label':label,'kind':kind})
     for name,offset in [('today',0),('tomorrow',1),('day after tomorrow',2),('heute',0),('morgen',1),('ubermorgen',2)]:
         if name.startswith(q):
@@ -272,13 +306,17 @@ def export_ics(events):
     lines=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Liquid Calendar//EN','CALSCALE:GREGORIAN']
     for e in events:
         if e['task']:continue
-        first=parse(e['date'])
-        if e['repeat']=='weekly' and 'weekdays' in e:
-            first+=dt.timedelta(days=min((day-first.weekday())%7 for day in e['weekdays']))
-            if e['until'] and first.isoformat()>e['until']:continue
-        start=dt.datetime.combine(first,dt.time.fromisoformat(e['time']));end=start+dt.timedelta(minutes=e['minutes'])
+        try:
+            first=parse(e['date'])
+            if e['repeat']=='weekly' and 'weekdays' in e:
+                first+=dt.timedelta(days=min((day-first.weekday())%7 for day in e['weekdays']))
+                if e['until'] and first.isoformat()>e['until']:continue
+            start=dt.datetime.combine(first,dt.time.fromisoformat(e['time']))
+            end=start+(dt.timedelta(days=1) if e['allDay'] else dt.timedelta(minutes=e['minutes']))
+        except OverflowError as error:
+            raise ValueError('Cannot export "'+e['title']+'": event dates, including the end, must stay within years 1000–9999.') from error
         lines+=['BEGIN:VEVENT','UID:'+e['id']+'@liquid-glass-calendar','DTSTAMP:'+dt.datetime.now(dt.timezone.utc).strftime('%Y%m%dT%H%M%SZ')]
-        if e['allDay']:lines+=['DTSTART;VALUE=DATE:'+start.strftime('%Y%m%d'),'DTEND;VALUE=DATE:'+(start+dt.timedelta(days=1)).strftime('%Y%m%d')]
+        if e['allDay']:lines+=['DTSTART;VALUE=DATE:'+start.strftime('%Y%m%d'),'DTEND;VALUE=DATE:'+end.strftime('%Y%m%d')]
         else:lines+=['DTSTART:'+start.strftime('%Y%m%dT%H%M%S'),'DTEND:'+end.strftime('%Y%m%dT%H%M%S')]
         if e['repeat']!='none':lines+=['RRULE:FREQ='+e['repeat'].upper()+(';BYDAY='+','.join(['MO','TU','WE','TH','FR','SA','SU'][day] for day in sorted(e['weekdays'])) if e['repeat']=='weekly' and 'weekdays' in e else '')+(';UNTIL='+e['until'].replace('-','')+('' if e['allDay'] else 'T235959') if e['until'] else '')]
         for date in e.get('exceptions',{}):
@@ -380,27 +418,27 @@ def occurrence_draft(event,date,ident=None):
 
 
 def merge_events(first,second):
-    """Combine concrete events; occurrence commands are resolved by the bridge."""
+    """Link two concrete events without combining their independent contents."""
     validate([first,second])
     if any(e['task'] or e['repeat']!='none' or e.get('seriesId') for e in (first,second)):
         raise ValueError("Choose independent events or individual occurrences, not entire series or tasks.")
+    if any(e.get('groupId') for e in (first,second)):
+        raise ValueError("Unlink the existing group before linking another event.")
     if first['date']!=second['date'] or first['allDay']!=second['allDay']:
         raise ValueError("Choose two events on the same date, both timed or both all-day.")
     if first.get('occurrenceOf') and (first['occurrenceOf'],first.get('occurrenceDate'))==(second.get('occurrenceOf'),second.get('occurrenceDate')):
         raise ValueError("Choose two different event occurrences.")
-    result=copy.deepcopy(first)
-    for key in ('occurrenceOf','occurrenceDate','originHash','seriesId','originalDate','weekdays'):
-        result.pop(key,None)
-    result['exceptions']={}
-    start=lambda e:int(e['time'][:2])*60+int(e['time'][3:])
-    if not first['allDay']:
-        minute=min(start(first),start(second));end=max(start(first)+first['minutes'],start(second)+second['minutes'])
-        result.update(time=f'{minute//60:02}:{minute%60:02}',minutes=end-minute)
-    def combine(key,separator):
-        return separator.join(dict.fromkeys(e[key] for e in (first,second) if e[key]))
-    result.update(title=combine('title',' / '),location=combine('location',' · '),notes=combine('notes','\n\n'))
-    # One combined event has one reminder. Keep the earlier enabled offset.
-    reminders=[e.get('reminder',-1) for e in (first,second) if e.get('reminder',-1)>=0]
-    result['reminder']=max(reminders,default=-1)
-    validate([result]) # Never truncate user content or silently exceed duration limits.
+    group=uuid.uuid4().hex
+    return [dict(copy.deepcopy(e),groupId=group) for e in (first,second)]
+
+
+def clean_groups(events):
+    """Keep links only between at least two independent event records."""
+    counts={}
+    for e in events:
+        if e.get('groupId') and not e['task'] and e['repeat']=='none':
+            counts[e['groupId']]=counts.get(e['groupId'],0)+1
+    result=copy.deepcopy(events)
+    for e in result:
+        if e.get('groupId') and (e['task'] or e['repeat']!='none' or counts.get(e['groupId'],0)<2):e.pop('groupId',None)
     return result
