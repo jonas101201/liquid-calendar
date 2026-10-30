@@ -23,6 +23,7 @@ function valid(e) {
         typeof e.location==='string' && textLength(e.location)<=500 && typeof e.notes==='string' && textLength(e.notes)<=10000 &&
         Number.isInteger(e.category) && e.category>=0 && e.category<4 &&
         (e.reminder===undefined||(Number.isInteger(e.reminder)&&[-1,0,5,10,30,60,1440].indexOf(e.reminder)>=0)) &&
+        (e.groupId===undefined||(typeof e.groupId==='string'&&textLength(e.groupId)>0&&textLength(e.groupId)<=150)) &&
         (e.exceptions===undefined||validExceptions(e.exceptions)) && validTaskDetails(e) && validWeekdays(e);
 }
 function isoWeekday(date) {return (date.getDay()+6)%7;}
@@ -84,18 +85,30 @@ function restore(text) {
     data.events.forEach(function(e){ if(!valid(e) || ids[e.id] || ['occurrenceOf','occurrenceDate','originHash'].some(function(k){return Object.prototype.hasOwnProperty.call(e,k);})) throw Error("Invalid or duplicate events in the backup."); ids[e.id]=true; });
     return data.events;
 }
-function escapeIcs(s) { return s.replace(/\\/g,'\\\\').replace(/\r?\n/g,'\\n').replace(/;/g,'\\;').replace(/,/g,'\\,'); }
+function escapeIcs(s) { return s.replace(/\\/g,'\\\\').replace(/\r/g,'').replace(/\n/g,'\\n').replace(/;/g,'\\;').replace(/,/g,'\\,'); }
 function ics(events) {
     var lines=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Liquid Calendar//EN','CALSCALE:GREGORIAN'];
+    function exportDate(date,event) {
+        if(!date||!Number.isFinite(date.getTime())||date.getFullYear()<1000||date.getFullYear()>9999)
+            throw Error('Cannot export "'+event.title+'": event dates, including the end, must stay within years 1000–9999.');
+        return date;
+    }
     events.filter(function(e){return !e.task;}).forEach(function(e){
-        var first=e.repeat==='weekly'?unskippedNext(e,parse(e.date)):parse(e.date);
-        if(!first)return;
+        var first=exportDate(parse(e.date),e);
+        if(e.repeat==='weekly') {
+            var offset=Math.min.apply(null,weeklyDays(e).map(function(day){return (day-isoWeekday(first)+7)%7;}));
+            first=exportDate(add(first,offset),e);
+            if(e.until&&key(first)>e.until)return;
+        }
         var date=key(first).replace(/-/g,''), start=first, end;
         lines.push('BEGIN:VEVENT','UID:'+e.id+'@liquid-glass-calendar','DTSTAMP:'+new Date().toISOString().replace(/[-:]/g,'').replace(/\.\d+Z/,'Z'));
-        if(e.allDay) lines.push('DTSTART;VALUE=DATE:'+date,'DTEND;VALUE=DATE:'+key(add(start,1)).replace(/-/g,''));
+        if(e.allDay) lines.push('DTSTART;VALUE=DATE:'+date,'DTEND;VALUE=DATE:'+key(exportDate(add(start,1),e)).replace(/-/g,''));
         else {
-            var p=e.time.split(':').map(Number); start.setHours(p[0],p[1],0,0); end=new Date(start.getTime()+e.minutes*60000);
-            lines.push('DTSTART:'+date+'T'+e.time.replace(':','')+'00','DTEND:'+key(end).replace(/-/g,'')+'T'+pad(end.getHours())+pad(end.getMinutes())+'00');
+            var p=e.time.split(':').map(Number), finish=p[0]*60+p[1]+e.minutes;
+            // Calendar records use floating wall time, including across DST changes.
+            end=exportDate(add(start,Math.floor(finish/1440)),e);
+            var endMinute=finish%1440;
+            lines.push('DTSTART:'+date+'T'+e.time.replace(':','')+'00','DTEND:'+key(end).replace(/-/g,'')+'T'+pad(Math.floor(endMinute/60))+pad(endMinute%60)+'00');
         }
         if(e.repeat!=='none') {
             var rule='RRULE:FREQ='+e.repeat.toUpperCase();
@@ -107,7 +120,17 @@ function ics(events) {
         lines.push('SUMMARY:'+escapeIcs(e.title),'LOCATION:'+escapeIcs(e.location),'DESCRIPTION:'+escapeIcs(e.notes),'END:VEVENT');
     });
     lines.push('END:VCALENDAR');
-    return lines.join('\r\n')+'\r\n';
+    var folded=[];
+    lines.forEach(function(line) {
+        var chunk='', bytes=0;
+        Array.from(line).forEach(function(character) {
+            var point=character.codePointAt(0), size=point<=0x7f?1:point<=0x7ff?2:point<=0xffff?3:4;
+            if(bytes+size>75) {folded.push(chunk);chunk=' ';bytes=1;}
+            chunk+=character;bytes+=size;
+        });
+        folded.push(chunk);
+    });
+    return folded.join('\r\n')+'\r\n';
 }
 
 function weekNumber(d) { var t=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())); t.setUTCDate(t.getUTCDate()+4-(t.getUTCDay()||7)); return Math.ceil((((t-new Date(Date.UTC(t.getUTCFullYear(),0,1)))/86400000)+1)/7); }
@@ -174,7 +197,7 @@ function dayWords(d,today) {
 function dateSuggestions(query,today) {
     var q=normalized(query).trim(), out=[];
     if(!q) return out;
-    function push(d,label,kind) { if(!out.some(function(v){return key(v.date)===key(d);})) out.push({date:d,label:label,kind:kind||'day'}); }
+    function push(d,label,kind) { if(!d||d.getFullYear()<1000||d.getFullYear()>9999)return; if(!out.some(function(v){return key(v.date)===key(d);})) out.push({date:d,label:label,kind:kind||'day'}); }
     [['today',0],['tomorrow',1],['day after tomorrow',2],['heute',0],['morgen',1],['ubermorgen',2]].forEach(function(v){if(v[0].indexOf(q)===0) push(add(today,v[1]),['Today','Tomorrow','Day after tomorrow'][v[1]]);});
     var exact=parse(q), p=q.match(/^(\d{1,2})\.(\d{1,2})(?:\.(\d{4})?)?$/);
     if(exact) push(exact,"Go to date");
@@ -250,7 +273,7 @@ function mergeEvents(base,desired,current) {
             delete remote[id];
         } else remote[id]=after[id];
     });
-    return Object.keys(remote).map(function(id){return remote[id];});
+    return cleanGroups(Object.keys(remote).map(function(id){return remote[id];}));
 }
 
 function nextOccurrence(e,from) {
@@ -291,4 +314,24 @@ function toggleTaskOccurrence(events,ident,date) {
     child.date=date;child.repeat='none';child.until='';child.exceptions={};delete child.weekdays;
     child.done=true;child.seriesId=ident;child.originalDate=date;
     next.push(child);return next;
+}
+
+function cleanGroups(events) {
+    var counts=Object.create(null);
+    events.forEach(function(e){if(e.groupId&&!e.task&&e.repeat==='none')counts[e.groupId]=(counts[e.groupId]||0)+1;});
+    return events.map(function(e){var copy=Object.assign({},e);if(copy.groupId&&(copy.task||copy.repeat!=='none'||counts[copy.groupId]<2))delete copy.groupId;return copy;});
+}
+function groupIndex(events) {
+    var groups=Object.create(null),number=0;
+    events.forEach(function(e){
+        if(!e.groupId||e.task||e.repeat!=='none')return;
+        if(!groups[e.groupId])groups[e.groupId]={id:e.groupId,label:'Linked '+(++number),peers:[]};
+        groups[e.groupId].peers.push(e);
+    });
+    return groups;
+}
+function groupDetails(events,event,index) {
+    var group=(index||groupIndex(events))[event.groupId];
+    if(!group||group.peers.length<2)return {id:'',label:'',peers:[]};
+    return {id:group.id,label:group.label,peers:group.peers.filter(function(e){return e.id!==event.id;})};
 }
