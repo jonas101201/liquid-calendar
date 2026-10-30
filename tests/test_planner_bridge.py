@@ -88,7 +88,7 @@ class TestMergeBridge(unittest.TestCase):
  def test_merge_undo_and_concurrent_edit(self):
   a=event();b=event(id='b',title='Second',time='09:30');self.store.merge([a,b],[]);self.bridge.reload()
   snapshots=[json.dumps(a),json.dumps(b)]
-  self.assertTrue(self.bridge.mergeEvents(*snapshots));self.assertEqual(len(self.store.read()),1)
+  self.assertTrue(self.bridge.mergeEvents(*snapshots));self.assertEqual(len(self.store.read()),2)
   self.bridge.undo();self.assertEqual(sorted(self.store.read(),key=lambda e:e['id']),[a,b])
   newer=copy.deepcopy(b);newer['notes']='Another client edit';self.store.merge([a,newer],[a,b])
   self.assertFalse(self.bridge.mergeEvents(*snapshots));self.assertEqual(len(self.store.read()),2)
@@ -113,11 +113,11 @@ class TestOccurrenceMergeBridge(unittest.TestCase):
   return occurrence_draft(self.a,'2026-10-28'),occurrence_draft(self.b,'2026-10-28')
  def test_two_series_keep_future_and_undo(self):
   a,b=self.seed();self.assertTrue(self.bridge.mergeEvents(json.dumps(a),json.dumps(b)))
-  saved=self.store.read();self.assertEqual(len(saved),3)
+  saved=self.store.read();self.assertEqual(len(saved),4)
   for source in (self.a,self.b):
    parent=next(e for e in saved if e['id']==source['id'])
    self.assertFalse(occurs(parent,parse('2026-10-28')));self.assertTrue(occurs(parent,parse('2026-11-04')))
-  merged=next(e for e in saved if e['id']==a['id']);self.assertEqual(merged['minutes'],90)
+  merged=next(e for e in saved if e['id']==a['id']);self.assertEqual(merged['minutes'],60);self.assertEqual(len({e['groupId'] for e in saved if e.get('groupId')}),1)
   self.assertNotIn('occurrenceOf',merged)
   self.bridge.undo();self.assertEqual(sorted(self.store.read(),key=lambda e:e['id']),[self.a,self.b])
  def test_choices_exclude_self_and_cancelled_occurrences(self):
@@ -134,7 +134,7 @@ class TestOccurrenceMergeBridge(unittest.TestCase):
    pair=[normal,occurrence_draft(series,'2026-10-28')]
    if reverse:pair.reverse()
    self.assertTrue(self.bridge.mergeEvents(*(json.dumps(e) for e in pair)))
-   saved=self.store.read();self.assertEqual(len(saved),2)
+   saved=self.store.read();self.assertEqual(len(saved),3)
    self.assertTrue(occurs(next(e for e in saved if e['id']=='series'),parse('2026-11-04')))
    self.bridge.undo();self.assertEqual(sorted(self.store.read(),key=lambda e:e['id']),[normal,series])
  def test_concurrent_series_edit_rejected_atomically(self):
@@ -196,11 +196,15 @@ class TestMergeEditorDraft(unittest.TestCase):
  def test_preview_commit_and_single_undo_use_draft(self):
   a,b=self.seed();draft=dict(a,title='Edited title',notes='Draft notes',location='Studio',time='08:30',minutes=120,category=3,reminder=60)
   args=[json.dumps(e) for e in (a,b,draft)]
-  preview=self.bridge.mergePreview(*args)['event']
+  preview=self.bridge.mergePreview(*args)['events']
   self.assertEqual(sorted(self.store.read(),key=lambda e:e['id']),[a,b])
-  self.assertEqual(preview['title'],'Edited title / Second');self.assertEqual(preview['time'],'08:30');self.assertEqual(preview['minutes'],150)
-  self.assertEqual(preview['notes'],'Draft notes\n\nOther notes');self.assertEqual(preview['location'],'Studio');self.assertEqual(preview['category'],3)
-  self.assertTrue(self.bridge.mergeEvents(*args));self.assertEqual(sorted(self.store.read(),key=lambda e:e['id']),[preview])
+  self.assertEqual(preview[0]['title'],'Edited title');self.assertEqual(preview[0]['time'],'08:30');self.assertEqual(preview[0]['minutes'],120)
+  self.assertEqual(preview[0]['notes'],'Draft notes');self.assertEqual(preview[0]['location'],'Studio');self.assertEqual(preview[0]['category'],3)
+  self.assertEqual({k:v for k,v in preview[1].items() if k!='groupId'},b)
+  self.assertTrue(self.bridge.mergeEvents(*args))
+  saved=self.store.read()
+  self.assertEqual(sorted([{k:v for k,v in e.items() if k!='groupId'} for e in saved],key=lambda e:e['id']),[draft,b])
+  self.assertEqual(saved[0]['groupId'],saved[1]['groupId'])
   self.bridge.undo();self.assertEqual(sorted(self.store.read(),key=lambda e:e['id']),[a,b])
  def test_choices_follow_edited_date_and_all_day(self):
   a,b=self.seed();other=event(id='next-day',date='2026-10-29',allDay=True)

@@ -10,7 +10,7 @@ from pathlib import Path
 import subprocess
 import sys
 
-from PySide6.QtCore import QObject,Signal,Slot,Property,QTimer,QUrl,QLocale
+from PySide6.QtCore import QObject,Signal,Slot,Property,QTimer,QUrl,QLocale,QSaveFile,QIODevice
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication,QSystemTrayIcon,QMenu,QMessageBox
 from PySide6.QtQml import QQmlApplicationEngine
@@ -220,7 +220,11 @@ class Bridge(QObject):
     def animationsEnabled(self):return bool(self._settings.get('animations',True))
     @Slot(bool)
     def setAnimations(self,enabled):
-        try:self._settings['animations']=enabled;self.store.set_settings(self._settings);self.changed.emit()
+        try:
+            settings=dict(self._settings,animations=enabled)
+            self.store.set_settings(settings)
+            self._settings=settings
+            self.changed.emit()
         except Exception as e:self.fail(e)
     @Property(str,notify=appearanceChanged)
     def accentColor(self):return self._settings.get('accent','#7ceafa')
@@ -365,7 +369,7 @@ class Bridge(QObject):
             first=self.merge_editor_draft(self.merge_source(json.loads(first_snapshot),self._events),draft_snapshot)
             choices=[]
             for e in self._events:
-                if e['task'] or e.get('seriesId') or e['allDay']!=first['allDay'] or not occurs(e,parse(first['date'])):continue
+                if e['task'] or e.get('groupId') or e.get('seriesId') or e['allDay']!=first['allDay'] or not occurs(e,parse(first['date'])):continue
                 if e['repeat']!='none':
                     if e['id']==first.get('occurrenceOf') and first['date']==first.get('occurrenceDate'):continue
                     candidate=occurrence_draft(e,first['date'])
@@ -381,7 +385,7 @@ class Bridge(QObject):
         try:
             first=self.merge_editor_draft(self.merge_source(json.loads(first_snapshot),self._events),draft_snapshot)
             second=self.merge_source(json.loads(second_snapshot),self._events)
-            return {'event':merge_events(first,second),'error':''}
+            return {'events':merge_events(first,second),'error':''}
         except Exception as e:return {'error':str(e)}
     @Slot(str,str,result=bool)
     @Slot(str,str,str,result=bool)
@@ -392,16 +396,40 @@ class Bridge(QObject):
             second=self.merge_source(json.loads(second_snapshot),base)
             draft=self.merge_editor_draft(first,draft_snapshot)
             merged=merge_events(draft,second)
-            removed={e['id'] for e in (first,second) if not e.get('occurrenceOf')}
-            desired=[copy.deepcopy(e) for e in base if e['id'] not in removed]
-            for source in (first,second):
-                if source.get('occurrenceOf'):
-                    parent=next(e for e in desired if e['id']==source['occurrenceOf'])
-                    parent.setdefault('exceptions',{})[source['occurrenceDate']]={'cancelled':True}
-            desired.append(merged)
+            replacements={e['id']:e for e in merged}
+            desired=[copy.deepcopy(e) for e in base if e['id'] not in replacements]
+            for item in merged:
+                if item.get('occurrenceOf'):
+                    parent=next(e for e in desired if e['id']==item['occurrenceOf'])
+                    parent.setdefault('exceptions',{})[item['occurrenceDate']]={'cancelled':True}
+                    item['seriesId']=item.pop('occurrenceOf')
+                    item['originalDate']=item.pop('occurrenceDate')
+                    item.pop('originHash',None)
+                desired.append(item)
             source_ids={source.get('occurrenceOf',source['id']) for source in (first,second)}
             originals={event['id']:event for event in base if event['id'] in source_ids}
-            return self.commit(desired,base,label="Events merged · Undo restores both",unchanged_sources=originals) is not None
+            return self.commit(desired,base,label="Events linked · Both remain individually editable",allow_occurrences=True,unchanged_sources=originals) is not None
+        except Exception as e:self.fail(e);return False
+    @Slot(str,result=bool)
+    @Slot(str,str,result=bool)
+    def unlinkEvents(self,snapshot,draft_snapshot=''):
+        try:
+            source=json.loads(snapshot)
+            base=copy.deepcopy(self._events)
+            if next((e for e in base if e['id']==source['id']),None)!=source:
+                raise ConflictError("This event has changed. Reopen it before unlinking.")
+            draft=json.loads(draft_snapshot) if draft_snapshot else source
+            validate([draft])
+            editable={'title','date','time','minutes','allDay','category','location','notes','reminder','repeat','until','task','priority','project','checklist','weekdays'}
+            if {k:v for k,v in source.items() if k not in editable}!={k:v for k,v in draft.items() if k not in editable}:
+                raise ValueError("The event identity cannot be changed by unlinking.")
+            group=source.get('groupId')
+            if not group:raise ValueError("This event is not linked.")
+            originals={e['id']:e for e in base if e.get('groupId')==group}
+            desired=[copy.deepcopy(draft if e['id']==source['id'] else e) for e in base]
+            for e in desired:
+                if e.get('groupId')==group:e.pop('groupId',None)
+            return self.commit(desired,base,label="Group unlinked · Both events kept",unchanged_sources=originals) is not None
         except Exception as e:self.fail(e);return False
     @Slot(str,str,bool)
     def edit(self,ident,date,single=True):
@@ -523,11 +551,19 @@ class Bridge(QObject):
     @Slot(str)
     def setTheme(self,value):
         if value in ['dark','light','auto']:
-            try:self._settings['theme']=value;self.store.set_settings(self._settings);self.changed.emit()
-            except Exception as e:self.fail(e)
+            try:
+                settings=dict(self._settings,theme=value)
+                self.store.set_settings(settings)
+                self._settings=settings
+                self.changed.emit()
+            except Exception as e:self.fail(e);self.changed.emit()
     @Slot(bool)
     def setReminders(self,value):
-        try:self._settings['reminders']=value;self.store.set_settings(self._settings);self.changed.emit()
+        try:
+            settings=dict(self._settings,reminders=value)
+            self.store.set_settings(settings)
+            self._settings=settings
+            self.changed.emit()
         except Exception as e:self.fail(e)
     @Slot()
     def clearError(self):self._error='';self.errorChanged.emit()
@@ -537,9 +573,18 @@ class Bridge(QObject):
             target=QUrl(url).toLocalFile()
             if not target:raise ValueError("Choose a local file.")
             path=Path(target)
-            text=export_ics(self._events) if kind=='ics' else json.dumps({'format':'liquid-glass-calendar','version':1,'events':self._events},ensure_ascii=False,indent=2)
-            # QML FileDialog provides an overwrite confirmation before this call.
-            path.write_text(text,encoding='utf-8');self.note("Export saved: "+path.name)
+            events=self.store.read()
+            text=export_ics(events) if kind=='ics' else json.dumps({'format':'liquid-glass-calendar','version':1,'events':events},ensure_ascii=False,indent=2)
+            # QSaveFile keeps an existing export intact until the complete write commits.
+            output=QSaveFile(str(path))
+            if not output.open(QIODevice.WriteOnly):raise OSError(output.errorString())
+            try:
+                encoded=text.encode('utf-8')
+                if output.write(encoded)!=len(encoded):raise OSError(output.errorString())
+                if not output.commit():raise OSError(output.errorString())
+            finally:
+                if output.isOpen():output.cancelWriting();output.commit()
+            self.note("Export saved: "+path.name)
         except Exception as e:self.fail(e)
     @Slot(str)
     def importFile(self,url):

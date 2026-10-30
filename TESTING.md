@@ -1,6 +1,16 @@
 # Testing
 
-## Current release: 0.3.9.1 interaction follow-up
+## 0.3.9.2 validation
+
+`python tests/check_nested_events.py` checks real School/Exam card geometry, separate edit targets in both themes and external conflict reporting with an isolated synthetic database. Layout regressions also cover filtered parents, overnight segments and randomized group-conflict comparisons.
+
+172 Python tests, eight JavaScript suites and native QML interactions cover independent content retention, editor drafts, recurring-occurrence cancellation, stale source rejection, linked-card visibility, unlink/Undo, independent rescheduling and deletion cleanup. JSON retains the relationship; ICS keeps separate event records. Shared app/widget group validation and cleanup are checked with synthetic data.
+
+## Development audit after 0.3.9.1
+
+156 Python tests include fresh JSON/ICS export snapshots, preservation of existing exports after read and partial-write failures, failed settings writes and date/export bounds. Eight JavaScript suites include Europe/Berlin daylight-saving cases and Unicode ICS folding/unfolding. Actual Qt checks cover undated-task/month filter isolation, Today/date-jump recovery, unsupported date validation and a failed theme-choice save. Separate independent Qt scripts verify both ICS error buttons without losing prior import text. See [the audit record](docs/BUG_AUDIT_0.3.9.1_FOLLOWUP.md).
+
+## Historical 0.3.9.1 interaction follow-up
 
 Month/Week drag checks hold the left mouse button, move the indicator before release, test bounds and release outside the switch, preserve click/Space activation and cancel when the view is hidden. They run with motion enabled and disabled. Month-card checks physically click Open, Series and completion for a repeating overnight task, verifying the original occurrence date and Undo. JavaScript tests cover overnight carry-in, exact-midnight/all-day exclusions, cancelled sources and distinct daily occurrences. See [the follow-up audit](docs/BUG_AUDIT_0.3.9_FOLLOWUP.md).
 

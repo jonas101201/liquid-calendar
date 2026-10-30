@@ -1,17 +1,25 @@
-# Liquid Calendar 0.3.9.1
+# Liquid Calendar 0.3.9.2
 
-Beta prerelease · **29 October 2026**. [Release and downloads](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.3.9.1).
+Beta source update · **30 October 2026**.
 
-## Calendar interaction fixes
+## Reworked event merging and display
 
-- **Drag Month/Week:** hold the selected glass segment and drag it between Month and Week. The indicator follows the pointer and snaps on release. Clicks and Space activation remain available; hiding the control cancels the gesture. Reduced motion is respected.
-- **Edit the selected occurrence:** Open in the month view now opens the displayed repeating occurrence, matching Today and Week. A separate Series action opens the whole series.
-- **Show overnight continuations:** month/widget calendars display the following-day segment as Continued, with its remaining duration. Editing and task completion use the original occurrence date. Exact-midnight endings, all-day entries and cancelled occurrences do not create a continuation.
+The previous implementation was incorrect for intentionally related events. It combined separate contents or displayed related events as conflicting, side-by-side bookings. A contained card could also cover its outer event's title. These behaviors have been reworked.
 
-## Validation and update
+- **Separate records:** each event retains its title, time, duration, details, category and reminder. Use **More → Link with another event…** to preview and save a relationship.
+- **Nested display:** School 07:00–14:00 can contain an independent Exam 09:00–10:00 card in one outer lane. Mutual group overlap warnings are suppressed; unrelated conflicts remain visible.
+- **Individual editing:** open, move or delete either event independently. Unlink group preserves both events and saves valid editor changes. Undo restores the previous saved state.
+- **Cleaner cards:** title-first typography, muted time ranges, subtle accents and balanced spacing replace repeated icons and group labels. The outer header stays clear.
+- **Recurring occurrences:** only selected occurrences are detached; future repetitions retain their schedules.
 
-144 Python tests, all eight JavaScript suites, actual native QML interactions, isolated widget editor checks, source synchronization and smoke launch checks passed. Independent Qt checks verified held-button drag, reverse movement, bounds, cancellation, keyboard activation and real month-card Open/Series/completion clicks. Repeating overnight tasks retain future occurrences, and Undo restores the original series. See the [follow-up audit](docs/BUG_AUDIT_0.3.9_FOLLOWUP.md).
+## Additional corrections
 
-Extract a release archive and run `python3 installieren.py`. Fully quit with **Ctrl+Q** before reopening; reload an active Plasma widget after updating shared files. No calendar-record migration is performed and sharing protocol stays at 3. Offscreen checks do not establish that all desktop environments are bug-free; installation in a fresh user account has not been tested.
+Undated task saves no longer contaminate the month filter; Today/date jumps clear hidden month searches. Exports read fresh shared records and atomically replace files. Failed preference writes preserve the active saved values. Date-boundary checks, ICS daylight-saving calculations, Unicode line folding and export-error presentation are corrected.
 
-[Known issues](KNOWN_ISSUES.md) · [Roadmap](ROADMAP.md).
+## Validation and limits
+
+172 Python tests, eight JavaScript suites, actual native QML interactions, a dedicated nested-card geometry/edit-target check in Dark and Light, isolated widget editing, shared-source synchronization and smoke launch form the validation set. Synthetic databases are used throughout. See [testing](TESTING.md).
+
+Short, equal or partially overlapping linked intervals remain separate cards; containing segments need at least 90 minutes of display space. JSON preserves links; ICS exports independent events without app-specific grouping. Previously destructively combined records cannot be automatically reconstructed. Reminder delivery defects remain open; see [Known issues](KNOWN_ISSUES.md).
+
+This repository update sets the source version to **0.3.9.2**. The latest packaged download remains [0.3.9.1](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.3.9.1); its existing archives are unchanged. Fully quit with **Ctrl+Q** before reopening an updated installation.

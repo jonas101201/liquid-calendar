@@ -2,13 +2,13 @@
 
 A local desktop calendar and task planner for **Fedora Linux / KDE Plasma 6**. English interface, no account required.
 
-**Current beta: 0.3.9.1** · Released **2026-10-29** · **GPL-3.0-or-later**
+**Repository version: 0.3.9.2 Beta** · Updated **2026-10-30** · **GPL-3.0-or-later**
 
-[Download 0.3.9.1](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.3.9.1) · [Release notes](RELEASE_NOTES.md) · [Known issues](KNOWN_ISSUES.md) · [Roadmap](ROADMAP.md)
+[Latest packaged release: 0.3.9.1](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.3.9.1) · [Release notes](RELEASE_NOTES.md) · [Known issues](KNOWN_ISSUES.md) · [Roadmap](ROADMAP.md)
 
 ![Today view with synthetic example data](docs/screenshots/today.png)
 
-**0.3.9.1** fixes dragging the Month/Week selector, selected-occurrence editing and overnight continuations in the month view. It remains a beta prerelease. See [what changed](RELEASE_NOTES.md) and [the follow-up audit](docs/BUG_AUDIT_0.3.9_FOLLOWUP.md).
+**0.3.9.2** reworks previously incorrect event merging and nested-event display. Related events remain separate, contained events appear inside their longer background card, and mutual group overlaps no longer trigger conflict warnings. Cleaner cards protect the outer title and retain individually editable details. See [what changed](RELEASE_NOTES.md).
 
 ## Features
 
@@ -23,7 +23,9 @@ A local desktop calendar and task planner for **Fedora Linux / KDE Plasma 6**. E
 
 ![Task organization with synthetic example data](docs/screenshots/tasks.png)
 
-Saved events and individual repeat occurrences can be combined through **More ▾ → Merge with another event…**, with a preview and Undo. The week view displays overlapping events in separate lanes and scrolls horizontally when needed.
+Saved events and individual repeat occurrences can be linked through **More ▾ → Link with another event…**, with a two-card preview and Undo. For School 07:00–14:00 and Exam 09:00–10:00, the exam appears as an independent card inside School. Both remain editable, movable and removable; **Unlink group** keeps both. Unrelated overlapping bookings still receive separate lanes and conflict indicators. See [event linking](docs/EVENT_LINKS.md).
+
+The latest packaged download is still 0.3.9.1; it does not contain the 0.3.9.2 source changes.
 
 **0.3.7-beta.1** fixes exact-date search, concurrent task scheduling and supported date-boundary failures. See [the bug audit](docs/BUG_AUDIT_0.3.7.md) and [release record](docs/RELEASE_0.3.7.md).
 

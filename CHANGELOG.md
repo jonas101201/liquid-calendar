@@ -2,6 +2,27 @@
 
 **0.3.6-beta.1** is the cumulative public release of the 0.3.x development work. Versions 0.3.0–0.3.5 below are unpublished historical snapshots. Patch numbers were assigned retrospectively on 28 October 2026, one per functional code patch after the initial 0.3.0 baseline. Source links identify the original implementation commits, which retain their original version strings. No commits or published tags were rewritten. Documentation-only commits are not numbered separately.
 
+## 0.3.9.2 — 2026-10-30
+
+Beta source update.
+
+**Reworked event merging:** the previous implementation was incorrect for related events such as School 07:00–14:00 and Exam 09:00–10:00. It combined independent event content or displayed intentionally related events as conflicting side-by-side bookings. Early inner cards could also cover the containing event's title. This update keeps independent records, renders contained events inside the longer background card, suppresses only mutual group conflicts, protects the header and simplifies the card design. Unrelated conflicts remain visible. Previously destructively merged records cannot be reconstructed automatically.
+
+- Simplify week cards with title-first typography, muted time ranges, balanced inner spacing and subtle category accents. Remove repeated link icons and nested group labels; keep complete relationship details in tooltips. Inset cards retain their actual end position when a header clearance is needed.
+
+- Reserve a clear two-line header for containing week cards so early inner events cannot cover their title. Short containing intervals fall back to separate readable cards without mutual conflict warnings.
+
+- Nest contained linked events in their longer background event using one outer week lane. Suppress mutual group conflict warnings while preserving unrelated conflicts, individual editing and dragging, time ranges, and filter/overnight handling.
+
+- Replace destructive event merging with linked, separate event cards. Preserve each title, time, category, notes and reminder; show paired previews, link badges and week-view connection lines.
+- Add Unlink group with draft preservation and Undo. Editing or moving one member leaves the other intact; deleting or converting a member removes the surviving stale link. JSON preserves groups, while ICS exports individual events.
+
+- Keep native undated-task saves in Tasks without changing the embedded month filter. Today and date jumps leave month search mode; period navigation is disabled during global results.
+- Export fresh shared data and atomically replace completed JSON/ICS files, preserving an existing backup if reading or writing fails.
+- Keep active theme, reminder and motion settings unchanged when their persistence fails; restore the visible theme choice after an error.
+- Reject unsupported date hints and report unrepresentable ICS date ranges clearly. Align widget ICS floating-time calculations across daylight-saving transitions, Unicode line folding and carriage-return handling with the app.
+- Present JavaScript ICS errors without destroying existing import text or showing a partial export.
+
 ## 0.3.9.1 — 2026-10-29
 
 Beta prerelease.

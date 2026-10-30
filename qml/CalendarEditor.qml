@@ -195,14 +195,16 @@ Item {
             contentItem:ListView { clip:true; implicitHeight:contentHeight; model:combo.popup.visible?combo.delegateModel:null; currentIndex:combo.highlightedIndex; ScrollIndicator.vertical:ScrollIndicator {} }
         }
     }
+    readonly property var linkedGroups:Cal.groupIndex(root.events)
     component EventCard: Rectangle {
         id: card
         required property var entry
         property bool showDate: false
-        implicitHeight: root.compact ? 62 : 72
+        readonly property var group:Cal.groupDetails(root.events,entry.event,root.linkedGroups)
+        implicitHeight: (root.compact ? 62 : 72)+(group.id?20:0)
         radius: 13
         color: root.light ? "#80ffffff" : "#16ffffff"
-        border.color: root.line
+        border.color: card.group.id?Qt.rgba(root.accent.r,root.accent.g,root.accent.b,.5):root.line
         RowLayout {
             anchors.fill:parent; anchors.margins:10; spacing:10
             Rectangle { Layout.preferredWidth:3; Layout.fillHeight:true; radius:2; color:root.colors[card.entry.event.category] }
@@ -211,6 +213,7 @@ Item {
                 Layout.fillWidth:true; Layout.minimumWidth:0; spacing:4
                 Label { Layout.fillWidth:true; textFormat:Text.PlainText; text:card.entry.event.title; color:root.ink; font.pixelSize:13; font.weight:Font.DemiBold; font.strikeout:card.entry.event.task&&card.entry.event.done; elide:Text.ElideRight }
                 Label {objectName:"calendarEntryDetails";Layout.fillWidth:true;textFormat:Text.PlainText;text:Cal.isUndated(card.entry.event)?"Undated · "+card.entry.event.minutes+" min":(card.showDate?root.dateText(Cal.parse(card.entry.date),root.globalMode?"dd.MM.yyyy":"ddd, dd MMM")+" · ":"")+(card.entry.event.allDay?"All day":(card.entry.carry?"Continued · 00:00":card.entry.event.time)+" · "+(card.entry.carry?card.entry.segmentMinutes:card.entry.event.minutes)+" min")+(card.entry.event.location?" · "+card.entry.event.location:"")+(card.entry.event.repeat!=="none"?" · Series":""); color:root.muted; font.pixelSize:11; elide:Text.ElideRight }
+                Label {visible:!!card.group.id;Layout.fillWidth:true;text:"↔ "+card.group.label+" · "+card.group.peers.map(function(e){return e.title;}).join(", ");textFormat:Text.PlainText;color:root.accentInk;font.pixelSize:10;elide:Text.ElideRight}
             }
             GlassButton {visible:!!root.persistence&&card.entry.event.repeat!=="none";text:"Series";objectName:"calendarEntrySeries";Accessible.name:"Edit entire series: "+card.entry.event.title;onClicked:root.editEntry(card.entry,false)}
             GlassButton { text:root.globalMode&&!Cal.isUndated(card.entry.event)?"Go to day":"Open"; objectName:"calendarEntryOpen";onClicked:root.globalMode&&!Cal.isUndated(card.entry.event)?root.jumpResult(card.entry):root.editEntry(card.entry,true); Accessible.name:(root.globalMode&&!Cal.isUndated(card.entry.event)?"Jump to day: ":"Edit entry: ")+card.entry.event.title }
@@ -600,7 +603,8 @@ Item {
                 GlassButton {id:editorToolsButton;visible:editor.eventId!==""|| (!!root.persistence&&!task.checked);text:"More ▾";Accessible.name:"Entry actions";onClicked:editorActions.open()
                     ActionMenu {accent:root.accentInk;id:editorActions;parent:editorToolsButton;light:root.light;y:editorToolsButton.height+4
                         ActionMenuItem {accent:root.accentInk;id:duplicateButton;light:root.light;visible:editor.eventId!=="";text:"Duplicate";onTriggered:{editor.eventId="";editor.draftOriginal=null;titleField.text=Array.from(titleField.text+" – Copy").slice(0,200).join("");}}
-                        ActionMenuItem {accent:root.accentInk;id:mergeButton;objectName:"mergeEventsAction";light:root.light;text:"Merge with another event…";visible:!!root.persistence&&!!editor.draftOriginal&&!editor.draftOriginal.task&&editor.draftOriginal.repeat==="none"&&!editor.draftOriginal.seriesId&&!root.events.some(function(child){return child.seriesId===editor.eventId;});onTriggered:root.openMerge()}
+                        ActionMenuItem {accent:root.accentInk;id:mergeButton;objectName:"mergeEventsAction";light:root.light;text:"Link with another event…";visible:!(editor.draftOriginal&&editor.draftOriginal.groupId)&&!!root.persistence&&!!editor.draftOriginal&&!editor.draftOriginal.task&&editor.draftOriginal.repeat==="none"&&!editor.draftOriginal.seriesId&&!root.events.some(function(child){return child.seriesId===editor.eventId;});onTriggered:root.openMerge()}
+                        ActionMenuItem {accent:root.accentInk;id:unlinkButton;objectName:"unlinkEventsAction";light:root.light;text:"Unlink group";visible:!!root.persistence&&!!editor.draftOriginal&&!!editor.draftOriginal.groupId;onTriggered:{var draft=root.currentDraft();if(draft&&root.persistence.unlinkEvents(JSON.stringify(editor.draftOriginal),JSON.stringify(draft)))editor.close();else editor.validation=root.persistence.error;}}
                         ActionMenuItem {accent:root.accentInk;id:templateButton;light:root.light;visible:!!root.persistence&&!task.checked;text:"Save template…";onTriggered:{templateNameField.text=titleField.text;templateNamePopup.error="";templateNamePopup.open();}}
                     }
                 }
@@ -611,7 +615,7 @@ Item {
                     onClicked: {
                         var e=root.currentDraft();if(!e)return;
                         var next=root.events.filter(function(v){return v.id!==e.id;}); next.push(e);
-                        if(root.store(next)) { if(e.date)root.select(Cal.parse(e.date));else{searchInput.clear();kindBox.currentIndex=3;} editor.close(); } else editor.validation=root.error;
+                        if(root.store(next)) { if(e.date)root.select(Cal.parse(e.date));else if(root.persistence)root.persistence.setView("tasks");else{searchInput.clear();kindBox.currentIndex=3;} editor.close(); } else editor.validation=root.error;
                     }
                 }
             }
@@ -658,19 +662,43 @@ Item {
         background:LiquidSurface {light:root.light;tint:root.accent;motionEnabled:root.motionEnabled;radius:18;glassOpacity:1}
         contentItem:ColumnLayout {
             spacing:12
-            Label {text:"Merge events";color:root.ink;font.pixelSize:20}
-            Label {text:"Includes your current editor changes. Choose a second event on the edited date. Only selected occurrences are combined; future repeats stay unchanged.";color:root.muted;Layout.fillWidth:true;wrapMode:Text.Wrap}
+            Label {text:"Link events";color:root.ink;font.pixelSize:20}
+            Label {text:"Keep two separate events, visibly connected. Your current edits are included. Choose another event on this date; future repeats stay unchanged.";color:root.muted;Layout.fillWidth:true;wrapMode:Text.Wrap}
             GlassCombo {id:mergeChoice;objectName:"mergeEventChoice";Layout.fillWidth:true;model:mergeDialog.choices.map(function(e){return (e.allDay?"All day":e.time)+" · "+e.title+(e.occurrenceOf?" · This occurrence":"");});Accessible.name:"Event to merge"}
             ScrollView {
                 Layout.fillWidth:true;Layout.fillHeight:true;contentWidth:availableWidth;clip:true
-                Label {width:parent.width;textFormat:Text.PlainText;wrapMode:Text.Wrap;color:root.ink;text:mergeDialog.preview.event?mergeDialog.preview.event.title+"\n\n"+mergeDialog.preview.event.date+" · "+(mergeDialog.preview.event.allDay?"All day":mergeDialog.preview.event.time+" · "+mergeDialog.preview.event.minutes+" min")+"\n\n"+mergeDialog.preview.event.location+"\n"+mergeDialog.preview.event.notes:mergeDialog.preview.error}
+                Column {
+                    width:parent.width;spacing:0
+                    Repeater {
+                        model:mergeDialog.preview.events||[]
+                        delegate:Column {
+                            required property var modelData
+                            required property int index
+                            width:parent.width;spacing:0
+                            Rectangle {visible:index>0;anchors.horizontalCenter:parent.horizontalCenter;width:2;height:20;color:root.accent}
+                            Rectangle {
+                                width:parent.width;height:previewContent.implicitHeight+24;radius:13
+                                color:Qt.rgba(root.accent.r,root.accent.g,root.accent.b,root.light?.07:.10)
+                                border.color:Qt.rgba(root.accent.r,root.accent.g,root.accent.b,.45)
+                                Column {
+                                    id:previewContent;x:12;y:12;width:parent.width-24;spacing:6
+                                    Label {width:parent.width;text:modelData.title;textFormat:Text.PlainText;color:root.ink;font.pixelSize:14;font.weight:Font.DemiBold;wrapMode:Text.Wrap}
+                                    Label {width:parent.width;text:modelData.date+" · "+(modelData.allDay?"All day":modelData.time+" · "+modelData.minutes+" min");color:root.muted;font.pixelSize:11;wrapMode:Text.Wrap}
+                                    Label {visible:!!modelData.location;width:parent.width;text:modelData.location;textFormat:Text.PlainText;color:root.muted;font.pixelSize:11;wrapMode:Text.Wrap}
+                                    Label {visible:!!modelData.notes;width:parent.width;text:modelData.notes;textFormat:Text.PlainText;color:root.muted;font.pixelSize:11;wrapMode:Text.Wrap;maximumLineCount:3;elide:Text.ElideRight}
+                                }
+                            }
+                        }
+                    }
+                    Label {visible:!mergeDialog.preview.events;width:parent.width;text:mergeDialog.preview.error||"";color:root.muted;wrapMode:Text.Wrap}
+                }
             }
-            Label {text:"Keeps this event's category. Combines titles, locations and notes; covers both time ranges (including gaps). Uses the earliest enabled reminder. Undo restores both entries.";color:root.muted;Layout.fillWidth:true;wrapMode:Text.Wrap;font.pixelSize:11}
+            Label {text:"Each keeps its own time, details, category and reminder. Edit or move them individually, or unlink the group later. Undo restores the saved originals.";color:root.muted;Layout.fillWidth:true;wrapMode:Text.Wrap;font.pixelSize:11}
             Label {text:mergeDialog.message;color:root.danger;visible:text!=="";Layout.fillWidth:true;wrapMode:Text.Wrap}
             RowLayout {
                 GlassButton {text:"Cancel";onClicked:mergeDialog.close()}
                 Item {Layout.fillWidth:true}
-                GlassButton {id:confirmMerge;objectName:"confirmMerge";text:"Merge two events";highlighted:true;enabled:!!mergeDialog.preview.event;onClicked:{var targetDate=mergeDialog.preview.event.date;if(root.persistence.mergeEvents(mergeDialog.first,mergeDialog.second,mergeDialog.draft)){root.select(Cal.parse(targetDate));mergeDialog.close();editor.close();}else mergeDialog.message=root.persistence.error;}}
+                GlassButton {id:confirmMerge;objectName:"confirmMerge";text:"Link events";highlighted:true;enabled:!!mergeDialog.preview.events;onClicked:{var targetDate=mergeDialog.preview.events[0].date;if(root.persistence.mergeEvents(mergeDialog.first,mergeDialog.second,mergeDialog.draft)){root.select(Cal.parse(targetDate));mergeDialog.close();editor.close();}else mergeDialog.message=root.persistence.error;}}
             }
         }
     }
@@ -738,7 +766,7 @@ Item {
                     Label { text:"Your events stay on this computer."; color:root.muted; font.pixelSize:12; wrapMode:Text.Wrap; Layout.fillWidth:true }
                     GlassButton { Layout.fillWidth:true; text:"Export backup"; onClicked: { transfer.importing=false; transfer.title="Copy JSON backup"; transfer.message=""; transferText.text=Cal.backup(root.events); options.close(); transfer.open(); } }
                     GlassButton { Layout.fillWidth:true; text:"Import backup …"; onClicked: { transfer.importing=true; transfer.title="Merge backup"; transferText.text=""; transfer.message=""; options.close(); transfer.open(); } }
-                    GlassButton { Layout.fillWidth:true; text:"Export events as ICS"; onClicked: { transfer.importing=false; transfer.title="Copy ICS"; transfer.message=""; transferText.text=Cal.ics(root.events); options.close(); transfer.open(); } }
+                    GlassButton { Layout.fillWidth:true; text:"Export events as ICS"; onClicked: { try { var exported=Cal.ics(root.events); transfer.importing=false; transfer.title="Copy ICS"; transfer.message=""; transferText.text=exported; root.error=""; options.close(); transfer.open(); } catch(problem) { root.error=String(problem); options.close(); } } }
                 }
             }
             GlassButton { Layout.fillWidth:true; text:"Done"; onClicked:options.close() }
