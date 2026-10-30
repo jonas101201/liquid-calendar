@@ -2,6 +2,13 @@
 
 **0.3.6-beta.1** is the cumulative public release of the 0.3.x development work. Versions 0.3.0–0.3.5 below are unpublished historical snapshots. Patch numbers were assigned retrospectively on 28 October 2026, one per functional code patch after the initial 0.3.0 baseline. Source links identify the original implementation commits, which retain their original version strings. No commits or published tags were rewritten. Documentation-only commits are not numbered separately.
 
+## 0.3.9.2-beta.2 — 2026-10-30
+
+Beta prerelease. Publishes the corrected event-linking source below and the first separate Flatpak package. The previous merge/display implementation was incorrect for contained related events and could obscure outer titles; both behavior and card design have been reworked.
+
+- Add a separate local Flatpak beta with KDE/PySide runtime sharing, sandbox-local storage, asynchronous notification and autostart portals, desktop metadata and a reproducible local bundle builder.
+- Keep native data intact; document JSON import and optional shared-widget permissions. Prune unused BaseApp generators, WebEngine and development dependencies. Destroy QML before its bridge on shutdown to prevent teardown binding errors.
+
 ## 0.3.9.2 — 2026-10-30
 
 Beta source update.
