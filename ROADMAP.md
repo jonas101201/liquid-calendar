@@ -23,7 +23,7 @@ English remains the primary interface language. The language milestone introduce
 
 ## Bug-fix releases and version naming
 
-The current repository version is **0.3.9.2** (beta source update), correcting event merging and nested-card presentation after the third feature milestone. The latest packaged release remains **0.3.9.1**. The next milestone is **0.4.0**, with configurable planning hours, breaks and task splitting. See the [release record](docs/RELEASE_0.3.6.md).
+The current public release is **0.3.9.2 Beta 2** (`0.3.9.2-beta.2`), including corrected event merging, nested-card presentation and separate Flatpak packaging after the third feature milestone. The next milestone is **0.4.0**, with configurable planning hours, breaks and task splitting. See the [release record](docs/RELEASE_0.3.6.md).
 
 Each beta milestone can receive bug-fix releases as needed. These do not count as additional milestones in the ten-beta roadmap.
 
@@ -63,3 +63,7 @@ Released on **29 October 2026** as [0.3.9.1](https://github.com/jonas101201/liqu
 ## 0.3.9.2 merge and display corrections
 
 Source updated on **30 October 2026**. Reworks previously incorrect merging and overlap handling: related events retain independent records, contained events render inside their longer background card, mutual conflict warnings are suppressed and card typography/spacing are simplified. Additional export, navigation and preference fixes are included. See [the source update record](docs/RELEASE_0.3.9.2.md). This maintenance update does not complete the 0.4.0 milestone.
+
+## 0.3.9.2 Beta 2
+
+Released on **30 October 2026** as [0.3.9.2 Beta 2](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.3.9.2-beta.2). Publishes the corrected event-linking source and first separate Flatpak beta, including sandbox storage and desktop portals. This remains maintenance of the third milestone; the next feature milestone is 0.4.0.
