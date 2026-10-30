@@ -1,0 +1,4 @@
+#!/bin/sh
+export QT_QUICK_CONTROLS_STYLE=Basic
+export PYTHONDONTWRITEBYTECODE=1
+exec python3 /app/share/liquid-calendar/app.py "$@"
