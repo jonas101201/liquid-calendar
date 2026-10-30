@@ -3,6 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Dialogs
 import "Theme.js" as Theme
+import "Calendar.js" as Cal
 
 ApplicationWindow {
     id:win
@@ -139,29 +140,34 @@ ApplicationWindow {
         font.pixelSize:13;padding:11;implicitHeight:40;selectByMouse:true
         background:LiquidSurface {light:win.light;tint:win.tint;motionEnabled:win.motionEnabled&&!win.appearanceAdjusting;radius:10;shadowStrength:0;glassOpacity:Math.min(.98,win.surfaceOpacity+.06);border.color:parent.activeFocus?win.accent:win.line}
     }
+    readonly property var linkedGroups:Cal.groupIndex(planner.events)
+    function groupFor(record) {return Cal.groupDetails([],record.event,linkedGroups);}
     component Entry: Surface {
         id:entry
         required property var record
         property bool showDate:false
         property bool compact:false
+        readonly property var group:win.groupFor(record)
         readonly property bool checklistExpanded:win.expandedChecklists[win.checklistKey(record)]===true
         function setChecklistExpanded(expanded){var state=Object.assign({},win.expandedChecklists);state[win.checklistKey(record)]=expanded;win.expandedChecklists=state;}
         function toggleStep(stepId){planner.toggleChecklist(record.id,record.occurrenceDate,stepId,record.fingerprint)}
-        implicitHeight:82+(checklistExpanded?record.checklist.length*38+8:0)
+        implicitHeight:82+(group.id?20:0)+(checklistExpanded?record.checklist.length*38+8:0)
         radius:10
         shadowStrength:0
-        border.width:0
+        border.width:group.id?1:0
+        border.color:Qt.rgba(win.tint.r,win.tint.g,win.tint.b,.3)
         color:entryHover.hovered?Qt.rgba(win.tint.r,win.tint.g,win.tint.b,.07):"transparent"
         HoverHandler {id:entryHover}
         Rectangle {x:12;y:parent.height-1;width:parent.width-24;height:1;color:win.line;opacity:.7}
         RowLayout {
-            anchors.left:parent.left;anchors.right:parent.right;anchors.top:parent.top;anchors.margins:12;height:58;spacing:10
+            anchors.left:parent.left;anchors.right:parent.right;anchors.top:parent.top;anchors.margins:12;height:entry.group.id?78:58;spacing:10
             Rectangle {width:3;Layout.preferredHeight:26;Layout.alignment:Qt.AlignVCenter;radius:1;color:entry.record.conflict?win.danger:entry.record.color}
             Action {visible:entry.record.task;text:entry.record.done?"✓":"○";Accessible.name:entry.record.repeated&&entry.record.done?"Reopen completed series":"Toggle task completion";onClicked:planner.toggleTask(entry.record.id,entry.record.occurrenceDate,entry.record.fingerprint)}
             ColumnLayout {
                 Layout.fillWidth:true;Layout.minimumWidth:0;spacing:5
                 Label {Layout.fillWidth:true;text:entry.record.title;textFormat:Text.PlainText;color:win.ink;font.pixelSize:14;font.weight:Font.DemiBold;font.strikeout:entry.record.done;elide:Text.ElideRight}
                 Label {Layout.fillWidth:true;text:entry.record.unscheduled?"Undated · "+entry.record.minutes+" min":(entry.showDate?entry.record.date+" · ":"")+(entry.record.allDay?"All day":(entry.record.carry?"Continued · ":"")+entry.record.time+" · "+entry.record.minutes+" min")+(entry.record.conflict?" · Overlap":"");color:entry.record.conflict?win.danger:win.muted;font.pixelSize:11;elide:Text.ElideRight}
+                Label {visible:!!entry.group.id;objectName:"linkedEventBadge";Layout.fillWidth:true;text:"↔ "+entry.group.label+" · "+entry.group.peers.map(function(e){return e.title;}).join(", ");textFormat:Text.PlainText;color:win.accent;font.pixelSize:10;elide:Text.ElideRight;ToolTip.visible:linkedHover.hovered;ToolTip.text:entry.group.peers.map(function(e){return e.date+" · "+(e.allDay?"All day":e.time)+" · "+e.title;}).join("\n");HoverHandler {id:linkedHover}}
                 Label {visible:entry.record.task&&(entry.record.priority>0||entry.record.project.length>0);Layout.fillWidth:true;text:(["","Low priority","Medium priority","High priority"])[entry.record.priority]+(entry.record.priority&&entry.record.project?" · ":"")+entry.record.project;textFormat:Text.PlainText;color:entry.record.priority===3?win.danger:win.accent;font.pixelSize:11;elide:Text.ElideRight}
             }
             Action {visible:entry.record.task&&entry.record.checklist.length>0;text:entry.record.checklistDone+"/"+entry.record.checklist.length+(entry.checklistExpanded?" ▴":" ▾");Accessible.name:"Show checklist progress";onClicked:entry.setChecklistExpanded(!entry.checklistExpanded)}
@@ -189,6 +195,8 @@ ApplicationWindow {
     readonly property bool creationModalOpen:creationMenu.visible||quickPopup.visible||templateLibrary.visible||templateEditPopup.visible||datePopup.visible||slotPopup.visible||projectPopup.visible||saveDialog.visible||importDialog.visible
     function openQuick(){quickInput.text="";quickPopup.preview=({error:"",summary:""});quickPopup.open();quickInput.forceActiveFocus();}
     function newEvent(){editorSurface.openEvent(null,dateValue(planner.selected));}
+    function goToDate(value){if(planner.view==="month")editorSurface.jump(dateValue(value));else planner.selectDate(value);}
+    function goToToday(){planner.today();if(planner.view==="month")editorSurface.jump(dateValue(planner.selected));}
     Shortcut {sequence:"Ctrl+N";enabled:!editorSurface.modalOpen&&!win.creationModalOpen;onActivated:win.newEvent()}
     Shortcut {sequence:"Ctrl+F";enabled:!editorSurface.modalOpen&&!win.creationModalOpen;onActivated:{planner.setView("search");globalSearch.forceActiveFocus();}}
     Shortcut {sequence:"Ctrl+Z";enabled:!editorSurface.modalOpen&&!win.creationModalOpen&&planner.canUndo;onActivated:planner.undo()}
@@ -374,7 +382,7 @@ ApplicationWindow {
                     Label {Layout.fillWidth:true;text:planner.view==="today"?planner.dayTitle:planner.view==="agenda"?"Coming up":planner.view==="search"?"Find anything":planner.view==="tasks"?"Your tasks":planner.view==="settings"?"Make it yours":planner.title;color:win.ink;font.pixelSize:28;font.weight:Font.DemiBold;elide:Text.ElideRight}
                 }
                 Action {visible:["today","week","month","agenda"].indexOf(planner.view)>=0;text:"Date";onClicked:{jumpDate.text=planner.selected;datePopup.open();}}
-                Action {visible:planner.view!=="settings";text:"Today";onClicked:planner.today()}
+                Action {id:todayAction;visible:planner.view!=="settings";text:"Today";onClicked:win.goToToday()}
                 Action {id:toolsButton;visible:planner.view!=="settings";text:"Tools ▾";Accessible.name:"Creation tools";onClicked:creationMenu.open()
                     ActionMenu {accent:win.accent;id:creationMenu;parent:toolsButton;light:win.light;y:toolsButton.height+4;x:Math.min(0,toolsButton.width-width)
                         ActionMenuItem {accent:win.accent;id:quickAddAction;light:win.light;text:"Quick add…";onTriggered:win.openQuick()}
@@ -431,8 +439,8 @@ ApplicationWindow {
                         onCanceled:dragging=false
                     }
                 }
-                Action {text:"‹";Accessible.name:"Previous period";onClicked:planner.view==="month"?editorSurface.navigate(-1):planner.navigate(-1)}
-                Action {text:"›";Accessible.name:"Next period";onClicked:planner.view==="month"?editorSurface.navigate(1):planner.navigate(1)}
+                Action {id:previousPeriod;enabled:planner.view!=="month"||!editorSurface.globalMode;text:"‹";Accessible.name:"Previous period";onClicked:planner.view==="month"?editorSurface.navigate(-1):planner.navigate(-1)}
+                Action {id:nextPeriod;enabled:planner.view!=="month"||!editorSurface.globalMode;text:"›";Accessible.name:"Next period";onClicked:planner.view==="month"?editorSurface.navigate(1):planner.navigate(1)}
                 Label {Layout.fillWidth:true;text:planner.view==="week"?"Drag to reschedule · 15-minute steps · this occurrence only":planner.view==="month"?"Choose a day to see its events":"Your day · tasks in a separate overview";color:win.muted;font.pixelSize:11;wrapMode:Text.Wrap}
                 Label {visible:planner.view==="today"&&planner.conflictCount>0;text:planner.conflictCount+" entries overlap";color:win.danger;font.pixelSize:11}
             }
@@ -540,7 +548,7 @@ ApplicationWindow {
                         ListView {
                             id:allDayList;visible:count>0;Layout.fillWidth:true;Layout.preferredHeight:34;orientation:ListView.Horizontal;spacing:6;clip:true
                             model:win.weekData.filter(function(v){return v.allDay;})
-                            delegate:Action {required property var modelData;text:modelData.date.slice(5)+" · "+modelData.title;onClicked:planner.edit(modelData.id,modelData.occurrenceDate,true)}
+                            delegate:Action {required property var modelData;readonly property var group:win.groupFor(modelData);text:(group.id?"↔ "+group.label+" · ":"")+modelData.date.slice(5)+" · "+modelData.title;onClicked:planner.edit(modelData.id,modelData.occurrenceDate,true)}
                             ScrollBar.horizontal:GlassScrollBar {light:win.light;accent:win.accent;motionEnabled:win.motionEnabled}
                         }
                         Flickable {
@@ -589,33 +597,74 @@ ApplicationWindow {
                                         onDropped:function(drop){var source=drop.source;var minute=Math.max(0,Math.min(1425,Math.round((drop.y-8)/timeline.hourHeight*4)*15));planner.move(source.record.id,source.record.occurrenceDate,modelData.date,minute,source.record.fingerprint);drop.acceptProposedAction();}
                                     }
                                 }
+                                Canvas {
+                                    id:linkConnections;objectName:"linkedEventConnections";anchors.fill:parent;z:2
+                                    property var records:win.weekData
+                                    property real columnWidth:timeline.columnWidth
+                                    property color connectionColor:win.accent
+                                    onRecordsChanged:requestPaint()
+                                    onColumnWidthChanged:requestPaint()
+                                    onConnectionColorChanged:requestPaint()
+                                    onWidthChanged:requestPaint()
+                                    onHeightChanged:requestPaint()
+                                    onPaint: {
+                                        var ctx=getContext("2d");ctx.reset();ctx.clearRect(0,0,width,height);
+                                        ctx.strokeStyle=connectionColor;ctx.lineWidth=2;ctx.globalAlpha=.65;
+                                        var groups=Object.create(null);
+                                        records.forEach(function(e){var id=e.event.groupId;if(id&&!e.allDay&&!e.nested&&!e.hasNested)(groups[id]||(groups[id]=[])).push(e);});
+                                        function bounds(e){var y=e.start/60*timeline.hourHeight+2;return {x:timeline.gutter+e.dayIndex*columnWidth+e.lane*columnWidth/e.lanes+3,y:y,w:Math.max(1,columnWidth*(e.laneSpan||1)/e.lanes-6),h:Math.min(1440*timeline.hourHeight/60-y,Math.max(20,e.segmentMinutes/60*timeline.hourHeight-4))};}
+                                        Object.keys(groups).forEach(function(id){
+                                            var peers=groups[id];
+                                            // Only connect visible segments within one day; badges identify cross-day links.
+                                            for(var i=0;i<peers.length;i++)for(var j=i+1;j<peers.length;j++) {
+                                                if(peers[i].id===peers[j].id||peers[i].date!==peers[j].date)continue;
+                                                var ra=bounds(peers[i]),rb=bounds(peers[j]),a,b;
+                                                if(ra.x+ra.w<=rb.x){a={x:ra.x+ra.w,y:ra.y+ra.h/2};b={x:rb.x,y:rb.y+rb.h/2};}
+                                                else if(rb.x+rb.w<=ra.x){a={x:ra.x,y:ra.y+ra.h/2};b={x:rb.x+rb.w,y:rb.y+rb.h/2};}
+                                                else if(ra.y<rb.y){a={x:ra.x+ra.w/2,y:ra.y+ra.h};b={x:rb.x+rb.w/2,y:rb.y};}
+                                                else {a={x:ra.x+ra.w/2,y:ra.y};b={x:rb.x+rb.w/2,y:rb.y+rb.h};}
+                                                ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.bezierCurveTo(a.x,(a.y+b.y)/2,b.x,(a.y+b.y)/2,b.x,b.y);ctx.stroke();
+                                            }
+                                        });
+                                    }
+                                }
                                 Repeater {
+                                    id:weekEventRepeater
                                     model:win.weekData.filter(function(v){return !v.allDay;})
                                     delegate:Rectangle {
                                         id:eventBlock
                                         required property var modelData
+                                        objectName:"weekEventBlock"
                                         property var record:modelData
-                                        readonly property real homeX:timeline.gutter+record.dayIndex*timeline.columnWidth+record.lane*timeline.columnWidth/record.lanes+3
-                                        readonly property real homeY:record.start/60*timeline.hourHeight+2
-                                        x:homeX;y:homeY;width:Math.max(1,timeline.columnWidth*(record.laneSpan||1)/record.lanes-6);height:Math.min(1440*timeline.hourHeight/60-homeY,Math.max(20,record.segmentMinutes/60*timeline.hourHeight-4))
+                                        readonly property var group:win.groupFor(record)
+                                        readonly property real baseWidth:Math.max(1,timeline.columnWidth*(record.laneSpan||1)/record.lanes-6)
+                                        readonly property real homeX:timeline.gutter+record.dayIndex*timeline.columnWidth+record.lane*timeline.columnWidth/record.lanes+3+(record.nested?8+record.nestedLane*Math.max(1,baseWidth-16)/record.nestedLanes:0)
+                                        readonly property real homeY:record.nested?Math.max(record.start/60*timeline.hourHeight+2,record.parentStart/60*timeline.hourHeight+48):record.start/60*timeline.hourHeight+2
+                                        x:homeX;y:homeY;width:record.nested?Math.max(1,(baseWidth-16)/record.nestedLanes-(record.nestedLanes>1?4:0)):baseWidth
+                                        height:Math.max(1,Math.min((record.nested?record.parentEnd:1440)*timeline.hourHeight/60-homeY-(record.nested?6:0),Math.max(20,record.nested?record.end/60*timeline.hourHeight-homeY-2:record.segmentMinutes/60*timeline.hourHeight-4)))
                                         readonly property color eventTint:record.conflict?win.danger:record.color
-                                        radius:7;border.width:dragMouse.drag.active?1:0;border.color:eventTint;clip:true
-                                        color:Qt.rgba(eventTint.r,eventTint.g,eventTint.b,win.light?.15:.16)
-                                        Rectangle {anchors.left:parent.left;anchors.top:parent.top;anchors.bottom:parent.bottom;width:3;color:eventBlock.eventTint}
-                                        z:dragMouse.drag.active?20:3
+                                        readonly property color surfaceColor:record.hasNested?Qt.rgba(eventTint.r,eventTint.g,eventTint.b,win.light?.065:.07):record.nested?Qt.tint(win.uiColors.panel,Qt.rgba(eventTint.r,eventTint.g,eventTint.b,win.light?.045:.07)):Qt.rgba(eventTint.r,eventTint.g,eventTint.b,win.light?.12:.14)
+                                        radius:record.hasNested?10:8
+                                        border.width:group.id||dragMouse.containsMouse||dragMouse.drag.active?1:0
+                                        border.color:record.conflict?Qt.rgba(win.danger.r,win.danger.g,win.danger.b,.6):dragMouse.containsMouse||dragMouse.drag.active?Qt.rgba(win.tint.r,win.tint.g,win.tint.b,.6):Qt.rgba(eventTint.r,eventTint.g,eventTint.b,record.hasNested?.24:.18)
+                                        clip:true
+                                        color:dragMouse.containsMouse?Qt.tint(surfaceColor,Qt.rgba(win.tint.r,win.tint.g,win.tint.b,.045)):surfaceColor
+                                        Rectangle {x:0;y:8;width:2;height:Math.max(0,parent.height-16);radius:1;color:eventBlock.eventTint;opacity:eventBlock.record.hasNested?.55:.9}
+                                        z:dragMouse.drag.active?20:(record.nested?4:3)
                                         Drag.active:dragMouse.drag.active;Drag.keys:["liquid-calendar-event"];Drag.source:eventBlock;Drag.hotSpot.x:width/2;Drag.hotSpot.y:8
                                         Column {
-                                            anchors.fill:parent;anchors.margins:eventBlock.height<38?2:6;anchors.leftMargin:6;spacing:3
-                                            Label {width:parent.width;visible:eventBlock.height>38;text:(eventBlock.record.carry?"↳ ":"")+eventBlock.record.time;color:win.ink;font.pixelSize:10;elide:Text.ElideRight}
-                                            Label {visible:true;width:parent.width;text:eventBlock.record.title;textFormat:Text.PlainText;color:win.ink;font.pixelSize:11;font.bold:true;wrapMode:Text.Wrap;maximumLineCount:eventBlock.height<38?1:3;elide:Text.ElideRight}
-                                            Label {visible:eventBlock.height>95&&eventBlock.record.conflict;width:parent.width;text:"Overlap";color:win.danger;font.pixelSize:9;elide:Text.ElideRight}
+                                            anchors.fill:parent;anchors.margins:eventBlock.height<38?3:8;anchors.leftMargin:8;spacing:4
+                                            Label {width:parent.width;text:eventBlock.record.title;textFormat:Text.PlainText;color:win.ink;font.pixelSize:12;font.weight:Font.DemiBold;wrapMode:Text.NoWrap;elide:Text.ElideRight}
+                                            Label {width:parent.width;visible:eventBlock.height>38;text:(eventBlock.record.carry?"Continued · ":"")+eventBlock.record.time+"–"+(Math.floor(eventBlock.record.end/60)<10?"0":"")+Math.floor(eventBlock.record.end/60)+":"+(eventBlock.record.end%60<10?"0":"")+(eventBlock.record.end%60);color:win.muted;font.pixelSize:10;elide:Text.ElideRight}
+                                            Label {visible:eventBlock.height>85&&!!eventBlock.group.id&&!eventBlock.record.hasNested&&!eventBlock.record.nested;width:parent.width;text:eventBlock.group.label;color:win.muted;font.pixelSize:9;elide:Text.ElideRight}
+                                            Label {visible:eventBlock.height>95&&eventBlock.record.conflict&&!eventBlock.record.hasNested;width:parent.width;text:"Overlap";color:win.danger;font.pixelSize:9;elide:Text.ElideRight}
                                         }
                                         MouseArea {
                                             id:dragMouse;anchors.fill:parent;hoverEnabled:true;drag.smoothed:false;drag.target:eventBlock.record.carry?null:eventBlock;drag.minimumX:timeline.gutter;drag.maximumX:timeContent.width-eventBlock.width;drag.minimumY:0;drag.maximumY:timeContent.height-eventBlock.height
                                             onReleased:{eventBlock.Drag.drop();eventBlock.x=Qt.binding(function(){return eventBlock.homeX;});eventBlock.y=Qt.binding(function(){return eventBlock.homeY;});}
                                             onDoubleClicked:planner.edit(eventBlock.record.id,eventBlock.record.occurrenceDate,true)
                                         }
-                                        ToolTip.visible:dragMouse.containsMouse&&!dragMouse.drag.active;ToolTip.delay:400;ToolTip.text:record.time+" · "+record.title+(record.conflict?"\nOverlaps another event":"")+"\nDouble-click to edit"
+                                        ToolTip.visible:dragMouse.containsMouse&&!dragMouse.drag.active;ToolTip.delay:400;ToolTip.text:record.time+" · "+record.title+(record.nested?"\nWithin: "+record.parentTitle:record.hasNested?"\nContains a linked event":"")+(group.id?"\n"+group.label+" · "+group.peers.map(function(e){return e.title;}).join(", "):"")+(record.conflict?"\nOverlaps another event":"")+"\nDouble-click to edit"
                                     }
                                 }
                             }
@@ -799,7 +848,7 @@ ApplicationWindow {
         id:datePopup;anchors.centerIn:Overlay.overlay;width:360;modal:true;focus:true
         property string validation:""
         onOpened:{validation="";jumpDate.forceActiveFocus();jumpDate.selectAll();}
-        function go(){var result=planner.resolveDate(jumpDate.text);if(result.error){validation=result.error;return;}planner.selectDate(result.date);close();}
+        function go(){var result=planner.resolveDate(jumpDate.text);if(result.error){validation=result.error;return;}win.goToDate(result.date);close();}
         background:Surface {glassOpacity:1}
         contentItem:ColumnLayout {spacing:12
             Label {text:"Jump to date";color:win.ink;font.pixelSize:20;font.weight:Font.DemiBold}
