@@ -6,6 +6,8 @@ This page distinguishes current limitations from issues fixed in earlier beta ve
 
 ## Fixed in 0.3.9.3
 
+An additional early-popup-close scale increase found during Flatpak validation is also corrected.
+
 The three failures reproduced against 0.3.9.2 Beta 2 are corrected:
 
 - **Automatic backups:** SQLite copies are written to a unique temporary file, validated and atomically published. Empty/corrupt daily files left by earlier failures are repaired before saving; failed copies remain retryable. Concurrent clients serialize first-of-day creation and preserve an existing valid daily snapshot.
