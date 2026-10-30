@@ -57,6 +57,13 @@ expr('datePopup.close()');settle(160)
 # Appearance controls are reachable and update both shell and calendar.
 b.setView('settings');settle(300)
 assert expr('Math.abs(settingsVerticalScroll.x+settingsVerticalScroll.width-settingsScroll.width)<1')
+# A failed theme write must restore the actual checked choice, not imply it saved.
+b.setTheme('dark');win.requestActivate();settle(160)
+light_point=QPoint(round(expr('lightThemeChoice.mapToItem(win.contentItem,lightThemeChoice.width/2,lightThemeChoice.height/2).x')),round(expr('lightThemeChoice.mapToItem(win.contentItem,0,lightThemeChoice.height/2).y')))
+with patch.object(st,'set_settings',side_effect=OSError('synthetic failed theme save')):
+ QTest.mouseClick(win,Qt.LeftButton,Qt.NoModifier,light_point);settle(120)
+assert b.theme=='dark' and expr('darkThemeChoice.checked && !lightThemeChoice.checked')
+b.clearError();settle(40)
 # Opacity is a lightweight preview while held; persist once on release, without rebuilding calendar models.
 expr('settingsScroll.contentItem.contentY=Math.max(0,Math.min(settingsScroll.contentItem.contentHeight-settingsScroll.height,settingsScroll.contentItem.contentY+appearanceOpacity.mapToItem(settingsScroll,0,0).y-settingsScroll.height/2))');settle(80)
 def opacity_point(x):
@@ -154,6 +161,26 @@ expr('editorSurface.navigate(-1)');settle();assert b.selected=='2026-10-01'
 expr('calendarWeekButton.clicked()');b.navigate(1);settle();assert b.selected=='2026-10-08'
 b.selectDate(today.isoformat());b.setView('month');settle()
 print('Consolidated Calendar navigation and month/week switching passed.')
+# Saving an undated task must not leak the standalone task filter into Calendar.
+b.setView('tasks');expr('editorSurface.openNewTask(win.dateValue(planner.selected))');settle(220)
+expr('editorSurface.review('+json.dumps('titleField.text="Undated filter regression";saveButton.clicked()')+')');settle(220)
+b.setView('month');settle(300)
+assert expr('!editorSurface.globalMode && editorSurface.kindFilter===0')
+expr('editorSurface.review('+json.dumps('searchInput.text="no matching title"')+')');settle(40)
+assert expr('editorSurface.globalMode && !previousPeriod.enabled && !nextPeriod.enabled')
+expr('todayAction.clicked()');settle(220)
+assert b.selected==dt.date.today().isoformat() and expr('!editorSurface.globalMode && editorSurface.query===""')
+expr('editorSurface.review('+json.dumps('searchInput.text="still no matching title"')+')')
+expr('jumpDate.text="2026-11-15";datePopup.go()');settle(220)
+assert b.selected=='2026-11-15' and expr('!editorSurface.globalMode && previousPeriod.enabled && nextPeriod.enabled')
+previous_selected=b.selected
+expr('datePopup.open()');settle(260)
+expr('jumpDate.text="1.1.0001";datePopup.go()');settle(40)
+assert b.selected==previous_selected and expr('datePopup.visible && datePopup.validation.length>0')
+expr('datePopup.close()');settle(160)
+b.undo();assert st.read()==before
+b.selectDate(today.isoformat());b.setView('month');settle(280)
+print('Undated task routing, month filter isolation and Today/date navigation recovery passed.')
 # Drag the selected calendar pill, rather than a scrollbar, while the left button is held.
 def calendar_point(name):
  return QPoint(round(expr(f'{name}.mapToItem(win.contentItem,{name}.width/2,{name}.height/2).x')),round(expr(f'{name}.mapToItem(win.contentItem,0,{name}.height/2).y')))
@@ -340,24 +367,40 @@ a=e('merge-a',title='Design review',notes='First note');c=e('merge-b',title='Pla
 b.commit([a,c]);b.edit(a['id'],a['date'],False);settle()
 expr('editorSurface.review("mergeButton.triggered()")');settle()
 assert expr('editorSurface.review("mergeDialog.visible")') is True
-assert expr('editorSurface.review("mergeDialog.preview.event.minutes")')==90
+assert expr('editorSurface.review("mergeDialog.preview.events[0].minutes")')==60
 QQuickWindow.grabWindow(win).save('/tmp/liquid-calendar-merge-preview.png')
 expr('editorSurface.review("confirmMerge.clicked()")');settle()
-assert len(st.read())==1 and st.read()[0]['notes']=='First note\n\nSecond note'
-b.undo();assert sorted(st.read(),key=lambda e:e['id'])==[a,c]
+assert len(st.read())==2 and next(e for e in st.read() if e['id']==a['id'])['notes']=='First note'
+assert st.read()[0]['groupId']==st.read()[1]['groupId']
+# Both cards remain visible and carry an identifiable link; unlink includes a draft.
+b.setView('week');b.selectDate(a['date']);settle(240)
+assert expr('!!linkedGroups[planner.events[0].groupId]')
+assert expr('linkConnections.visible && linkConnections.records.length===2')
+QQuickWindow.grabWindow(win).save('/tmp/liquid-calendar-linked-week.png')
+linked_snapshot=next(e for e in st.read() if e['id']==a['id'])
+b.edit(a['id'],a['date'],True);settle(180)
+expr('editorSurface.review('+json.dumps('titleField.text="Updated linked review";editorToolsButton.clicked()')+')');settle(180)
+assert expr('editorSurface.review("unlinkButton.visible && !mergeButton.visible")')
+expr('editorSurface.review("unlinkButton.triggered();editorActions.close()")');settle(200)
+assert all('groupId' not in e for e in st.read())
+assert next(e for e in st.read() if e['id']==a['id'])['title']=='Updated linked review'
+b.undo();assert next(e for e in st.read() if e['id']==a['id'])==linked_snapshot
+b.commit([a,c]);assert sorted(st.read(),key=lambda e:e['id'])==[a,c]
 # Unsaved form changes enter the preview and commit together; Cancel writes nothing.
 b.edit(a['id'],a['date'],False);settle(220)
 expr('editorSurface.review('+json.dumps('titleField.text="Unsaved design";timeField.text="08:30";durationField.value=120;categoryBox.currentIndex=3;locationField.text="New studio";notesField.text="Unsaved note";root.openMerge()')+')');settle(220)
-assert expr('editorSurface.review("mergeDialog.preview.event.title")')=='Unsaved design / Planning'
-assert expr('editorSurface.review("mergeDialog.preview.event.minutes")')==120
-assert expr('editorSurface.review("mergeDialog.preview.event.notes")')=='Unsaved note\n\nSecond note'
+assert expr('editorSurface.review("mergeDialog.preview.events[0].title")')=='Unsaved design'
+assert expr('editorSurface.review("mergeDialog.preview.events[0].minutes")')==120
+assert expr('editorSurface.review("mergeDialog.preview.events[0].notes")')=='Unsaved note'
 assert sorted(st.read(),key=lambda e:e['id'])==[a,c]
 expr('editorSurface.review("mergeDialog.close()")');settle(160)
 assert expr('editorSurface.review("titleField.text")')=='Unsaved design'
 expr('editorSurface.review("root.openMerge()")');settle(220)
 expr('editorSurface.review("confirmMerge.clicked()")');settle(220)
-assert st.read()[0]['title']=='Unsaved design / Planning' and st.read()[0]['category']==3
-assert st.read()[0]['location']=='New studio · '+c['location']
+saved_by_id={e['id']:e for e in st.read()}
+assert saved_by_id[a['id']]['title']=='Unsaved design' and saved_by_id[a['id']]['category']==3
+assert saved_by_id[a['id']]['location']=='New studio'
+assert saved_by_id[c['id']]['title']==c['title'] and saved_by_id[c['id']]['location']==c['location']
 b.undo();assert sorted(st.read(),key=lambda e:e['id'])==[a,c]
 # The edited date controls candidate selection and the destination after saving.
 next_day=e('next-day',date='2026-10-29',title='Next day event')
@@ -426,9 +469,9 @@ assert expr('editorSurface.review("mergeButton.visible")') is True
 QQuickWindow.grabWindow(win).save('/tmp/liquid-calendar-occurrence-menu-fixed.png')
 expr('editorSurface.review("mergeButton.triggered();editorActions.close()")');settle()
 assert expr('editorSurface.review("mergeDialog.choices.length")')==1
-assert expr('editorSurface.review("mergeDialog.preview.event.minutes")')==90
+assert expr('editorSurface.review("mergeDialog.preview.events[0].minutes")')==60
 expr('editorSurface.review("confirmMerge.clicked()")');settle()
-assert len(st.read())==3
+assert len(st.read())==4
 for source in (series_a,series_b):
  parent=next(e for e in st.read() if e['id']==source['id'])
  assert not occurs(parent,parse(source['date'])) and occurs(parent,parse('2026-11-04'))
