@@ -6,6 +6,8 @@
 
 Beta prerelease.
 
+- Keep popup closing scale monotonic when closing during the first opening frames; closing no longer grows an early, partially opened popup.
+
 - Publish only validated, complete automatic SQLite backups. Repair incomplete daily files left by previous failures, preserve valid snapshots, serialize concurrent creators and retry after copy/publish errors.
 - Preserve nested-event start times during horizontal date dragging; apply 15-minute deltas only for vertical movement, including non-quarter-hour starts.
 - Close remote Flatpak autostart requests on timeout, follow alternative returned handles and allow subsequent requests without orphaned dialogs.
