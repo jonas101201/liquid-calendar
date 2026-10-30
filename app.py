@@ -10,7 +10,7 @@ from pathlib import Path
 import subprocess
 import sys
 
-from PySide6.QtCore import QObject,Signal,Slot,Property,QTimer,QUrl,QLocale,QSaveFile,QIODevice
+from PySide6.QtCore import QObject,Signal,Slot,Property,QTimer,QUrl,QLocale,QSaveFile,QIODevice,QCoreApplication,QEvent
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication,QSystemTrayIcon,QMenu,QMessageBox
 from PySide6.QtQml import QQmlApplicationEngine
@@ -37,11 +37,14 @@ from logic import (
     validate,
 )
 from store import Store,ConflictError
+from desktop_portals import DesktopPortals
 
 BASE=Path(__file__).resolve().parent
 APP_VERSION=(BASE/'VERSION').read_text(encoding='utf-8').strip()
 DATA=Path(os.environ.get('XDG_DATA_HOME',str(Path.home()/'.local/share')))/'liquid-glass-planner'
-DEFAULT_DB=Path.home()/'.local/share/plasmashell/QML/OfflineStorage/Databases/dd9450f249be1bf7e7f3854d39b8b74b.sqlite'
+FLATPAK=bool(os.environ.get('FLATPAK_ID'))
+LEGACY_DB=Path.home()/'.local/share/plasmashell/QML/OfflineStorage/Databases/dd9450f249be1bf7e7f3854d39b8b74b.sqlite'
+DEFAULT_DB=DATA/'calendar.sqlite' if FLATPAK else LEGACY_DB
 
 class Bridge(QObject):
     changed=Signal(); errorChanged=Signal(); editRequested=Signal('QVariantMap'); noticeChanged=Signal()
@@ -64,10 +67,15 @@ class Bridge(QObject):
         self._undo=None
         self._settings=store.settings()
         self.smoke=smoke
-        self._need_widget=False
+        self._need_widget=FLATPAK and store.path==LEGACY_DB
+        self._pending_notifications=set()
+        self._portals=DesktopPortals(self) if FLATPAK and not smoke else None
+        if self._portals:
+            self._portals.notificationFinished.connect(self.notification_finished)
+            self._portals.backgroundFinished.connect(self.background_finished)
         self._project_filter='*';self._priority_filter=-1;self._undo_project_filter=None
         self._templates=store.templates()
-        if not smoke:
+        if not smoke and not FLATPAK:
             try:
                 result=subprocess.run(['/usr/lib64/qt6/bin/qdbus','org.kde.plasmashell','/PlasmaShell','org.kde.PlasmaShell.evaluateScript','var active=false; desktops().forEach(function(d){d.widgets().forEach(function(w){if(w.type==="org.jonas.liquidglass.calendar")active=true;});}); print(active);'],capture_output=True,text=True,timeout=3)
                 value=result.stdout.strip().lower()
@@ -78,6 +86,10 @@ class Bridge(QObject):
         self.reload_timer=QTimer(self);self.reload_timer.timeout.connect(self.reload);self.reload_timer.start(2500)
         self.reminder_timer=QTimer(self);self.reminder_timer.timeout.connect(self.remind)
         if not smoke:self.reminder_timer.start(15000)
+    @Property(bool,constant=True)
+    def sandboxed(self):return FLATPAK
+    @Property(bool,constant=True)
+    def sharedStorage(self):return self.store.path==LEGACY_DB
     @Property(str,constant=True)
     def version(self):return APP_VERSION
     @Property('QVariantList',notify=changed)
@@ -129,6 +141,7 @@ class Bridge(QObject):
     @Slot()
     def refreshWidget(self):
         if self.smoke:return
+        if FLATPAK:self.fail("Reload the Plasma widget from the desktop, then reopen the calendar. Flatpak cannot replace the desktop shell.");return
         try:
             env={k:v for k,v in os.environ.items() if k not in ['PYTHONPATH','QT_PLUGIN_PATH','QML_IMPORT_PATH','QML2_IMPORT_PATH','QT_QPA_PLATFORM_PLUGIN_PATH','QT_QUICK_CONTROLS_STYLE','LD_LIBRARY_PATH','LD_PRELOAD']}
             log=DATA/'plasma-reload.log';log.parent.mkdir(parents=True,exist_ok=True)
@@ -248,9 +261,10 @@ class Bridge(QObject):
     def autostart_path(self):
         return self.store.path.parent/'autostart-test.desktop' if self.smoke else Path.home()/'.config/autostart/org.jonas.liquidcalendar.desktop'
     @Property(bool,notify=changed)
-    def autoStart(self):return self.autostart_path().exists()
+    def autoStart(self):return bool(self._settings.get('flatpakAutostart',False)) if FLATPAK and not self.smoke else self.autostart_path().exists()
     @Slot(bool)
     def setAutoStart(self,enabled):
+        if self._portals:self._portals.set_autostart(enabled);return
         try:
             path=self.autostart_path()
             if enabled:
@@ -598,6 +612,19 @@ class Bridge(QObject):
             ids={e['id'] for e in self._events};new=[e for e in imported if e['id'] not in ids]
             self.commit(self._events+new,label=f'{len(new)} new entries imported; existing IDs preserved')
         except Exception as e:self.fail(e)
+    def background_finished(self,ok,autostart,error):
+        if not ok:self.fail(error);return
+        try:
+            settings=dict(self._settings,flatpakAutostart=autostart)
+            self.store.set_settings(settings);self._settings=settings;self.changed.emit()
+            self.note("Autostart enabled" if autostart else "Autostart disabled")
+        except Exception as e:self.fail(e)
+    def notification_finished(self,key,ok,error):
+        self._pending_notifications.discard(key)
+        if ok:
+            try:self.store.mark_notified(key)
+            except Exception as e:self.fail(e)
+        else:self.fail("Could not deliver reminder: "+error)
     def remind(self):
         if not self.remindersEnabled:return
         try:
@@ -610,7 +637,11 @@ class Bridge(QObject):
                 trigger=start-dt.timedelta(minutes=lead)
                 if trigger<=now<=start+dt.timedelta(minutes=5):
                     key=f'{v["id"]}|{v["date"]}|{v["time"]}|{lead}'
+                    if key in self._pending_notifications:continue
                     if not self.store.notified(key):
+                        if self._portals:
+                            body=(("All day today" if start.date()==now.date() else "All day tomorrow") if v['allDay'] else v['time'])+(' · '+v['location'] if v['location'] else '')
+                            self._pending_notifications.add(key);self._portals.notify(key,v['title'],body);continue
                         result=subprocess.run(['notify-send','--app-name=Liquid Calendar','--icon='+str(BASE/'icons/calendar.svg'),v['title'],(("All day today" if start.date()==now.date() else "All day tomorrow" if start.date()==now.date()+dt.timedelta(days=1) else "All day on "+v["date"]) if v["allDay"] else v["time"])+(' · '+v['location'] if v['location'] else '')],capture_output=True,timeout=8)
                         if result.returncode==0:self.store.mark_notified(key)
         except Exception as e:self.fail("Could not deliver reminder: "+str(e))
@@ -621,9 +652,9 @@ def main():
         import tempfile
         args.database=Path(tempfile.mkdtemp(prefix="liquid-calendar-smoke-"))/"calendar.sqlite"
     QLocale.setDefault(QLocale('en_GB'))
-    app=QApplication(sys.argv);app.setApplicationName('Liquid Calendar');app.setApplicationVersion(APP_VERSION);app.setOrganizationName('Jonas');app.setDesktopFileName('org.jonas.liquidcalendar');app.setApplicationDisplayName('Liquid Calendar Beta');app.setWindowIcon(QIcon(str(BASE/'icons/calendar.svg')))
+    app=QApplication(sys.argv);app.setApplicationName('Liquid Calendar');app.setApplicationVersion(APP_VERSION);app.setOrganizationName('Jonas');app.setDesktopFileName('io.github.jonas101201.LiquidCalendar' if FLATPAK else 'org.jonas.liquidcalendar');app.setApplicationDisplayName('Liquid Calendar Beta');app.setWindowIcon(QIcon(str(BASE/'icons/calendar.svg')))
     if not args.smoke_test:
-        server_name='liquid-calendar-'+str(os.getuid())
+        server_name=('liquid-calendar-flatpak-' if FLATPAK else 'liquid-calendar-')+str(os.getuid())
         socket=QLocalSocket();socket.connectToServer(server_name)
         if socket.waitForConnected(250):socket.write(b'show');socket.flush();socket.waitForBytesWritten(200);return 0
         server=QLocalServer();server.setSocketOptions(QLocalServer.UserAccessOption);QLocalServer.removeServer(server_name)
@@ -654,5 +685,8 @@ def main():
             if args.screenshot:QQuickWindow.grabWindow(window).save(str(args.screenshot))
             app.quit()
         QTimer.singleShot(700,finish)
-    return app.exec()
+    exit_code=app.exec()
+    bridge.reload_timer.stop();bridge.reminder_timer.stop()
+    engine.deleteLater();QCoreApplication.sendPostedEvents(None,QEvent.DeferredDelete)
+    return exit_code
 if __name__=='__main__':raise SystemExit(main())
