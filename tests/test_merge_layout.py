@@ -5,23 +5,25 @@ def event(ident='a',**kw):
  e=new_event(dt.date(2026,10,28));e.update(id=ident,title=ident,time='09:00',minutes=60);e.update(kw);return e
 
 class MergeTests(unittest.TestCase):
- def test_union_preserves_content_and_source(self):
+ def test_link_preserves_independent_contents_and_sources(self):
   a=event(notes='First',location='Office');b=event('b',time='09:30',notes='Second',location='Online',reminder=60)
-  original=copy.deepcopy([a,b]);merged=merge_events(a,b)
-  self.assertEqual(merged['minutes'],90);self.assertEqual(merged['title'],'a / b')
-  self.assertEqual(merged['notes'],'First\n\nSecond');self.assertEqual(merged['location'],'Office · Online')
-  self.assertEqual(merged['id'],'a');self.assertEqual(merged['reminder'],60);self.assertEqual([a,b],original)
- def test_midnight_union(self):
-  self.assertEqual(merge_events(event(time='23:00'),event('b',time='23:30',minutes=120))['minutes'],150)
- def test_limits_reject_without_truncating(self):
-  for b in [event('b',title='x'*200),event('b',time='23:00',minutes=1440)]:
-   with self.assertRaises(ValueError):merge_events(event(),b)
+  original=copy.deepcopy([a,b]);linked=merge_events(a,b)
+  self.assertEqual(len(linked),2);self.assertEqual(linked[0]['groupId'],linked[1]['groupId'])
+  for actual,expected in zip(linked,original):
+   self.assertEqual({k:v for k,v in actual.items() if k!='groupId'},expected)
+  self.assertEqual([a,b],original)
+ def test_midnight_times_remain_independent(self):
+  linked=merge_events(event(time='23:00'),event('b',time='23:30',minutes=120))
+  self.assertEqual([(e['time'],e['minutes']) for e in linked],[('23:00',60),('23:30',120)])
+ def test_long_contents_are_not_combined_or_truncated(self):
+  a=event(title='x'*200,notes='a'*10000);b=event('b',title='y'*200,notes='b'*10000,time='23:00',minutes=1440)
+  linked=merge_events(a,b);self.assertEqual([e['title'] for e in linked],[a['title'],b['title']]);self.assertEqual([e['notes'] for e in linked],[a['notes'],b['notes']])
  def test_same_entry_or_incompatible_rejected(self):
-  for b in [event(),event('b',task=True),event('b',repeat='weekly'),event('b',seriesId='parent'),event('b',date='2026-10-29'),event('b',allDay=True)]:
+  for b in [event(),event('b',task=True),event('b',repeat='weekly'),event('b',seriesId='parent'),event('b',date='2026-10-29'),event('b',allDay=True),event('b',groupId='existing')]:
    with self.assertRaises(ValueError):merge_events(event(),b)
- def test_all_day_and_duplicate_content(self):
-  a=event(title='Same',notes='Same',allDay=True);b=event('b',title='Same',notes='Same',allDay=True)
-  m=merge_events(a,b);self.assertEqual(m['title'],'Same');self.assertEqual(m['notes'],'Same');self.assertTrue(m['allDay'])
+ def test_all_day_and_identical_titles_stay_separate(self):
+  linked=merge_events(event(title='Same',allDay=True),event('b',title='Same',allDay=True))
+  self.assertEqual(len(linked),2);self.assertEqual({e['id'] for e in linked},{'a','b'});self.assertTrue(all(e['allDay'] for e in linked))
 
 class LayoutTests(unittest.TestCase):
  def rows(self,*events):return instances(list(events),dt.date(2026,10,28),1)
@@ -59,12 +61,58 @@ class LayoutTests(unittest.TestCase):
      if a is not b and a['start']<b['layoutEnd'] and b['start']<a['layoutEnd']:
       self.assertTrue(a['lane']+a['laneSpan']<=b['lane'] or b['lane']+b['laneSpan']<=a['lane'])
 
+class NestedLayoutTests(unittest.TestCase):
+ def rows(self,*events,category=-1):return {e['id']:e for e in instances(list(events),dt.date(2026,10,28),1,category=category)}
+ def school(self):return event('school',time='07:00',minutes=420,groupId='school-day'),event('exam',time='09:00',minutes=60,groupId='school-day')
+ def test_school_and_exam_use_one_lane_without_conflict(self):
+  school,exam=self.school();rows=self.rows(school,exam)
+  self.assertTrue(rows['school']['hasNested']);self.assertTrue(rows['exam']['nested'])
+  self.assertEqual(rows['exam']['parentId'],'school');self.assertEqual(rows['exam']['parentTitle'],'school')
+  self.assertTrue(all(v['lanes']==1 and not v['conflict'] for v in rows.values()))
+  self.assertEqual((rows['exam']['start'],rows['exam']['end']),(540,600))
+ def test_unrelated_booking_still_conflicts(self):
+  school,exam=self.school();rows=self.rows(school,exam,event('external',time='09:30'))
+  self.assertTrue(all(v['conflict'] for v in rows.values()));self.assertEqual(rows['school']['lanes'],2)
+  self.assertEqual(rows['exam']['lane'],rows['school']['lane']);self.assertNotEqual(rows['exam']['lane'],rows['external']['lane'])
+ def test_external_event_only_overlapping_parent_does_not_flag_child(self):
+  school,exam=self.school();rows=self.rows(school,exam,event('external',time='12:00'))
+  self.assertTrue(rows['school']['conflict']);self.assertTrue(rows['external']['conflict']);self.assertFalse(rows['exam']['conflict'])
+ def test_partial_link_is_not_falsely_nested(self):
+  school,exam=self.school();exam.update(time='13:30',minutes=120);rows=self.rows(school,exam)
+  self.assertFalse(any(v['nested'] or v['hasNested'] or v['conflict'] for v in rows.values()))
+  self.assertTrue(all(v['lanes']==2 for v in rows.values()))
+ def test_filtered_out_parent_does_not_leave_child_inset(self):
+  school,exam=self.school();exam['category']=1;rows=self.rows(school,exam,category=1)
+  self.assertEqual(set(rows),{'exam'});self.assertFalse(rows['exam']['nested']);self.assertEqual(rows['exam']['lanes'],1)
+ def test_short_parent_falls_back_to_readable_separate_cards(self):
+  school,exam=self.school();school.update(minutes=80);exam.update(time='07:30',minutes=30)
+  rows=self.rows(school,exam)
+  self.assertFalse(any(v['nested'] or v['hasNested'] for v in rows.values()))
+  self.assertFalse(any(v['conflict'] for v in rows.values()))
+ def test_carry_segments_can_nest(self):
+  school=event('school',date='2026-10-27',time='23:00',minutes=300,groupId='overnight')
+  exam=event('exam',time='01:00',minutes=60,groupId='overnight');rows=self.rows(school,exam)
+  self.assertTrue(rows['school']['carry']);self.assertTrue(rows['exam']['nested']);self.assertFalse(any(v['conflict'] for v in rows.values()))
+ def test_randomized_link_conflicts_match_independent_oracle(self):
+  import random
+  rng=random.Random(83)
+  for _ in range(60):
+   entries=[]
+   for n in range(40):
+    minute=rng.randrange(100,1200)
+    entries.append(event(str(n),time=f'{minute//60:02}:{minute%60:02}',minutes=rng.randrange(5,160),groupId='group-'+str(n//2)))
+   rows=list(self.rows(*entries).values())
+   for a in rows:
+    expected=any(a is not b and a['event']['groupId']!=b['event']['groupId'] and a['start']<b['end'] and b['start']<a['end'] for b in rows)
+    self.assertEqual(a['conflict'],expected)
+
 class OccurrenceMergeTests(unittest.TestCase):
- def test_pure_merge_drops_pending_commands(self):
+ def test_link_keeps_occurrence_commands_for_transaction(self):
   from logic import occurrence_draft
   a=occurrence_draft(event(repeat='weekly',weekdays=[2]),'2026-10-28')
   b=occurrence_draft(event('b',repeat='daily'),'2026-10-28')
   m=merge_events(a,b)
-  self.assertEqual(m['repeat'],'none');self.assertEqual(m['exceptions'],{})
-  self.assertFalse(any(k in m for k in ('occurrenceOf','occurrenceDate','originHash','weekdays')))
+  self.assertEqual(len(m),2);self.assertTrue(all(e['repeat']=='none' and e['exceptions']=={} for e in m))
+  self.assertEqual([e['occurrenceOf'] for e in m],['a','b'])
+  self.assertFalse(any('weekdays' in e for e in m))
   with self.assertRaises(ValueError):merge_events(a,dict(a,id='different-draft-id'))
