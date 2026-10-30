@@ -1,8 +1,43 @@
 # Known issues and beta limitations
 
-Applies to **Liquid Calendar 0.3.9.1**, a beta prerelease. Last updated: **2026-10-29**.
+Applies to **Liquid Calendar 0.3.9.1**, a beta prerelease. Last updated: **2026-10-30**.
 
 This page distinguishes current limitations from issues fixed in earlier beta versions. It is not a guarantee that the beta is free of bugs.
+
+## Confirmed open bugs
+
+These issues remain present in both the published 0.3.9.1 and the current development working tree. Confirmed with isolated synthetic records on **2026-10-30**; an independent review reproduced both.
+
+### Reminder titles beginning with a hyphen can suppress delivery
+
+- **Reproduce:** create an event titled `--help` with an enabled reminder and keep the app running until it is due.
+- **Actual behavior:** the title is passed to `notify-send` without an end-of-options separator. `notify-send` interprets `--help` as an option, exits successfully without displaying the reminder, and the app records it as delivered. Other option-like titles can also be misinterpreted.
+- **Expected:** every event title is treated as notification text.
+- **Workaround:** start reminder titles with a letter or number rather than `-`.
+- **Status:** open; notification argument handling needs correction and a regression test.
+
+### Slow notification delivery blocks the interface
+
+- **Reproduce:** a due reminder runs while `notify-send` or its notification service responds slowly. An isolated event-loop check with a simulated 350 ms notification call delayed a 20 ms Qt timer until approximately 352 ms.
+- **Actual behavior:** reminder delivery uses a blocking subprocess on the GUI thread. The interface cannot process input during that call. The timeout is up to eight seconds per due reminder; several due reminders can accumulate delays.
+- **Expected:** notification delivery does not block interaction with the calendar.
+- **Workaround:** pause reminders if notification delivery repeatedly stalls. This disables notifications until reminders are enabled again.
+- **Status:** open; delivery needs asynchronous processing with correct success/failure tracking.
+
+## Confirmed bugs in the published 0.3.9.1 — corrections pending release
+
+The following bugs affect the published **v0.3.9.1** snapshot. Corrections exist in the development working tree; they are **not part of the published release**. Updating or reinstalling the existing release does not include these corrections. See the [follow-up audit](docs/BUG_AUDIT_0.3.9.1_FOLLOWUP.md).
+
+| Issue | Reproduction and impact | Workaround in the published version |
+| --- | --- | --- |
+| Existing export can be damaged by a failed write | Export over an existing JSON/ICS file; an interrupted or partial write can replace it with incomplete content. Development exports use an atomic commit. | Export to a new filename and retain the previous backup. |
+| Export can miss a recent widget edit | Save a change in the widget and immediately export from the app before its next refresh (about 2.5 seconds). The export can contain the cached, older records. | Wait for the change to appear in the app before exporting. |
+| Undated task save changes Calendar mode | Save an undated task in the desktop app, then open Calendar. An internal task filter can replace the month grid with task results. | Reset the embedded calendar's task filter to All. |
+| Today/date navigation stays hidden behind search | Search in Calendar, then use Today or Jump to date. The selected date changes while the old search still hides the grid; period arrows can also change an invisible selection. | Clear the Calendar search and reset its task filter before navigating. |
+| Failed preference writes leave a temporary active value | A disk/permission error while saving theme, motion or reminders can change the running setting without saving it. After reopening, the previous setting returns. | Resolve the storage error, reopen the app and apply the setting again. |
+| Unsupported early-year date input | Enter a DMY date such as `1.1.0001`. Date hints can accept a year below the supported range, leading to inconsistent resolution or search errors. | Use dates within years 1000–9999. |
+| Widget ICS end times and text can be incorrect | Export an event spanning a daylight-saving transition using the widget. End time can differ from the app's floating wall time; long Unicode lines are not folded correctly and carriage returns are handled inconsistently. | Prefer desktop-app ICS export for these events; retain a JSON backup. |
+| ICS export fails at the upper date boundary | An event whose end falls beyond year 9999 cannot be represented. Desktop errors are technical; widget output can contain an unsupported year, and widget export errors are not handled consistently. | Adjust the event so its end stays within year 9999, or use JSON backup. |
 
 ## Fixed in 0.3.9.1
 
