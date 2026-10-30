@@ -2,6 +2,59 @@
 
 **0.3.6-beta.1** is the cumulative public release of the 0.3.x development work. Versions 0.3.0–0.3.5 below are unpublished historical snapshots. Patch numbers were assigned retrospectively on 28 October 2026, one per functional code patch after the initial 0.3.0 baseline. Source links identify the original implementation commits, which retain their original version strings. No commits or published tags were rewritten. Documentation-only commits are not numbered separately.
 
+## 0.3.9.1 — 2026-10-29
+
+Beta prerelease.
+
+- Show overnight events on the following day in month/widget calendars, mark them as Continued and retain the source occurrence date for editing and task completion.
+
+- Open the selected repeating occurrence from the month view, consistently with Today and Week. A separate Series action retains access to whole-series editing.
+
+- Make the Calendar Month/Week selection draggable with the mouse held down. The glass indicator follows the pointer and snaps to the chosen view on release, while clicks and keyboard activation remain available.
+
+## 0.3.9 — 2026-10-29
+
+Beta prerelease.
+
+- Derive the complete light/dark interface palette from the selected accent: backdrop, glass panels, input fields, menus, timeline axis, hover states and theme previews. Category and conflict colors keep their semantic roles.
+
+- Keep opacity dragging local to the glass preview, persist once on release and debounce keyboard adjustments. Appearance changes emit a dedicated visual signal instead of rebuilding calendar data, and repeated identical settings are not rewritten.
+
+- Add distinct live previews for Dark glass, Light glass and System appearance. System mode follows the desktop palette brightness. Apply the selected theme/accent to all filter and project menus, including checked sort options.
+
+- Include unsaved editor changes in merge previews and the atomic final merge. Use the edited date/all-day mode for candidates, preserve series identity and conflict checks, and restore both original saved events with one Undo.
+
+- Give native calendar shortcuts a single owner and block background actions while dialogs are open.
+- Restore app-wide accent and glass-opacity controls in Settings, persist their values, and align picker/menu colors with the chosen accent.
+- Keep the week time axis visible while scrolling; anchor the Settings scrollbar at the right edge.
+- Close interrupted popup entrances from their current frame to prevent a flash.
+
+- Replace neutral gray desktop surfaces with clearer ocean-blue glass and ice/cyan accents. Calendar scrollbars respond immediately to track presses and thumb dragging, with larger hit areas and keyboard navigation.
+
+- Add sliding navigation and calendar selection, gentle section entrances, glass hover reflections and softly expanding desktop dialogs. Reduced motion disables these transitions.
+
+- Consolidate month and week under Calendar, remembering the selected presentation when returning from another section.
+- Remove the duplicate desktop calendar header and provide one shared period toolbar.
+- Add translucent surfaces, softly lit glass edges and a flowing backdrop in both light and dark themes, respecting reduced-motion preferences.
+
+## 0.3.8.1 — 2026-10-28
+
+Beta prerelease. The 0.3.8-beta.1 preparation was not published separately.
+
+- Share identical text-field, checkbox and editable-number controls between editors and date/time pickers, preserving their palette bindings and interaction behavior.
+- Treat qml/ as the canonical source for shared controls/calendar JavaScript. Synchronize standalone widget copies with scripts/sync_widget_sources.py and reject drift in CI, source packaging and installation before changing installed files.
+- Reuse the existing occurrence_draft helper for task completion, checklist edits and moves; retain stored identities, exceptions and transactional conflict checks.
+- Replace wildcard logic imports with explicit dependencies and expand Bridge initialization for readability.
+- Validate with existing regression suites, distribution checks and before/after synthetic renders. No schema migration, new feature or visual redesign.
+
+## 0.3.7-beta.1 — 2026-10-28
+
+- Exact ISO/DMY date and relative-day searches return actual occurrences only, excluding cancelled days and undated title matches. App and widget agree.
+- Planning suggestions and final validation advance past already-started minutes, including seconds/microseconds.
+- Revalidate task scheduling availability inside the SQLite write transaction, rejecting bookings inserted after the initial check.
+- Bound recurrence scans and week rendering/navigation to the supported date range; disable drop targets for nonexistent days.
+- Regression tests cover injected concurrent bookings, exact-date results, sub-minute timing and actual Qt rendering at date endpoints. The fixes underwent an independent review and a second verification round; see the [audit record](docs/BUG_AUDIT_0.3.7.md).
+
 ## 0.3.6-beta.1 — 2026-10-28
 
 Source: [`144d3e5`](https://github.com/jonas101201/liquid-calendar/commit/144d3e518c02163168491443a376711228a1908f).
@@ -23,7 +76,7 @@ Source: [`f702a8d`](https://github.com/jonas101201/liquid-calendar/commit/f702a8
 
 - Add desktop event merge with preview, combined content, transactional stale-edit rejection and Undo.
 - Fix dense overlap cards exceeding their lanes and short cards obscuring adjacent entries; expand into available lanes, add readable horizontal scrolling and synchronize week headings.
-
+ main
 
 ## 0.3.3-beta.1 — Unreleased
 
@@ -92,4 +145,4 @@ First public beta. Earlier 1.x version numbers were internal development labels.
 - JSON backup/import and event-only ICS export.
 - Optional companion widget for Plasma 6.
 
-Fresh-account installation validation was explicitly omitted for this beta. See KNOWN_ISSUES.md and TESTING.md.
+Installation in a fresh user account has not been validated for this beta. See KNOWN_ISSUES.md and TESTING.md.

@@ -8,11 +8,14 @@ from pathlib import Path
 import tarfile
 import zipfile
 
+from sync_widget_sources import check_shared
+
 ROOT=Path(__file__).resolve().parents[1]
 TOP=['VERSION','app.py','logic.py','store.py','launch.sh','installieren.py','requirements.txt','README.md','ROADMAP.md','LICENSE','NOTICE','THIRD_PARTY.md','CHANGELOG.md','RELEASE_NOTES.md','KNOWN_ISSUES.md','TESTING.md','CONTRIBUTING.md','PUBLISHING.md','.gitignore','.github','qml','icons','companion-widget','tests','scripts','docs']
 EPOCH=1793145600  # 2026-10-28 UTC; normalized archive metadata, not file creation times.
 
 def build():
+ check_shared(ROOT)
  version=(ROOT/'VERSION').read_text().strip()
  if not version or any(c not in '0123456789abcdefghijklmnopqrstuvwxyz.-' for c in version):raise ValueError('Invalid version')
  stem='liquid-calendar-'+version
@@ -44,7 +47,7 @@ def build():
    archive.writestr(info,data)
  sums=''.join(hashlib.sha256((out/(stem+ext)).read_bytes()).hexdigest()+'  '+stem+ext+'\n' for ext in ['.tar.gz','.zip'])
  (out/'SHA256SUMS').write_text(sums)
- (out/'release.json').write_text(json.dumps({'version':version,'tag':'v'+version,'title':'Liquid Calendar '+version.replace('-beta.',' Beta '),'prerelease':True,'assets':[stem+'.tar.gz',stem+'.zip','SHA256SUMS'],'fresh_account_installation_test':'skipped at user request'},indent=2)+'\n')
+ (out/'release.json').write_text(json.dumps({'version':version,'tag':'v'+version,'title':'Liquid Calendar '+version.replace('-beta.',' Beta '),'prerelease':True,'assets':[stem+'.tar.gz',stem+'.zip','SHA256SUMS'],'fresh_account_installation_test':'not performed'},indent=2)+'\n')
  print('Built',len(files),'source files in',out)
  print(sums,end='')
 

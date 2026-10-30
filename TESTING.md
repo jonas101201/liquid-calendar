@@ -1,6 +1,30 @@
 # Testing
 
-## Current release: 0.3.6-beta.1
+## Current release: 0.3.9.1 interaction follow-up
+
+Month/Week drag checks hold the left mouse button, move the indicator before release, test bounds and release outside the switch, preserve click/Space activation and cancel when the view is hidden. They run with motion enabled and disabled. Month-card checks physically click Open, Series and completion for a repeating overnight task, verifying the original occurrence date and Undo. JavaScript tests cover overnight carry-in, exact-midnight/all-day exclusions, cancelled sources and distinct daily occurrences. See [the follow-up audit](docs/BUG_AUDIT_0.3.9_FOLLOWUP.md).
+
+## 0.3.9 interface and editing baseline
+
+Adaptive palette checks cover all five accents in light and dark themes, verify hue propagation to calendar/popup glass and check text contrast against panel colors. Opacity-drag regression checks remain enabled.
+
+Opacity regression checks sample 60 real pointer moves: no settings writes or calendar refresh notifications while held, one write on release and one debounced write for a keyboard burst. Appearance notification and duplicate-write suppression have separate unit coverage.
+
+Theme checks exercise all three design choices, persisted selection, live desktop-palette changes in System mode and themed filter/sort menus. Light/dark previews are visually checked at both supported screenshot sizes.
+
+The UI audit adds native keyboard shortcut dispatch, modal guards, appearance controls and persistence/failure handling, frozen week time labels and interrupted popup closure. There are 144 Python tests. Merge regressions cover unsaved form values, edited-date candidate selection, Cancel without writes, invalid drafts, immutable identity, concurrent changes and moved series occurrences (including another date of the same series). The independent Qt review additionally covers opacity limits and keyboard control in both themes, palette propagation and persistence through a fresh Bridge. See [the UI audit](docs/UI_AUDIT_2026-10-29.md).
+
+The actual QML check covers consolidated Calendar navigation, intermediate animation frames, rapid section changes, popup close/reopen, and reduced motion interrupting a running section transition. It also presses and drags both calendar scrollbars before releasing the mouse, checks thumb grab offsets and keyboard endpoints, and verifies initial selection and overflow visibility. It uses an isolated database and synthetic events.
+
+## Historical baseline: 0.3.8.1 maintenance refactor
+
+133 Python tests, all eight JavaScript suites, actual app/widget QML checks and synthetic before/after screenshots cover the extracted controls and occurrence-helper reuse. Two distribution checks verify that stale widget copies are rejected and synchronization preserves widget-specific files. See [the refactor record](docs/REFACTOR_0.3.8.md). The release version is 0.3.8.1, marked as a beta prerelease.
+
+## Historical baseline: 0.3.7-beta.1
+
+The targeted post-release audit adds exact-day search, elapsed-minute planning, atomic booking and date-boundary regressions. Checks use synthetic data only. See [the audit record](docs/BUG_AUDIT_0.3.7.md) for 131 Python tests, eight JavaScript suites, actual Qt checks, isolated widget editing, smoke launches and the two independent review rounds. Hosted checks are associated with the release commit.
+
+## Historical baseline: 0.3.6-beta.1
 
 The [current source tests](https://github.com/jonas101201/liquid-calendar/actions/runs/40774771194) passed on Python **3.10, 3.12 and 3.14**, including 122 Python tests, actual Qt checks, smoke launch and eight JavaScript suites. [Security analysis](https://github.com/jonas101201/liquid-calendar/actions/runs/40774765474) also passed. These results cover source snapshot [`ff0988d`](https://github.com/jonas101201/liquid-calendar/commit/ff0988d6478d9f260b5df96a2f1b85065ab7e908); final checks are associated with the release tag commit. Automated results do not certify every desktop environment.
 
@@ -53,7 +77,7 @@ Screenshots show the VERSION of the checked-out source. They do not use a person
 
 ## Validation limits and audit clarification
 
-Fresh-user-account application-installation validation remains deliberately unperformed at the maintainer's request. Offscreen checks and CI do not replace live desktop testing across supported systems.
+Installation in a fresh user account has not been validated. Offscreen checks and CI do not replace live desktop testing across supported systems.
 
 The initial audit overstated the reachability of the calendar fallback Undo issue. The native app already hid that action when persistence was attached; its visible global Undo already restored full groups. The internal fallback is now corrected and explicitly tested too.
 
@@ -63,7 +87,7 @@ The first public beta had 48 Python tests and five JavaScript suites. Its hosted
 
 ## 0.2.0 follow-up audit
 
-A separate agent reproduced Unicode validation differences, inline checklist collapse and concurrent project membership changes, then reviewed the corrections. Additional reproductions covered project Undo filtering and quadratic project summaries. See [the audit record](docs/BUG_AUDIT_0.2.0.md) for scope and limits.
+An independent review reproduced Unicode validation differences, inline checklist collapse and concurrent project membership changes, then reviewed the corrections. Additional reproductions covered project Undo filtering and quadratic project summaries. See [the audit record](docs/BUG_AUDIT_0.2.0.md) for scope and limits.
 
 Selected-weekday checks also exercise the actual day buttons, the last-day guard and save/reopen behavior. `check_widget_editor.py` loads the real widget editor against a temporary offline database with only the unavailable Kirigami theme lookup stubbed; it verifies weekday editing and preservation of existing priority/project/checklist values. This does not constitute live Plasma testing. Sharing protocol tests reject old version 2 and accept version 3.
 

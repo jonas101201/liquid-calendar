@@ -79,7 +79,7 @@ Item {
         try { db.transaction(function(tx) { tx.executeSql('INSERT OR REPLACE INTO state VALUES (?,?)', ['preferences', JSON.stringify({opacity:glassOpacity,accent:String(accent)})]); }); }
         catch(e) { error="Could not save settings: "+e; }
     }
-    function select(d) { selected=d; page=Cal.month(d,0); }
+    function select(d) { if(!d||!Cal.parse(Cal.key(d)))return; selected=d; page=Cal.month(d,0); }
     function jump(d) {
         searchInput.clear(); kindBox.currentIndex=0; mode=0; select(d);
     }
@@ -91,7 +91,7 @@ Item {
         if(store(next)) { deletedEntry=null; undoExpiry.stop(); }
     }
     function navigate(n) {
-        if(mode===0) { page=Cal.month(page,n); selected=new Date(page); }
+        if(mode===0) { var next=Cal.month(page,n);if(!Cal.parse(Cal.key(next)))return;page=next; selected=new Date(page); }
         else select(Cal.add(selected,n*(mode===1?7:30)));
     }
     function openEvent(e, date) {
@@ -151,57 +151,9 @@ Item {
         contentItem: Text { textFormat:Text.PlainText; clip:true; text:control.text; opacity:control.enabled?1:.5; color:control.tint; font.pixelSize:12; font.weight:Font.Medium; horizontalAlignment:Text.AlignHCenter; verticalAlignment:Text.AlignVCenter; elide:Text.ElideRight }
         background: Rectangle { radius:11; color:control.down?Qt.rgba(root.accent.r,root.accent.g,root.accent.b,.25):control.hovered? (root.light?"#180e254e":"#18ffffff") : "transparent"; border.width:1; border.color:control.activeFocus||control.highlighted?root.accent:root.line }
     }
-    component GlassField: TextField {
-        opacity:enabled?1:.5
-        selectionColor:root.accent; selectedTextColor:"#111a2b"
-        color: root.ink
-        placeholderTextColor: root.muted
-        font.pixelSize: 12
-        leftPadding: 10; rightPadding: 10; topPadding: 8; bottomPadding: 8
-        implicitHeight: 36
-        background: Rectangle { radius: 10; color: root.field; border.color: parent.activeFocus ? root.accent : root.line }
-    }
-    component GlassCheck: CheckBox {
-        id: check
-        padding:0; spacing:8; implicitHeight:32
-        contentItem:Text { text:check.text; textFormat:Text.PlainText; color:root.ink; font.pixelSize:12; leftPadding:28; verticalAlignment:Text.AlignVCenter }
-        indicator:Rectangle {
-            x:0; y:(check.height-height)/2; width:20; height:20; radius:6
-            color:check.checked?root.accent:root.field
-            border.color:check.activeFocus?root.accent:root.line
-            Text { anchors.centerIn:parent; visible:check.checked; text:"✓"; font.pixelSize:14; font.bold:true; color:"#111a2b" }
-        }
-    }
-    component GlassSpin: SpinBox {
-        id:spin
-        opacity:enabled?1:.5
-        implicitWidth:150; implicitHeight:36
-        leftPadding:36; rightPadding:36; editable:true
-        font.pixelSize:12
-        contentItem:TextInput {
-            text:spin.textFromValue(spin.value,spin.locale)
-            font:spin.font; color:root.ink; selectionColor:root.accent; selectedTextColor:"#111a2b"
-            horizontalAlignment:Text.AlignHCenter; verticalAlignment:Text.AlignVCenter
-            readOnly:!spin.editable; validator:spin.validator
-            inputMethodHints:Qt.ImhDigitsOnly; selectByMouse:true
-            onEditingFinished: {
-                var parsed=spin.valueFromText(text,spin.locale);
-                if(Number.isFinite(parsed)) spin.value=Math.max(spin.from,Math.min(spin.to,Math.round(parsed)));
-                text=Qt.binding(function(){return spin.textFromValue(spin.value,spin.locale);});
-            }
-        }
-        up.indicator:Rectangle {
-            x:spin.width-width; width:32; height:spin.height; radius:9
-            color:spin.up.pressed?Qt.rgba(root.accent.r,root.accent.g,root.accent.b,.25):root.field
-            Text { anchors.centerIn:parent; text:"+"; color:root.ink; font.pixelSize:18 }
-        }
-        down.indicator:Rectangle {
-            width:32; height:spin.height; radius:9
-            color:spin.down.pressed?Qt.rgba(root.accent.r,root.accent.g,root.accent.b,.25):root.field
-            Text { anchors.centerIn:parent; text:"−"; color:root.ink; font.pixelSize:18 }
-        }
-        background:Rectangle { radius:10; color:root.field; border.color:spin.activeFocus?root.accent:root.line }
-    }
+    component GlassField: GlassTextField { inkColor:root.ink; accentColor:root.accent; fieldColor:root.field; lineColor:root.line; mutedColor:root.muted }
+    component GlassCheck: GlassCheckBox { inkColor:root.ink; accentColor:root.accent; fieldColor:root.field; lineColor:root.line }
+    component GlassSpin: GlassSpinBox { inkColor:root.ink; accentColor:root.accent; fieldColor:root.field; lineColor:root.line }
     component GlassArea: TextArea {
         color:root.ink; placeholderTextColor:root.muted; textFormat:TextEdit.PlainText
         selectionColor:root.accent; selectedTextColor:"#111a2b"
@@ -245,11 +197,11 @@ Item {
         RowLayout {
             anchors.fill:parent; anchors.margins:10; spacing:10
             Rectangle { Layout.preferredWidth:3; Layout.fillHeight:true; radius:2; color:root.colors[card.entry.event.category] }
-            GlassCheck { visible:card.entry.event.task; checked:card.entry.event.done; onClicked:root.toggleTask(card.entry.event,card.entry.date); Accessible.name:card.entry.event.repeat!=="none"&&card.entry.event.done?"Reopen completed series":"Task completed" }
+            GlassCheck { visible:card.entry.event.task; checked:card.entry.event.done; onClicked:root.toggleTask(card.entry.event,card.entry.occurrenceDate||card.entry.date); Accessible.name:card.entry.event.repeat!=="none"&&card.entry.event.done?"Reopen completed series":"Task completed" }
             ColumnLayout {
                 Layout.fillWidth:true; Layout.minimumWidth:0; spacing:4
                 Label { Layout.fillWidth:true; textFormat:Text.PlainText; text:card.entry.event.title; color:root.ink; font.pixelSize:13; font.weight:Font.DemiBold; font.strikeout:card.entry.event.task&&card.entry.event.done; elide:Text.ElideRight }
-                Label { Layout.fillWidth:true; textFormat:Text.PlainText; text:Cal.isUndated(card.entry.event)?"Undated · "+card.entry.event.minutes+" min":(card.showDate?root.dateText(Cal.parse(card.entry.date),root.globalMode?"dd.MM.yyyy":"ddd, dd MMM")+" · ":"")+(card.entry.event.allDay?"All day":card.entry.event.time+" · "+card.entry.event.minutes+" min")+(card.entry.event.location?" · "+card.entry.event.location:"")+(card.entry.event.repeat!=="none"?" · Series":""); color:root.muted; font.pixelSize:11; elide:Text.ElideRight }
+                Label { Layout.fillWidth:true; textFormat:Text.PlainText; text:Cal.isUndated(card.entry.event)?"Undated · "+card.entry.event.minutes+" min":(card.showDate?root.dateText(Cal.parse(card.entry.date),root.globalMode?"dd.MM.yyyy":"ddd, dd MMM")+" · ":"")+(card.entry.event.allDay?"All day":(card.entry.carry?"Continued · 00:00":card.entry.event.time)+" · "+(card.entry.carry?card.entry.segmentMinutes:card.entry.event.minutes)+" min")+(card.entry.event.location?" · "+card.entry.event.location:"")+(card.entry.event.repeat!=="none"?" · Series":""); color:root.muted; font.pixelSize:11; elide:Text.ElideRight }
             }
             GlassButton { text:root.globalMode&&!Cal.isUndated(card.entry.event)?"Go to day":"Open"; onClicked:root.globalMode&&!Cal.isUndated(card.entry.event)?root.jumpResult(card.entry):root.openEvent(card.entry.event); Accessible.name:(root.globalMode&&!Cal.isUndated(card.entry.event)?"Jump to day: ":"Edit entry: ")+card.entry.event.title }
         }

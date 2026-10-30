@@ -11,7 +11,7 @@ import unicodedata
 import uuid
 
 CATEGORIES = ["Personal", "Work", "Important", "Leisure"]
-COLORS = ['#a498ff', '#6edfc2', '#ffbd83', '#f49ac4']
+COLORS = ['#7ceafa', '#6edfc2', '#ffbd83', '#f49ac4']
 WEEKDAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
 GERMAN_WEEKDAYS = ['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag']
 MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
@@ -85,7 +85,7 @@ def next_occurrence(e,day):
     # At most eight years to the next possible leap-day recurrence; skip finite exceptions too.
     limit=366*9+len(e.get('exceptions',{}))*366
     if e['repeat']=='none':return parse(e['date']) if occurs(e,parse(e['date'])) and e['date']>=day.isoformat() else None
-    for n in range(limit):
+    for n in range(min(limit,(dt.date.max-start).days+1)):
         candidate=start+dt.timedelta(days=n)
         if e['until'] and candidate.isoformat()>e['until']:return None
         if occurs(e,candidate):return candidate
@@ -98,7 +98,7 @@ def representative(e,today):
     end=min(today,parse(e['until'])) if e['until'] else today
     if e['repeat']=='none':return parse(e['date']) if occurs(e,parse(e['date'])) else None
     # For ended series, the last occurrence is close to the end (except yearly leap dates).
-    for n in range(366*9+len(e.get('exceptions',{}))*366):
+    for n in range(min(366*9+len(e.get('exceptions',{}))*366,max(0,(end-parse(e['date'])).days+1))):
         candidate=end-dt.timedelta(days=n)
         if candidate.isoformat()<e['date']:return None
         if occurs(e,candidate):return candidate
@@ -115,7 +115,9 @@ def instances(events,start,days,kind='all',category=-1):
     result=[]
     # Split timed occurrences at midnight; include carry-in from the preceding day.
     for n in range(-1,days):
-        day=start+dt.timedelta(days=n)
+        ordinal=start.toordinal()+n
+        if not 1<=ordinal<=dt.date.max.toordinal():continue
+        day=dt.date.fromordinal(ordinal)
         for e in events:
             if not ((category<0 or e['category']==category) and kind_matches(e,kind) and occurs(e,day)):continue
             v=occurrence(e,day)
@@ -123,7 +125,7 @@ def instances(events,start,days,kind='all',category=-1):
                 v['segmentMinutes']=min(e['minutes'],1440-v['start'])
                 v['end']=v['start']+v['segmentMinutes']
                 result.append(v)
-            if not e['allDay'] and v['start']+e['minutes']>1440 and n+1<days:
+            if not e['allDay'] and v['start']+e['minutes']>1440 and n+1<days and day<dt.date.max:
                 carry=occurrence(e,day)
                 carry.update(date=(day+dt.timedelta(days=1)).isoformat(),time='00:00',start=0,end=v['start']+e['minutes']-1440,carry=True,segmentMinutes=v['start']+e['minutes']-1440)
                 result.append(carry)
@@ -172,7 +174,9 @@ def date_hints(text,today):
     def put(day,label,kind='day'):
         if all(v['date']!=day.isoformat() for v in result):result.append({'date':day.isoformat(),'label':label,'kind':kind})
     for name,offset in [('today',0),('tomorrow',1),('day after tomorrow',2),('heute',0),('morgen',1),('ubermorgen',2)]:
-        if name.startswith(q):put(today+dt.timedelta(days=offset),['Today','Tomorrow','Day after tomorrow'][offset])
+        if name.startswith(q):
+            try:put(today+dt.timedelta(days=offset),['Today','Tomorrow','Day after tomorrow'][offset])
+            except OverflowError:pass
     try:
         if len(q)==10:put(parse(q),"Go to date")
     except ValueError:pass
@@ -183,35 +187,49 @@ def date_hints(text,today):
     if len(q)>=2:
         for names in [WEEKDAYS,GERMAN_WEEKDAYS]:
             for i,name in enumerate(names):
-                if normalize(name).startswith(q):put(today+dt.timedelta(days=(i-today.weekday())%7),WEEKDAYS[i])
+                if normalize(name).startswith(q):
+                    try:put(today+dt.timedelta(days=(i-today.weekday())%7),WEEKDAYS[i])
+                    except OverflowError:pass
         for names in [MONTHS,GERMAN_MONTHS]:
             for i,name in enumerate(names,1):
-                if normalize(name).startswith(q):put(dt.date(today.year+(i<today.month),i,1),MONTHS[i-1],'month')
+                year=today.year+(i<today.month)
+                if normalize(name).startswith(q) and year<=9999:put(dt.date(year,i,1),MONTHS[i-1],'month')
     return result[:3]
 
 def search(events,text,today,kind='all',category=-1):
     tokens=normalize(text).split(); out=[];hints=[h for token in tokens for h in date_hints(token,today)]
     relative_offsets={'today':0,'heute':0,'tomorrow':1,'morgen':1,'day after tomorrow':2,'ubermorgen':2}
     offset=relative_offsets.get(normalize(text).strip())
-    relative_target=today+dt.timedelta(days=offset) if offset is not None else None
+    try:relative_target=today+dt.timedelta(days=offset) if offset is not None else None
+    except OverflowError:return []
+    import re
+    explicit_hints=date_hints(text,today) if re.fullmatch(r'(?:[1-9]\d{3}-\d{2}-\d{2}|\d{1,2}\.\d{1,2}(?:\.\d{4})?\.?)',text.strip()) else []
+    exact_target=relative_target or (parse(explicit_hints[0]['date']) if explicit_hints else None)
     for e in events:
         if (category>=0 and e['category']!=category) or not kind_matches(e,kind):continue
         if is_undated(e):
+            if exact_target:continue
             if all(t in normalize(e['title']+' '+e['location']+' '+e['notes']+' '+e.get('project','')+' '+' '.join(item['title'] for item in e.get('checklist',[]))) for t in tokens):out.append(occurrence(e,None))
             continue
-        if relative_target and not occurs(e,relative_target):continue
-        day=relative_target or representative(e,today)
-        for hint in hints:
+        if exact_target and not occurs(e,exact_target):continue
+        day=exact_target or representative(e,today)
+        for hint in ([] if exact_target else hints):
             target=next_occurrence(e,parse(hint['date'])) if hint['kind']=='month' else parse(hint['date']) if occurs(e,parse(hint['date'])) else None
             if target and (hint['kind']!='month' or target.strftime('%Y-%m')==hint['date'][:7]):day=target;break
         if not day:continue
-        relative='today heute' if day==today else 'tomorrow morgen' if day==today+dt.timedelta(days=1) else 'day after tomorrow übermorgen' if day==today+dt.timedelta(days=2) else ''
+        distance=(day-today).days
+        relative={0:'today heute',1:'tomorrow morgen',2:'day after tomorrow übermorgen'}.get(distance,'')
         words=' '.join([relative,e['title'],e['location'],e['notes'],e.get('project',''),' '.join(item['title'] for item in e.get('checklist',[])),day.isoformat(),parse(e['date']).isoformat(),WEEKDAYS[day.weekday()],MONTHS[day.month-1],GERMAN_WEEKDAYS[day.weekday()],GERMAN_MONTHS[day.month-1],day.strftime('%d.%m.%Y')])
         if not all(t in normalize(words) for t in tokens):continue
         out.append(occurrence(e,day))
     q=normalize(text)
     out.sort(key=lambda v:(0 if normalize(v['title'])==q else 1 if normalize(v['title']).startswith(q) else 2, not v['unscheduled'], bool(v['date']) and v['date']<today.isoformat(), abs((parse(v['date'])-today).days) if v['date'] else 0,v['time']))
     return out
+
+def planning_floor(now):
+    # Any elapsed part of the current minute makes its start unavailable.
+    minute=now.hour*60+now.minute+bool(now.second or now.microsecond)
+    return ((minute+14)//15)*15
 
 def free_slots(events,day,minutes,exclude_id='',exclude_date='',limit=3):
     if not 5<=minutes<=1440:return []
@@ -227,7 +245,7 @@ def free_slots(events,day,minutes,exclude_id='',exclude_date='',limit=3):
         left=(start-day0).total_seconds()/60;right=(end-day0).total_seconds()/60
         if left<18*60 and right>9*60:busy.append((left,right))
     slots=[]; now=dt.datetime.now(); lower=9*60
-    if day==now.date():lower=max(lower,((now.hour*60+now.minute+14)//15)*15)
+    if day==now.date():lower=max(lower,planning_floor(now))
     minute=lower
     while minute+minutes<=18*60 and len(slots)<limit:
         if all(not(minute<right and left<minute+minutes) for left,right in busy):
@@ -239,7 +257,7 @@ def slot_available(events,day,minutes,minute,exclude_id='',exclude_date=''):
     """Validate an exact proposed interval, independently of suggestion spacing."""
     now=dt.datetime.now()
     if day<now.date() or not 5<=minutes<=1440 or minute<9*60 or minute+minutes>18*60:return False
-    if day==now.date() and minute<((now.hour*60+now.minute+14)//15)*15:return False
+    if day==now.date() and minute<planning_floor(now):return False
     planning=copy.deepcopy(events)
     for e in planning:
         if e['id']==exclude_id and e['date']:e.setdefault('exceptions',{})[exclude_date or e['date']]={'cancelled':True}

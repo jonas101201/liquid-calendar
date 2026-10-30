@@ -2,21 +2,29 @@
 
 ## Current public beta
 
-**0.3.6-beta.1** is published as **Liquid Calendar 0.3.6 Beta 1** on **28 October 2026**.
+**0.3.9.1** is published as **Liquid Calendar 0.3.9.1** (beta prerelease) on **29 October 2026**.
 
 - [Public repository](https://github.com/jonas101201/liquid-calendar)
-- [Release and downloads](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.3.6-beta.1)
-- [Audited preparation CI run](https://github.com/jonas101201/liquid-calendar/actions/runs/40774771194); final checks are attached to the release tag commit.
+- [Release and downloads](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.3.9.1)
+- [Release record](docs/RELEASE_0.3.9.1.md) and [follow-up audit](docs/BUG_AUDIT_0.3.9_FOLLOWUP.md).
 
 The release includes source ZIP and TAR archives plus SHA256SUMS. It is marked as a prerelease. Published tags and assets identify fixed snapshots; documentation updates on main do not replace an existing release archive.
 
 ## 0.2.0 release record
 
-The maintainer brought publication forward from 29 October to **28 October 2026**. See [the release record](docs/RELEASE_0.2.0.md). The former scheduled follow-up is no longer needed.
+Version 0.2.0-beta.1 was released on **28 October 2026**. See [the release record](docs/RELEASE_0.2.0.md).
 
 ## 0.3.6 release record
 
-The maintainer renewed release authorization on 28 October 2026. Version 0.3.6-beta.1 is the first published 0.3.x beta, including all six development patches after the 0.3.0 baseline. See [the release record](docs/RELEASE_0.3.6.md). Earlier published tags/assets remain unchanged; intermediate development versions were not published separately.
+Version 0.3.6-beta.1 is the first published 0.3.x beta, including all six development patches after the 0.3.0 baseline. See [the release record](docs/RELEASE_0.3.6.md). Earlier published tags/assets remain unchanged; intermediate development versions were not published separately.
+
+## 0.3.7 release record
+
+The audited bug-fix patch was released on 28 October 2026. See [the release record](docs/RELEASE_0.3.7.md) and [independent audit](docs/BUG_AUDIT_0.3.7.md). Existing published tags and assets remain unchanged.
+
+## 0.3.8.1 release record
+
+Version **0.3.8.1** was released on 28 October 2026. The earlier 0.3.8-beta.1 preparation was not published separately; the release is still marked as a prerelease. Shared sources pass the sync check before packaging and installation. See [the release record](docs/RELEASE_0.3.8.1.md) and [refactor record](docs/REFACTOR_0.3.8.md).
 
 ## Preparing a future release
 

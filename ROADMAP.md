@@ -23,7 +23,7 @@ English remains the primary interface language. The language milestone introduce
 
 ## Bug-fix releases and version naming
 
-The current release is **0.3.6-beta.1**, the third feature milestone including all six development patches. The next milestone is **0.4.0**, with configurable planning hours, breaks and task splitting. See the [release record](docs/RELEASE_0.3.6.md).
+The current release is **0.3.9.1** (beta prerelease), including adaptive Liquid Glass themes, UI fixes and draft-aware merging after the third feature milestone. The next milestone is **0.4.0**, with configurable planning hours, breaks and task splitting. See the [release record](docs/RELEASE_0.3.6.md).
 
 Each beta milestone can receive bug-fix releases as needed. These do not count as additional milestones in the ten-beta roadmap.
 
@@ -46,4 +46,16 @@ Share feature suggestions and reproducible bug reports through [GitHub Issues](h
 
 ## Development patch tracking
 
-Each functional patch after the initial 0.3.0 development baseline received the next patch number, retaining `-beta.1`. Documentation-only commits were not numbered separately. **0.3.6-beta.1** publishes the cumulative result; 0.3.0–0.3.5 remain unpublished historical snapshots. Existing published tags are never moved. See the [per-patch changelog](CHANGELOG.md). Future bug fixes increment the patch number, for example 0.3.7-beta.1; the next feature milestone is 0.4.0-beta.1.
+Each functional patch after the initial 0.3.0 development baseline received the next patch number, retaining `-beta.1`. Documentation-only commits were not numbered separately. **0.3.6-beta.1** publishes the cumulative result; 0.3.0–0.3.5 remain unpublished historical snapshots. Existing published tags are never moved. See the [per-patch changelog](CHANGELOG.md). Future bug fixes increment the patch number, for example 0.3.8-beta.1; the next feature milestone is 0.4.0-beta.1.
+
+The **0.3.7-beta.1** bug-fix patch was released on 28 October 2026. It corrects exact-date search, atomic scheduling and supported date endpoints; the next feature milestone remains 0.4.0. See the [audit record](docs/BUG_AUDIT_0.3.7.md).
+
+The maintenance refactor was published on 28 October 2026 as **0.3.8.1**. The 0.3.8-beta.1 development label was not published separately. This is maintenance of the third milestone; the next feature milestone remains 0.4.0. See the [release record](docs/RELEASE_0.3.8.1.md).
+
+## 0.3.9 interface and editing update
+
+Released on **29 October 2026** as [0.3.9](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.3.9). This update improves the existing 0.3.x interface and editing workflow; it does not complete the planned 0.4.0 flexible-planning milestone.
+
+## 0.3.9.1 interaction fixes
+
+Released on **29 October 2026** as [0.3.9.1](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.3.9.1). This patch adds held-pointer dragging to the Month/Week selector and fixes month-view occurrence editing and overnight continuations. The next feature milestone remains 0.4.0.

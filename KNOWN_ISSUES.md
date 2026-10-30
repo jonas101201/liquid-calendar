@@ -1,8 +1,20 @@
 # Known issues and beta limitations
 
-Applies to **Liquid Calendar 0.3.6-beta.1**. Last updated: **2026-10-28**.
+Applies to **Liquid Calendar 0.3.9.1**, a beta prerelease. Last updated: **2026-10-29**.
 
 This page distinguishes current limitations from issues fixed in earlier beta versions. It is not a guarantee that the beta is free of bugs.
+
+## Fixed in 0.3.9.1
+
+The Calendar Month/Week control now supports held-pointer dragging. Month-card Open edits the selected repeating occurrence rather than the whole series, while Series keeps whole-series editing available. Overnight continuations are visible on the following day and retain the source occurrence date for edits and completion. See the [follow-up audit](docs/BUG_AUDIT_0.3.9_FOLLOWUP.md).
+
+## Fixed in 0.3.9
+
+The interface update corrects duplicate native shortcuts, inaccessible appearance settings, inconsistent picker/menu colors, disappearing week hour labels, a misplaced Settings scrollbar and interrupted popup flashes. Opacity changes no longer write settings and rebuild calendar models for every pointer movement. Draft-aware merging keeps unsaved editor values and rejects concurrent duplicate operations. See [the UI audit](docs/UI_AUDIT_2026-10-29.md).
+
+## Fixed in 0.3.7-beta.1
+
+The public 0.3.6 beta can return an unrelated date for an exact search matching a cancelled series start, suggest a quarter-hour that has already begun, accept a competing booking inserted between availability check and save, and overflow when rendering or searching some dates at the maximum supported year. The 0.3.7 release corrects these; see the [audit record](docs/BUG_AUDIT_0.3.7.md).
 
 ## Current limitations
 
@@ -18,7 +30,9 @@ This page distinguishes current limitations from issues fixed in earlier beta ve
 
 ## Event merge scope
 
-Desktop **More → Merge with another event…** combines saved events or selected occurrences on the same date. Both must be timed or both all-day. For repeats, open the individual occurrence first. Only the selected occurrences are cancelled in their source series; future repeats remain unchanged, and the result is a standalone event. Tasks, whole-series edits and already detached occurrences are excluded. Unsaved editor changes are not merged; save first. One combined event has one category (the first event's) and one reminder (the largest enabled offset relative to the combined start). Undo restores both entries. Length/duration limits block the operation without truncation.
+Desktop **More → Merge with another event…** includes current editor changes and combines events or selected occurrences matching the edited date and all-day mode. Only selected source occurrences are cancelled; future repeats remain unchanged and the result is standalone. Tasks, whole-series edits and already detached occurrences are excluded. Invalid drafts and concurrent source changes block the operation without partial writes. Cancel preserves the editor draft and writes nothing. One Undo restores both original saved sources.
+
+A combined event has the first event's edited category and one reminder (the largest enabled offset relative to the combined start). The combined time range includes gaps between the originals. Length/duration limits block the operation without truncation.
 
 ## Weekly repeat compatibility
 

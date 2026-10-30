@@ -9,15 +9,33 @@ import os
 from pathlib import Path
 import subprocess
 import sys
-import uuid
 
-from PySide6.QtCore import QObject,Signal,Slot,Property,QTimer,QUrl,Qt,QLockFile,QLocale
-from PySide6.QtGui import QIcon,QAction
+from PySide6.QtCore import QObject,Signal,Slot,Property,QTimer,QUrl,QLocale
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication,QSystemTrayIcon,QMenu,QMessageBox
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtNetwork import QLocalServer,QLocalSocket
 from PySide6.QtQuick import QQuickWindow
-from logic import *
+from logic import (
+    MONTHS,
+    WEEKDAYS,
+    date_hints,
+    event_from_template,
+    export_ics,
+    fingerprint,
+    free_slots,
+    instances,
+    merge_events,
+    occurrence_draft,
+    occurs,
+    parse,
+    quick_entry,
+    representative,
+    search,
+    slot_available,
+    template_from_event,
+    validate,
+)
 from store import Store,ConflictError
 
 BASE=Path(__file__).resolve().parent
@@ -28,8 +46,24 @@ DEFAULT_DB=Path.home()/'.local/share/plasmashell/QML/OfflineStorage/Databases/dd
 class Bridge(QObject):
     changed=Signal(); errorChanged=Signal(); editRequested=Signal('QVariantMap'); noticeChanged=Signal()
     createRequested=Signal('QVariantMap')
+    appearanceChanged=Signal()
     def __init__(self,store,smoke=False):
-        super().__init__();self.store=store;self._events=store.read();self._selected=dt.date.today();self._view='today';self._query='';self._kind='all';self._category=-1;self._agenda_days=14;self._task_order='default';self._planning_filter='all';self._error='';self._notice='';self._undo=None;self._settings=store.settings();self.smoke=smoke
+        super().__init__()
+        self.store=store
+        self._events=store.read()
+        self._selected=dt.date.today()
+        self._view='today'
+        self._query=''
+        self._kind='all'
+        self._category=-1
+        self._agenda_days=14
+        self._task_order='default'
+        self._planning_filter='all'
+        self._error=''
+        self._notice=''
+        self._undo=None
+        self._settings=store.settings()
+        self.smoke=smoke
         self._need_widget=False
         self._project_filter='*';self._priority_filter=-1;self._undo_project_filter=None
         self._templates=store.templates()
@@ -188,6 +222,21 @@ class Bridge(QObject):
     def setAnimations(self,enabled):
         try:self._settings['animations']=enabled;self.store.set_settings(self._settings);self.changed.emit()
         except Exception as e:self.fail(e)
+    @Property(str,notify=appearanceChanged)
+    def accentColor(self):return self._settings.get('accent','#7ceafa')
+    @Property(float,notify=appearanceChanged)
+    def glassOpacity(self):return float(self._settings.get('glassOpacity',.60))
+    @Slot(str,float)
+    def setAppearance(self,accent,opacity):
+        try:
+            if accent not in ['#7ceafa','#8cbcff','#72ebce','#c2adff','#ffa8cf'] or not .60<=opacity<=.96:
+                raise ValueError('Choose a supported accent and opacity between 60% and 96%.')
+            settings=dict(self._settings,accent=accent,glassOpacity=opacity)
+            if settings==self._settings:return
+            self.store.set_settings(settings)
+            self._settings=settings
+            self.appearanceChanged.emit()
+        except Exception as e:self.fail(e)
     @Property(str,notify=changed)
     def theme(self):return self._settings.get('theme','dark')
     @Property(bool,notify=changed)
@@ -211,7 +260,12 @@ class Bridge(QObject):
     @Property('QVariantList',notify=changed)
     def weekDays(self):
         start=self._selected-dt.timedelta(days=self._selected.weekday())
-        return [{'date':(start+dt.timedelta(days=n)).isoformat(),'name':WEEKDAYS[n][:2].upper(),'number':(start+dt.timedelta(days=n)).day,'today':start+dt.timedelta(days=n)==dt.date.today()} for n in range(7)]
+        rows=[]
+        for n in range(7):
+            ordinal=start.toordinal()+n
+            day=dt.date.fromordinal(ordinal) if dt.date(1000,1,1).toordinal()<=ordinal<=dt.date.max.toordinal() else None
+            rows.append({'date':day.isoformat() if day else '', 'name':WEEKDAYS[n][:2].upper(),'number':day.day if day else '—','today':day==dt.date.today()})
+        return rows
     @Property('QVariantList',notify=changed)
     def weekItems(self):
         start=self._selected-dt.timedelta(days=self._selected.weekday())
@@ -238,11 +292,11 @@ class Bridge(QObject):
             current=self.store.read();compatible=self.check_compatibility();templates=self.store.templates()
             if current!=self._events or compatible!=self._compatible or templates!=self._templates:self._events=current;self._compatible=compatible;self._templates=templates;self.changed.emit()
         except Exception as e:self.fail(e)
-    def commit(self,desired,base=None,label="Saved",allow_occurrences=False,project_name=None):
+    def commit(self,desired,base=None,label="Saved",allow_occurrences=False,project_name=None,planning_slot=None,unchanged_sources=None):
         if not self._compatible:
             self.fail("Update the desktop calendar using “Connect” first. The app is read-only until connected.");return None
         try:
-            before,after=self.store.merge(desired,self._events if base is None else base,allow_occurrences=allow_occurrences,project_name=project_name)
+            before,after=self.store.merge(desired,self._events if base is None else base,allow_occurrences=allow_occurrences,project_name=project_name,planning_slot=planning_slot,unchanged_sources=unchanged_sources)
             self._undo=(before,after) if before!=after else self._undo
             if before!=after:self._undo_project_filter=None
             self._events=after;self._error='';self.errorChanged.emit();self.changed.emit();self.note(label);return after
@@ -267,7 +321,8 @@ class Bridge(QObject):
         except Exception as e:self.fail(e)
     @Slot(int)
     def navigate(self,n):
-        self._selected+=dt.timedelta(days=n*(7 if self._view=='week' else 1));self.changed.emit()
+        ordinal=self._selected.toordinal()+n*(7 if self._view=='week' else 1)
+        self._selected=dt.date.fromordinal(max(dt.date(1000,1,1).toordinal(),min(dt.date.max.toordinal(),ordinal)));self.changed.emit()
     @Slot()
     def today(self):self._selected=dt.date.today();self.changed.emit()
     @Slot(str)
@@ -290,15 +345,29 @@ class Bridge(QObject):
             if any(e.get('seriesId')==snapshot['id'] for e in base):
                 raise ValueError("Events linked to series occurrences cannot be merged.")
         return snapshot
+    def merge_editor_draft(self,source,draft_snapshot):
+        if source['task'] or source['repeat']!='none' or source.get('seriesId'):
+            raise ValueError("Choose independent events or individual occurrences, not entire series or tasks.")
+        if not draft_snapshot:return source
+        draft=json.loads(draft_snapshot)
+        validate([draft])
+        editable={'title','date','time','minutes','allDay','category','location','notes','reminder','repeat','until'}
+        identity=lambda entry:{k:v for k,v in entry.items() if k not in editable}
+        if identity(draft)!=identity(source):
+            raise ValueError("The event identity or series metadata cannot be changed by merging.")
+        if draft['task'] or draft['repeat']!='none' or draft.get('seriesId'):
+            raise ValueError("Merge individual non-repeating events or occurrences. Keep Repeat set to Once.")
+        return draft
     @Slot(str,result='QVariantList')
-    def mergeChoices(self,first_snapshot):
+    @Slot(str,str,result='QVariantList')
+    def mergeChoices(self,first_snapshot,draft_snapshot=''):
         try:
-            first=self.merge_source(json.loads(first_snapshot),self._events)
+            first=self.merge_editor_draft(self.merge_source(json.loads(first_snapshot),self._events),draft_snapshot)
             choices=[]
             for e in self._events:
                 if e['task'] or e.get('seriesId') or e['allDay']!=first['allDay'] or not occurs(e,parse(first['date'])):continue
                 if e['repeat']!='none':
-                    if e['id']==first.get('occurrenceOf'):continue
+                    if e['id']==first.get('occurrenceOf') and first['date']==first.get('occurrenceDate'):continue
                     candidate=occurrence_draft(e,first['date'])
                 else:
                     if e['id']==first['id'] or any(child.get('seriesId')==e['id'] for child in self._events):continue
@@ -307,19 +376,22 @@ class Bridge(QObject):
             return sorted(choices,key=lambda e:(e['time'],e['title'].casefold(),e['id']))
         except Exception as e:self.fail(e);return []
     @Slot(str,str,result='QVariantMap')
-    def mergePreview(self,first_snapshot,second_snapshot):
+    @Slot(str,str,str,result='QVariantMap')
+    def mergePreview(self,first_snapshot,second_snapshot,draft_snapshot=''):
         try:
-            first=self.merge_source(json.loads(first_snapshot),self._events)
+            first=self.merge_editor_draft(self.merge_source(json.loads(first_snapshot),self._events),draft_snapshot)
             second=self.merge_source(json.loads(second_snapshot),self._events)
             return {'event':merge_events(first,second),'error':''}
         except Exception as e:return {'error':str(e)}
     @Slot(str,str,result=bool)
-    def mergeEvents(self,first_snapshot,second_snapshot):
+    @Slot(str,str,str,result=bool)
+    def mergeEvents(self,first_snapshot,second_snapshot,draft_snapshot=""):
         try:
             base=copy.deepcopy(self._events)
             first=self.merge_source(json.loads(first_snapshot),base)
             second=self.merge_source(json.loads(second_snapshot),base)
-            merged=merge_events(first,second)
+            draft=self.merge_editor_draft(first,draft_snapshot)
+            merged=merge_events(draft,second)
             removed={e['id'] for e in (first,second) if not e.get('occurrenceOf')}
             desired=[copy.deepcopy(e) for e in base if e['id'] not in removed]
             for source in (first,second):
@@ -327,7 +399,9 @@ class Bridge(QObject):
                     parent=next(e for e in desired if e['id']==source['occurrenceOf'])
                     parent.setdefault('exceptions',{})[source['occurrenceDate']]={'cancelled':True}
             desired.append(merged)
-            return self.commit(desired,base,label="Events merged · Undo restores both") is not None
+            source_ids={source.get('occurrenceOf',source['id']) for source in (first,second)}
+            originals={event['id']:event for event in base if event['id'] in source_ids}
+            return self.commit(desired,base,label="Events merged · Undo restores both",unchanged_sources=originals) is not None
         except Exception as e:self.fail(e);return False
     @Slot(str,str,bool)
     def edit(self,ident,date,single=True):
@@ -372,11 +446,8 @@ class Bridge(QObject):
                 day=parse(date) if date else representative(event,self._selected)
                 if day is None or not occurs(event,day):
                     raise ConflictError('This task occurrence no longer exists.')
-                child=copy.deepcopy(event)
-                child.update(id=uuid.uuid4().hex,date=day.isoformat(),done=True,
-                             repeat='none',until='',exceptions={},occurrenceOf=ident,
-                             occurrenceDate=day.isoformat(),originHash=fingerprint(event))
-                child.pop('weekdays',None)
+                child=occurrence_draft(event,day.isoformat())
+                child['done']=True
                 desired.append(child)
             self.commit(desired,label='Task updated',allow_occurrences=True)
         except Exception as e:self.fail(e)
@@ -385,20 +456,18 @@ class Bridge(QObject):
         try:
             event=next(copy.deepcopy(e) for e in self._events if e['id']==ident)
             if not event['task'] or fingerprint(event)!=expected:raise ConflictError('The task has changed. Reopen it.')
-            step=next(item for item in event.get('checklist',[]) if item['id']==step_id)
-            step['done']=not step['done']
             desired=copy.deepcopy(self._events)
+            target=occurrence_draft(event,date) if event['repeat']!='none' else event
+            step=next(item for item in target.get('checklist',[]) if item['id']==step_id)
+            step['done']=not step['done']
             if event['repeat']!='none':
-                day=parse(date)
-                if not occurs(event,day):raise ConflictError('This occurrence no longer exists.')
-                event.update(id=uuid.uuid4().hex,date=date,repeat='none',until='',exceptions={},occurrenceOf=ident,occurrenceDate=date,originHash=expected)
-                event.pop('weekdays',None)
-                desired.append(event)
-            else:desired=[event if e['id']==ident else e for e in desired]
+                desired.append(target)
+            else:
+                desired=[target if e['id']==ident else e for e in desired]
             self.commit(desired,label='Checklist updated',allow_occurrences=True)
         except Exception as e:self.fail(e)
     @Slot(str,str,str,int,str)
-    def move(self,ident,original,target,minute,expected,as_task=False):
+    def move(self,ident,original,target,minute,expected,as_task=False,planning_slot=None):
         try:
             if not 0<=minute<=1439:raise ValueError("Invalid time.")
             parse(target);e=next(copy.deepcopy(e) for e in self._events if e['id']==ident)
@@ -408,9 +477,10 @@ class Bridge(QObject):
                 for item in desired:
                     if item['id']==ident:item.update(date=target,time=time,allDay=False if as_task else item['allDay'])
             else:
-                if not occurs(e,parse(original)):raise ConflictError("This occurrence no longer exists.")
-                child=copy.deepcopy(e);child.update(id=uuid.uuid4().hex,date=target,time=time,allDay=False if as_task else e['allDay'],repeat='none',until='',exceptions={},occurrenceOf=ident,occurrenceDate=original,originHash=fingerprint(e));child.pop('weekdays',None);desired.append(child)
-            self.commit(desired,label="Event rescheduled · overlaps are highlighted in red",allow_occurrences=True)
+                child=occurrence_draft(e,original)
+                child.update(date=target,time=time,allDay=False if as_task else e['allDay'])
+                desired.append(child)
+            self.commit(desired,label="Event rescheduled · overlaps are highlighted in red",allow_occurrences=True,planning_slot=planning_slot)
         except Exception as e:self.fail(e)
     @Slot(str,str,result='QVariantList')
     def slotsFor(self,ident,original):
@@ -438,7 +508,7 @@ class Bridge(QObject):
             if parse(date)<dt.date.today():raise ValueError("Choose today or a future date.")
             if not slot_available(self._events,parse(date),e['minutes'],minute,ident,original):
                 raise ConflictError("This time slot is no longer available. Search again.")
-            self.move(ident,original,date,minute,expected,True)
+            self.move(ident,original,date,minute,expected,True,planning_slot=(parse(date),e['minutes'],minute,ident,original))
             return not bool(self._error)
         except Exception as e:self.fail(e);return False
     @Slot()
