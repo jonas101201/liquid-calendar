@@ -58,10 +58,22 @@ with tempfile.TemporaryDirectory(prefix='calendar-nested-ui-') as temporary:
   assert evaluate(child+'.y>='+parent+'.y+40')
   assert evaluate(child+'.y+'+child+'.height<'+parent+'.y+'+parent+'.height')
   QQuickWindow.grabWindow(win).save('/tmp/liquid-calendar-nested-header-'+theme+'.png')
+ # Actual held-pointer reschedules must ignore the nested card's header offset.
+ for time,vertical_steps,day_shift,expected in [('09:30',0,1,'09:30'),('09:30',1,1,'09:45'),('09:30',-1,1,'09:15'),('09:37',0,1,'09:37'),('09:30',1,0,'09:45')]:
+  bridge.commit([dict(school,time='09:00',minutes=220),dict(exam,time=time)]);settle(180)
+  evaluate('timeline.contentY=8.5*timeline.hourHeight');settle(60)
+  start=point('exam',.5,.5);dx=evaluate('timeline.columnWidth')*day_shift;dy=evaluate('timeline.hourHeight')/4*vertical_steps
+  QTest.mousePress(win,Qt.LeftButton,Qt.NoModifier,start);settle(25)
+  for step in range(1,13):
+   QTest.mouseMove(win,QPoint(round(start.x()+dx*step/12),round(start.y()+dy*step/12)));settle(15)
+  QTest.mouseRelease(win,Qt.LeftButton,Qt.NoModifier,QPoint(round(start.x()+dx),round(start.y()+dy)));settle(220)
+  saved=next(e for e in store.read() if e['id']=='exam')
+  assert saved['time']==expected,(time,vertical_steps,day_shift,saved)
+  assert saved['date']==(day+dt.timedelta(days=day_shift)).isoformat(),saved
  external=dict(exam,id='external',title='Independent appointment');external.pop('groupId')
  bridge.commit([school,exam,external]);settle(250)
  assert all(row['conflict'] for row in bridge.weekItems)
  assert next(row for row in bridge.weekItems if row['id']=='school')['lanes']==2
  bridge.reload_timer.stop();bridge.reminder_timer.stop();win.close();engine.deleteLater();settle()
  assert not logs,logs
-print('Nested School/Exam geometry, independent edit targets, both themes and external conflict passed.')
+print('Nested School/Exam geometry, independent edit targets, both themes, external conflict and offset-safe pointer rescheduling passed.')
