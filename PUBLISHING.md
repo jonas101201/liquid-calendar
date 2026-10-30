@@ -1,10 +1,14 @@
 # Publishing Liquid Calendar
 
-## Current source update
+## Current public beta
 
-Repository version **0.3.9.2** contains corrected event merging and nested display. See [the source update record](docs/RELEASE_0.3.9.2.md) and [release notes](RELEASE_NOTES.md). New 0.3.9.2 download archives/tag are not published by this repository update.
+**Liquid Calendar 0.3.9.2 Beta 2** (`0.3.9.2-beta.2`) is the prerelease dated **30 October 2026**.
 
-## Latest packaged beta
+- [Release and downloads](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.3.9.2-beta.2)
+- [Release record](docs/RELEASE_0.3.9.2_BETA_2.md) and [release notes](RELEASE_NOTES.md).
+- Native source ZIP/TAR archives, a separate Flatpak bundle, its build receipt and SHA256SUMS are provided. Earlier tags/assets remain unchanged.
+
+## Previous packaged beta: 0.3.9.1
 
 **0.3.9.1** is published as **Liquid Calendar 0.3.9.1** (beta prerelease) on **29 October 2026**.
 

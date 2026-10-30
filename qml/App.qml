@@ -449,8 +449,8 @@ ApplicationWindow {
                 Layout.fillWidth:true;implicitHeight:76
                 RowLayout {
                     anchors.fill:parent;anchors.margins:12
-                    Label {Layout.fillWidth:true;text:"Update the desktop calendar once so the app and widget can share data safely. This briefly reloads the desktop and panels. The app is read-only until connected.";color:win.muted;font.pixelSize:12;wrapMode:Text.Wrap}
-                    Action {text:"Connect";primary:true;onClicked:planner.refreshWidget()}
+                    Label {Layout.fillWidth:true;text:planner.sandboxed?"Update and reload the Plasma widget from the desktop, then check again. Editing stays disabled until the shared storage is compatible.":"Update the desktop calendar once so the app and widget can share data safely. This briefly reloads the desktop and panels. The app is read-only until connected.";color:win.muted;font.pixelSize:12;wrapMode:Text.Wrap}
+                    Action {text:planner.sandboxed?"Check again":"Connect";primary:true;onClicked:planner.sandboxed?planner.reload():planner.refreshWidget()}
                 }
             }
             Surface {
@@ -746,7 +746,7 @@ ApplicationWindow {
                         ColumnLayout {
                             width:settingsScroll.availableWidth-(settingsVerticalScroll.visible?settingsVerticalScroll.width+8:0);spacing:18
                             Label {text:"Your calendar, your data";color:win.ink;font.pixelSize:22;font.bold:true}
-                            Label {Layout.fillWidth:true;text:"The app and widget share a local database. The app backs up your data before changes and detects conflicting edits to the same event.";color:win.muted;font.pixelSize:13;wrapMode:Text.Wrap}
+                            Label {Layout.fillWidth:true;text:planner.sharedStorage?"The app and widget share a local database. The app backs up your data before changes and detects conflicting edits to the same event.":"Calendar data stays in this app. Import a JSON backup to bring in existing events. Automatic backups protect local changes.";color:win.muted;font.pixelSize:13;wrapMode:Text.Wrap}
                             RowLayout {Action {text:planner.remindersEnabled?"✓ Reminders enabled":"Enable reminders";primary:planner.remindersEnabled;onClicked:planner.setReminders(!planner.remindersEnabled)} Label {Layout.fillWidth:true;text:"Reminders run while the app is open or running in the system tray.";color:win.muted;font.pixelSize:12;wrapMode:Text.Wrap}}
                             Label {Layout.fillWidth:true;text:win.trayAvailable?"When reminders are enabled, closing the window keeps the app in the system tray. Use the tray menu or Ctrl+Q to quit.":"No system tray available: keep the app open for reminders.";color:win.muted;wrapMode:Text.Wrap;font.pixelSize:12}
                             Action {text:planner.autoStart?"✓ Start at login":"Start at login";primary:planner.autoStart;onClicked:planner.setAutoStart(!planner.autoStart)}

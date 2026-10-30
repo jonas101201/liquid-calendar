@@ -4,6 +4,8 @@ import gzip
 import hashlib
 import io
 import json
+import shutil
+import platform
 from pathlib import Path
 import tarfile
 import zipfile
@@ -11,7 +13,7 @@ import zipfile
 from sync_widget_sources import check_shared
 
 ROOT=Path(__file__).resolve().parents[1]
-TOP=['VERSION','app.py','logic.py','store.py','launch.sh','installieren.py','requirements.txt','README.md','ROADMAP.md','LICENSE','NOTICE','THIRD_PARTY.md','CHANGELOG.md','RELEASE_NOTES.md','KNOWN_ISSUES.md','TESTING.md','CONTRIBUTING.md','PUBLISHING.md','.gitignore','.github','qml','icons','companion-widget','tests','scripts','docs']
+TOP=['flatpak','desktop_portals.py','VERSION','app.py','logic.py','store.py','launch.sh','installieren.py','requirements.txt','README.md','ROADMAP.md','LICENSE','NOTICE','THIRD_PARTY.md','CHANGELOG.md','RELEASE_NOTES.md','KNOWN_ISSUES.md','TESTING.md','CONTRIBUTING.md','PUBLISHING.md','.gitignore','.github','qml','icons','companion-widget','tests','scripts','docs']
 EPOCH=1793145600  # 2026-10-28 UTC; normalized archive metadata, not file creation times.
 
 def build():
@@ -45,9 +47,24 @@ def build():
   for name,data in sorted(files.items()):
    info=zipfile.ZipInfo(stem+'/'+name,date_time=(2026,10,28,0,0,0));info.compress_type=zipfile.ZIP_DEFLATED;info.create_system=3;info.external_attr=((0o100755 if name.endswith('.sh') else 0o100644)<<16)
    archive.writestr(info,data)
- sums=''.join(hashlib.sha256((out/(stem+ext)).read_bytes()).hexdigest()+'  '+stem+ext+'\n' for ext in ['.tar.gz','.zip'])
+ assets=[stem+'.tar.gz',stem+'.zip']
+ flatpak_info=out/'flatpak/build-info.json'
+ if flatpak_info.exists():
+  receipt=json.loads(flatpak_info.read_text())
+  if receipt.get('version')==version:
+   bundle=out/'flatpak'/('liquid-calendar-'+version+'-'+platform.machine()+'.flatpak')
+   if not bundle.is_file() or hashlib.sha256(bundle.read_bytes()).hexdigest()!=receipt.get('sha256'):raise ValueError('Flatpak bundle checksum mismatch.')
+   source_hashes=receipt.get('source_sha256',{})
+   if not source_hashes:raise ValueError('Rebuild Flatpak to record source hashes.')
+   for name,checksum in source_hashes.items():
+    source=ROOT/name
+    if not source.is_file() or hashlib.sha256(source.read_bytes()).hexdigest()!=checksum:raise ValueError('Flatpak source mismatch: '+name)
+   shutil.copy2(bundle,out/bundle.name)
+   receipt_name=stem+'-flatpak-build-info.json';shutil.copy2(flatpak_info,out/receipt_name)
+   assets.extend([bundle.name,receipt_name])
+ sums=''.join(hashlib.sha256((out/name).read_bytes()).hexdigest()+'  '+name+'\n' for name in assets)
  (out/'SHA256SUMS').write_text(sums)
- (out/'release.json').write_text(json.dumps({'version':version,'tag':'v'+version,'title':'Liquid Calendar '+version.replace('-beta.',' Beta '),'prerelease':True,'assets':[stem+'.tar.gz',stem+'.zip','SHA256SUMS'],'fresh_account_installation_test':'not performed'},indent=2)+'\n')
+ (out/'release.json').write_text(json.dumps({'version':version,'tag':'v'+version,'title':'Liquid Calendar '+version.replace('-beta.',' Beta '),'prerelease':True,'assets':assets+['SHA256SUMS'],'fresh_account_installation_test':'not performed'},indent=2)+'\n')
  print('Built',len(files),'source files in',out)
  print(sums,end='')
 

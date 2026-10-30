@@ -1,6 +1,6 @@
-# Liquid Calendar 0.3.9.2
+# Liquid Calendar 0.3.9.2 Beta 2
 
-Beta source update · **30 October 2026**.
+Beta prerelease · **30 October 2026**. [Release and downloads](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.3.9.2-beta.2).
 
 ## Reworked event merging and display
 
@@ -18,8 +18,14 @@ Undated task saves no longer contaminate the month filter; Today/date jumps clea
 
 ## Validation and limits
 
-172 Python tests, eight JavaScript suites, actual native QML interactions, a dedicated nested-card geometry/edit-target check in Dark and Light, isolated widget editing, shared-source synchronization and smoke launch form the validation set. Synthetic databases are used throughout. See [testing](TESTING.md).
+176 Python tests, eight JavaScript suites, actual native QML interactions, a dedicated nested-card geometry/edit-target check in Dark and Light, isolated widget editing, shared-source synchronization and smoke launch form the validation set. Synthetic databases are used throughout. See [testing](TESTING.md).
 
 Short, equal or partially overlapping linked intervals remain separate cards; containing segments need at least 90 minutes of display space. JSON preserves links; ICS exports independent events without app-specific grouping. Previously destructively combined records cannot be automatically reconstructed. Reminder delivery defects remain open; see [Known issues](KNOWN_ISSUES.md).
 
-This repository update sets the source version to **0.3.9.2**. The latest packaged download remains [0.3.9.1](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.3.9.1); its existing archives are unchanged. Fully quit with **Ctrl+Q** before reopening an updated installation.
+## Flatpak beta
+
+A separate Flatpak bundle is included. It uses KDE/PySide runtime sharing, sandbox-local storage, asynchronous notification and autostart portals, and a separate menu entry. The existing native calendar is not imported automatically: transfer events/tasks using JSON. The optional Plasma widget remains separately installed; advanced shared-storage permissions are documented in [the Flatpak guide](flatpak/README.md). A first installation may need the shared KDE runtime; the bundle size does not include it.
+
+Downloads include the native source ZIP/TAR archives, the Flatpak bundle, a build receipt and SHA256SUMS. The Flatpak is not published on Flathub. Interactive file-picker and real login/autostart acceptance checks remain outside the isolated automated tests. Installation in a fresh user account has not been tested.
+
+Fully quit with **Ctrl+Q** before reopening an updated installation. Existing release tags and downloads remain unchanged.

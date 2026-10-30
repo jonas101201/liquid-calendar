@@ -29,6 +29,7 @@ jobs:
       - run: python -m unittest discover -s tests -p 'test_*.py' -v
       - run: python tests/check_qml.py
       - run: python tests/check_nested_events.py
+      - run: LIQUID_PORTAL_TEST_BUS=1 dbus-run-session -- python tests/check_desktop_portals.py
       - run: python tests/check_widget_editor.py
       - run: python app.py --smoke-test
       - run: node tests/test-calendar.cjs && node tests/test-search.cjs && node tests/test-undated.cjs && node tests/test-widget-sharing.cjs && node tests/test-english.cjs && node tests/test-task-completion.cjs && node tests/test-task-organization.cjs && node tests/test-weekdays.cjs

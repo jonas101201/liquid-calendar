@@ -1,4 +1,4 @@
-# Linked events — 0.3.9.2
+# Linked events — 0.3.9.2 Beta 2
 
 Two linked events remain separate calendar records. Linking preserves each event's title, date, time, duration, category, location, notes and reminder. The editor includes unsaved changes in the link preview and final save.
 
@@ -27,4 +27,4 @@ Choose **More → Unlink group** from either member. Both events remain; valid u
 
 JSON exports preserve the optional `groupId` relationship. ICS exports two individual events and does not transfer the app-specific link. Older destructive merges cannot be automatically split back into the original events; no historical data is rewritten. The desktop app creates/unlinks groups; the companion widget displays and preserves links during normal edits. Existing groups must be unlinked before selecting a different partner.
 
-This behavior is included in the 0.3.9.2 source update. The previously published 0.3.9.1 archives retain the old behavior.
+This behavior is included in 0.3.9.2 Beta 2. The previously published 0.3.9.1 archives retain the old behavior.

@@ -1,0 +1,53 @@
+{
+  "id": "io.github.jonas101201.LiquidCalendar",
+  "runtime": "org.kde.Platform",
+  "runtime-version": "6.10",
+  "sdk": "org.kde.Sdk",
+  "base": "io.qt.PySide.BaseApp",
+  "base-version": "6.10",
+  "command": "liquid-calendar",
+  "finish-args": [
+    "--share=ipc",
+    "--socket=wayland",
+    "--socket=fallback-x11",
+    "--device=dri",
+    "--talk-name=org.kde.StatusNotifierWatcher",
+    "--env=QT_QUICK_CONTROLS_STYLE=Basic"
+  ],
+  "modules": [
+    {
+      "name": "liquid-calendar",
+      "buildsystem": "simple",
+      "build-commands": [
+        "install -Dm755 flatpak/liquid-calendar /app/bin/liquid-calendar",
+        "mkdir -p /app/share/liquid-calendar",
+        "cp app.py logic.py store.py desktop_portals.py VERSION /app/share/liquid-calendar/",
+        "cp -r qml icons /app/share/liquid-calendar/",
+        "install -Dm644 flatpak/io.github.jonas101201.LiquidCalendar.desktop /app/share/applications/io.github.jonas101201.LiquidCalendar.desktop",
+        "install -Dm644 flatpak/io.github.jonas101201.LiquidCalendar.metainfo.xml /app/share/metainfo/io.github.jonas101201.LiquidCalendar.metainfo.xml",
+        "install -Dm644 icons/calendar.svg /app/share/icons/hicolor/scalable/apps/io.github.jonas101201.LiquidCalendar.svg",
+        "install -Dm644 LICENSE /app/share/licenses/io.github.jonas101201.LiquidCalendar/LICENSE",
+        "install -Dm644 flatpak/prune_runtime.py /app/share/liquid-calendar/prune_runtime.py"
+      ],
+      "sources": [
+        {
+          "type": "dir",
+          "path": "..",
+          "skip": [
+            ".git",
+            "dist",
+            "__pycache__",
+            ".venv",
+            ".venvs",
+            "runtime",
+            "backups"
+          ]
+        }
+      ]
+    }
+  ],
+  "cleanup-commands": [
+    "BASEAPP_REMOVE_WEBENGINE=1 BASEAPP_DISABLE_NUMPY=1 /app/cleanup-BaseApp.sh",
+    "python3 /app/share/liquid-calendar/prune_runtime.py /app && rm /app/share/liquid-calendar/prune_runtime.py"
+  ]
+}

@@ -1,10 +1,14 @@
 # Testing
 
+## Flatpak beta checks
+
+176 Python regressions pass both natively and in the installed Flatpak. The private D-Bus test verifies portal marshalling, asynchronous notification acknowledgment, literal titles and background autostart permission results. The package and native smoke checks use temporary databases. Nested geometry/edit-target checks run with the BaseApp's Python/PySide in the sandbox; AppStream metadata validates. See [Flatpak scope and desktop acceptance limits](flatpak/README.md).
+
 ## 0.3.9.2 validation
 
 `python tests/check_nested_events.py` checks real School/Exam card geometry, separate edit targets in both themes and external conflict reporting with an isolated synthetic database. Layout regressions also cover filtered parents, overnight segments and randomized group-conflict comparisons.
 
-172 Python tests, eight JavaScript suites and native QML interactions cover independent content retention, editor drafts, recurring-occurrence cancellation, stale source rejection, linked-card visibility, unlink/Undo, independent rescheduling and deletion cleanup. JSON retains the relationship; ICS keeps separate event records. Shared app/widget group validation and cleanup are checked with synthetic data.
+176 Python tests, eight JavaScript suites and native QML interactions cover independent content retention, editor drafts, recurring-occurrence cancellation, stale source rejection, linked-card visibility, unlink/Undo, independent rescheduling and deletion cleanup. JSON retains the relationship; ICS keeps separate event records. Shared app/widget group validation and cleanup are checked with synthetic data.
 
 ## Development audit after 0.3.9.1
 

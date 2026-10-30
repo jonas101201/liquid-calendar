@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Liquid Calendar (Flatpak Beta)
+Comment=Local calendar, tasks and linked events
+Exec=liquid-calendar
+Icon=io.github.jonas101201.LiquidCalendar
+Terminal=false
+Categories=Office;Calendar;
+StartupNotify=true
