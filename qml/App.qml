@@ -17,7 +17,14 @@ ApplicationWindow {
     readonly property bool calendarVisible:planner.view==="month"||planner.view==="week"
     property string calendarPresentation:"month"
     readonly property string presentationKey:planner.view
-    onPresentationKeyChanged:if(motionEnabled)viewArrival.restart()
+    function animateView() {
+        // Retarget rapid navigation from the current frame instead of flashing back.
+        var interrupted=viewArrival.running;
+        viewArrival.stop();
+        if(!interrupted){workspace.opacity=.65;workspaceShift.y=6;}
+        viewArrival.start();
+    }
+    onPresentationKeyChanged:if(motionEnabled)animateView()
     onMotionEnabledChanged:if(!motionEnabled){viewArrival.stop();workspace.opacity=1;workspaceShift.y=0;}
     readonly property bool motionEnabled:planner.animationsEnabled
     SystemPalette {id:systemPalette}
@@ -59,14 +66,24 @@ ApplicationWindow {
         var items=planner.dayItems.filter(function(e){return !e.allDay&&!(e.task&&e.done)&&(planner.selected!==now||e.time>=time);});
         return items.length?items[0]:null;
     }
-    onClosing:function(close) {win.flushAppearance();if(trayAvailable&&planner.remindersEnabled){close.accepted=false;win.hide();}else Qt.quit();}
+    property bool quitAfterImport:false
+    function requestQuit() {
+        if(planner.importBusy){quitAfterImport=true;planner.cancelImport();return;}
+        win.flushAppearance();Qt.quit();
+    }
+    onClosing:function(close) {if(planner.importBusy){close.accepted=false;win.requestQuit();return;}win.flushAppearance();if(trayAvailable&&planner.remindersEnabled){close.accepted=false;win.hide();}else Qt.quit();}
 
     component Action: Button {
         id:button
+        enabled:!planner.importBusy
         property bool primary:false
         property bool navigation:false
         property bool floatingSelection:false
         property color textColor:win.ink
+        property string shortcutHint:""
+        ToolTip.visible:hovered&&shortcutHint.length>0
+        ToolTip.delay:600
+        ToolTip.text:text+" · "+shortcutHint
         leftPadding:10;rightPadding:10;topPadding:6;bottomPadding:6
         implicitHeight:38
         implicitWidth:Math.max(38,contentItem.implicitWidth+22)
@@ -151,7 +168,8 @@ ApplicationWindow {
         readonly property bool checklistExpanded:win.expandedChecklists[win.checklistKey(record)]===true
         function setChecklistExpanded(expanded){var state=Object.assign({},win.expandedChecklists);state[win.checklistKey(record)]=expanded;win.expandedChecklists=state;}
         function toggleStep(stepId){planner.toggleChecklist(record.id,record.occurrenceDate,stepId,record.fingerprint)}
-        implicitHeight:82+(group.id?20:0)+(checklistExpanded?record.checklist.length*38+8:0)
+        readonly property real rowHeight:Math.max(58,entryDetails.implicitHeight)
+        implicitHeight:rowHeight+24+(checklistExpanded?record.checklist.length*38+8:0)
         radius:10
         shadowStrength:0
         border.width:group.id?1:0
@@ -160,13 +178,14 @@ ApplicationWindow {
         HoverHandler {id:entryHover}
         Rectangle {x:12;y:parent.height-1;width:parent.width-24;height:1;color:win.line;opacity:.7}
         RowLayout {
-            anchors.left:parent.left;anchors.right:parent.right;anchors.top:parent.top;anchors.margins:12;height:entry.group.id?78:58;spacing:10
+            anchors.left:parent.left;anchors.right:parent.right;anchors.top:parent.top;anchors.margins:12;height:entry.rowHeight;spacing:10
             Rectangle {width:3;Layout.preferredHeight:26;Layout.alignment:Qt.AlignVCenter;radius:1;color:entry.record.conflict?win.danger:entry.record.color}
             Action {visible:entry.record.task;text:entry.record.done?"✓":"○";Accessible.name:entry.record.repeated&&entry.record.done?"Reopen completed series":"Toggle task completion";onClicked:planner.toggleTask(entry.record.id,entry.record.occurrenceDate,entry.record.fingerprint)}
             ColumnLayout {
+                id:entryDetails
                 Layout.fillWidth:true;Layout.minimumWidth:0;spacing:5
-                Label {Layout.fillWidth:true;text:entry.record.title;textFormat:Text.PlainText;color:win.ink;font.pixelSize:14;font.weight:Font.DemiBold;font.strikeout:entry.record.done;elide:Text.ElideRight}
-                Label {Layout.fillWidth:true;text:entry.record.unscheduled?"Undated · "+entry.record.minutes+" min":(entry.showDate?entry.record.date+" · ":"")+(entry.record.allDay?"All day":(entry.record.carry?"Continued · ":"")+entry.record.time+" · "+entry.record.minutes+" min")+(entry.record.conflict?" · Overlap":"");color:entry.record.conflict?win.danger:win.muted;font.pixelSize:11;elide:Text.ElideRight}
+                BalancedTitle {objectName:"entryTitle";Layout.fillWidth:true;sourceText:entry.record.title;textFormat:Text.PlainText;color:win.ink;font.pixelSize:14;font.weight:Font.DemiBold;font.strikeout:entry.record.done;elide:Text.ElideRight}
+                Label {Layout.fillWidth:true;text:entry.record.unscheduled?"Undated · "+entry.record.minutes+" min":(entry.showDate?entry.record.date+" · ":"")+(entry.record.allDay?"All day":(entry.record.carry?"Continued · ":"")+entry.record.time+" · "+entry.record.minutes+" min")+(entry.record.conflict?" · Overlap":"")+((entry.record.event.attachments||[]).length?" · Files: "+entry.record.event.attachments.length:"");color:entry.record.conflict?win.danger:win.muted;font.pixelSize:11;elide:Text.ElideRight}
                 Label {visible:!!entry.group.id;objectName:"linkedEventBadge";Layout.fillWidth:true;text:"↔ "+entry.group.label+" · "+entry.group.peers.map(function(e){return e.title;}).join(", ");textFormat:Text.PlainText;color:win.accent;font.pixelSize:10;elide:Text.ElideRight;ToolTip.visible:linkedHover.hovered;ToolTip.text:entry.group.peers.map(function(e){return e.date+" · "+(e.allDay?"All day":e.time)+" · "+e.title;}).join("\n");HoverHandler {id:linkedHover}}
                 Label {visible:entry.record.task&&(entry.record.priority>0||entry.record.project.length>0);Layout.fillWidth:true;text:(["","Low priority","Medium priority","High priority"])[entry.record.priority]+(entry.record.priority&&entry.record.project?" · ":"")+entry.record.project;textFormat:Text.PlainText;color:entry.record.priority===3?win.danger:win.accent;font.pixelSize:11;elide:Text.ElideRight}
             }
@@ -177,7 +196,7 @@ ApplicationWindow {
         }
         ColumnLayout {
             visible:entry.checklistExpanded
-            anchors.left:parent.left;anchors.right:parent.right;anchors.top:parent.top;anchors.topMargin:82;anchors.leftMargin:26;anchors.rightMargin:18;spacing:0
+            anchors.left:parent.left;anchors.right:parent.right;anchors.top:parent.top;anchors.topMargin:entry.rowHeight+24;anchors.leftMargin:26;anchors.rightMargin:18;spacing:0
             Repeater {model:entry.checklistExpanded?entry.record.checklist:[]
                 delegate:RowLayout {
                     required property var modelData
@@ -192,21 +211,93 @@ ApplicationWindow {
     function refreshSlots(){planner.clearError();slotError="";suggestedSlots=planner.slotsOn(planningTask.id,planningTask.occurrenceDate,slotDate);slotError=planner.error;}
     function planTask(record){planningTask=record;slotDate=planner.selected;slotDateField.text=slotDate;refreshSlots();slotPopup.open();}
     function shiftSlots(n){var d=dateValue(slotDate);d.setDate(d.getDate()+n);slotDate=Qt.formatDateTime(d,"yyyy-MM-dd");slotDateField.text=slotDate;refreshSlots();}
-    readonly property bool creationModalOpen:creationMenu.visible||quickPopup.visible||templateLibrary.visible||templateEditPopup.visible||datePopup.visible||slotPopup.visible||projectPopup.visible||saveDialog.visible||importDialog.visible
+    readonly property bool creationModalOpen:planner.importBusy||creationMenu.visible||quickPopup.visible||templateLibrary.visible||templateEditPopup.visible||datePopup.visible||slotPopup.visible||projectPopup.visible||commandPalette.visible||shortcutsPopup.visible||saveDialog.visible||importDialog.visible
     function openQuick(){quickInput.text="";quickPopup.preview=({error:"",summary:""});quickPopup.open();quickInput.forceActiveFocus();}
     function newEvent(){editorSurface.openEvent(null,dateValue(planner.selected));}
     function goToDate(value){if(planner.view==="month")editorSurface.jump(dateValue(value));else planner.selectDate(value);}
     function goToToday(){planner.today();if(planner.view==="month")editorSurface.jump(dateValue(planner.selected));}
     Shortcut {sequence:"Ctrl+N";enabled:!editorSurface.modalOpen&&!win.creationModalOpen;onActivated:win.newEvent()}
     Shortcut {sequence:"Ctrl+F";enabled:!editorSurface.modalOpen&&!win.creationModalOpen;onActivated:{planner.setView("search");globalSearch.forceActiveFocus();}}
-    Shortcut {sequence:"Ctrl+Z";enabled:!editorSurface.modalOpen&&!win.creationModalOpen&&planner.canUndo;onActivated:planner.undo()}
+    readonly property bool textInputFocused:activeFocusItem!==null&&typeof activeFocusItem.undo==="function"
+    Shortcut {sequence:"Ctrl+Z";enabled:!win.textInputFocused&&!editorSurface.modalOpen&&!win.creationModalOpen&&planner.canUndo;onActivated:planner.undo()}
     Shortcut {sequence:"Ctrl+Shift+N";enabled:!editorSurface.modalOpen&&!win.creationModalOpen;onActivated:win.openQuick()}
     Shortcut {sequence:"Ctrl+L";enabled:!editorSurface.modalOpen&&!win.creationModalOpen;onActivated:{jumpDate.text=planner.selected;datePopup.open();}}
-    Shortcut {sequence:"Ctrl+Q";onActivated:{win.flushAppearance();Qt.quit();}}
+    Shortcut {sequence:"Ctrl+K";enabled:!editorSurface.modalOpen&&(!win.creationModalOpen||commandPalette.visible);onActivated:{if(commandPalette.visible)commandPalette.close();else commandPalette.show(win.activeFocusItem);}}
+    Shortcut {sequence:"F1";enabled:!editorSurface.modalOpen&&!win.creationModalOpen;onActivated:shortcutsPopup.open()}
+    Shortcut {sequence:"Ctrl+Q";onActivated:win.requestQuit()}
 
+    CommandPalette {
+        id:commandPalette;light:win.light;accent:win.accent;motionEnabled:win.motionEnabled
+        commands:[
+            {id:"event",title:"New event",shortcut:"Ctrl+N",keywords:"create appointment"},
+            {id:"task",title:"New undated task",keywords:"create todo checklist"},
+            {id:"quick",title:"Quick add",shortcut:"Ctrl+Shift+N",keywords:"natural language event"},
+            {id:"today",title:"Go to today",keywords:"current day"},
+            {id:"month",title:"Calendar · Month",keywords:"view dates"},
+            {id:"week",title:"Calendar · Week",keywords:"view timeline"},
+            {id:"agenda",title:"Agenda",keywords:"upcoming events view"},
+            {id:"tasks",title:"Tasks",keywords:"todo projects view"},
+            {id:"search",title:"Search events and tasks",shortcut:"Ctrl+F",keywords:"find title date"},
+            {id:"date",title:"Jump to date",shortcut:"Ctrl+L",keywords:"navigate tomorrow"},
+            {id:"templates",title:"Event templates",keywords:"saved presets"},
+            {id:"undo",title:"Undo last change",shortcut:"Ctrl+Z",keywords:"restore",available:planner.canUndo},
+            {id:"settings",title:"Settings",keywords:"theme appearance accent glass reminders"},
+            {id:"shortcuts",title:"Keyboard shortcuts",shortcut:"F1",keywords:"help keys"}
+        ]
+        onChosen:function(command) {
+            Qt.callLater(function() {
+                if(command==="event")win.newEvent();
+                else if(command==="task")editorSurface.openNewTask(win.dateValue(planner.selected));
+                else if(command==="quick")win.openQuick();
+                else if(command==="today")win.goToToday();
+                else if(command==="date"){jumpDate.text=planner.selected;datePopup.open();}
+                else if(command==="templates")templateLibrary.open();
+                else if(command==="undo")planner.undo();
+                else if(command==="shortcuts")shortcutsPopup.open();
+                else {planner.setView(command);if(command==="search")globalSearch.forceActiveFocus();}
+            });
+        }
+    }
     Popup {
-        enter:GlassTransition {motionEnabled:win.motionEnabled}
-        exit:GlassTransition {entering:false;motionEnabled:win.motionEnabled}
+        id:shortcutsPopup;objectName:"shortcutsPopup";parent:Overlay.overlay;anchors.centerIn:parent
+        width:Math.min(win.width-48,480);padding:20;modal:true;focus:true
+        background:Surface {glassOpacity:1}
+        contentItem:ColumnLayout {
+            spacing:12
+            Label {text:"Keyboard shortcuts";color:win.ink;font.pixelSize:22;font.weight:Font.DemiBold}
+            Repeater {
+                model:[{key:"Ctrl+K",label:"Commands"},{key:"Ctrl+N",label:"New event"},{key:"Ctrl+Shift+N",label:"Quick add"},{key:"Ctrl+F",label:"Search"},{key:"Ctrl+L",label:"Jump to date"},{key:"Ctrl+Z",label:"Undo last change"},{key:"F1",label:"Keyboard shortcuts"},{key:"Esc",label:"Close a menu or dialog"},{key:"Ctrl+Q",label:"Quit completely"}]
+                delegate:RowLayout {required property var modelData;Layout.fillWidth:true
+                    Label {Layout.fillWidth:true;text:modelData.label;color:win.ink;font.pixelSize:13}
+                    Label {text:modelData.key;color:win.accent;font.pixelSize:12}
+                }
+            }
+            Label {Layout.fillWidth:true;text:"Creation and navigation shortcuts pause while editing. Text fields keep their own Undo.";color:win.muted;font.pixelSize:12;wrapMode:Text.Wrap}
+            Action {Layout.alignment:Qt.AlignRight;text:"Close";onClicked:shortcutsPopup.close()}
+        }
+    }
+    GlassPopup {
+        motionEnabled:win.motionEnabled
+        id:undoToast;objectName:"undoToast";parent:Overlay.overlay
+        x:Math.round((parent.width-width)/2);y:parent.height-height-20
+        width:Math.min(win.width-48,520);padding:12;modal:false;focus:false;z:100
+        closePolicy:Popup.NoAutoClose
+        property string message:""
+        function show(message) {undoToast.message=message;open();undoExpiry.restart();}
+        background:Surface {glassOpacity:1;radius:16}
+        HoverHandler {id:undoHover}
+        Timer {id:undoExpiry;interval:7000;running:undoToast.visible&&!undoHover.hovered&&!undoAction.activeFocus&&!dismissUndo.activeFocus&&win.active;onTriggered:undoToast.close()}
+        contentItem:RowLayout {
+            spacing:10
+            Label {Layout.fillWidth:true;text:undoToast.message;textFormat:Text.PlainText;color:win.ink;font.pixelSize:13;maximumLineCount:2;wrapMode:Text.Wrap;elide:Text.ElideRight}
+            Action {id:undoAction;text:"Undo";shortcutHint:"Ctrl+Z";enabled:planner.canUndo&&!planner.importBusy;onClicked:planner.undo()}
+            Action {id:dismissUndo;text:"×";Accessible.name:"Dismiss saved change notification";onClicked:undoToast.close()}
+        }
+        Connections {target:planner;function onChangeCommitted(label){undoToast.show(label);}function onChanged(){if(!planner.canUndo)undoToast.close();}}
+    }
+
+    GlassPopup {
+        motionEnabled:win.motionEnabled
         id:quickPopup;parent:Overlay.overlay;anchors.centerIn:parent;width:Math.min(win.width-40,620);modal:true;focus:true;padding:20
         property var preview:({error:"",summary:""})
         function refresh(){preview=planner.quickPreview(quickInput.text);}
@@ -227,16 +318,15 @@ ApplicationWindow {
             }
         }
     }
-    Popup {
-        enter:GlassTransition {motionEnabled:win.motionEnabled}
-        exit:GlassTransition {entering:false;motionEnabled:win.motionEnabled}
+    GlassPopup {
+        motionEnabled:win.motionEnabled
         id:templateLibrary;parent:Overlay.overlay;anchors.centerIn:parent;width:Math.min(win.width-40,650);height:Math.min(win.height-40,520);modal:true;focus:true;padding:20
         background:LiquidSurface {light:win.light;tint:win.tint;motionEnabled:win.motionEnabled&&!win.appearanceAdjusting;radius:18;glassOpacity:1}
         contentItem:ColumnLayout {
             spacing:12
             RowLayout {Label {text:"Event templates";color:win.ink;font.pixelSize:23;Layout.fillWidth:true} Action {text:"Close";onClicked:templateLibrary.close()}}
             Label {text:"Save a template from the event editor. Use applies it to the selected day and opens a new draft for review.";Layout.fillWidth:true;color:win.muted;wrapMode:Text.Wrap;font.pixelSize:12}
-            ListView {id:templateList;Layout.fillWidth:true;Layout.fillHeight:true;clip:true;spacing:8;model:planner.templates
+            RefreshListView {refreshSource:planner;contextKey:"templates";id:templateList;Layout.fillWidth:true;Layout.fillHeight:true;clip:true;spacing:8;model:planner.templates
                 delegate:RowLayout {
                     required property var modelData
                     width:templateList.width;spacing:8
@@ -253,9 +343,8 @@ ApplicationWindow {
             Label {text:planner.templates.length+" / 50 templates · local to this app · not included in event-only JSON export";Layout.fillWidth:true;wrapMode:Text.Wrap;color:win.muted;font.pixelSize:11}
         }
     }
-    Popup {
-        enter:GlassTransition {motionEnabled:win.motionEnabled}
-        exit:GlassTransition {entering:false;motionEnabled:win.motionEnabled}
+    GlassPopup {
+        motionEnabled:win.motionEnabled
         id:templateEditPopup;parent:templateLibrary.contentItem;anchors.centerIn:parent;width:Math.min(parent.width-8,420);modal:true;focus:true;padding:16
         property string snapshot:""
         property string problem:""
@@ -274,9 +363,8 @@ ApplicationWindow {
             }
         }
     }
-    Popup {
-        enter:GlassTransition {motionEnabled:win.motionEnabled}
-        exit:GlassTransition {entering:false;motionEnabled:win.motionEnabled}
+    GlassPopup {
+        motionEnabled:win.motionEnabled
         id:projectPopup;parent:Overlay.overlay;anchors.centerIn:parent;width:420;modal:true;focus:true
         background:LiquidSurface {light:win.light;tint:win.tint;motionEnabled:win.motionEnabled&&!win.appearanceAdjusting;radius:18;glassOpacity:1}
         contentItem:ColumnLayout {
@@ -369,6 +457,7 @@ ApplicationWindow {
                 Item {Layout.fillHeight:true}
                 Label {Layout.fillWidth:true;text:planner.remindersEnabled?"● Reminders enabled":"Reminders paused";color:win.muted;font.pixelSize:10;wrapMode:Text.Wrap}
                 Label {Layout.fillWidth:true;text:"Local to this computer";color:win.muted;font.pixelSize:10;wrapMode:Text.Wrap}
+                Action {Layout.fillWidth:true;navigation:true;text:"Commands";shortcutHint:"Ctrl+K";onClicked:commandPalette.show(win.activeFocusItem)}
                 Action {Layout.fillWidth:true;navigation:true;text:"Settings";primary:planner.view==="settings";onClicked:planner.setView("settings")}
             }
         }
@@ -379,18 +468,18 @@ ApplicationWindow {
                 ColumnLayout {
                     Layout.fillWidth:true;Layout.minimumWidth:0;spacing:4
                     Label {text:planner.view==="today"?"YOUR OVERVIEW":planner.view==="week"?"MAKE ROOM FOR YOUR PLANS":"YOUR CALENDAR";color:win.accent;font.pixelSize:10;font.letterSpacing:1.5}
-                    Label {Layout.fillWidth:true;text:planner.view==="today"?planner.dayTitle:planner.view==="agenda"?"Coming up":planner.view==="search"?"Find anything":planner.view==="tasks"?"Your tasks":planner.view==="settings"?"Make it yours":planner.title;color:win.ink;font.pixelSize:28;font.weight:Font.DemiBold;elide:Text.ElideRight}
+                    BalancedTitle {Layout.fillWidth:true;sourceText:planner.view==="today"?planner.dayTitle:planner.view==="agenda"?"Coming up":planner.view==="search"?"Find anything":planner.view==="tasks"?"Your tasks":planner.view==="settings"?"Make it yours":planner.title;color:win.ink;font.pixelSize:28;font.weight:Font.DemiBold;elide:Text.ElideRight}
                 }
-                Action {visible:["today","week","month","agenda"].indexOf(planner.view)>=0;text:"Date";onClicked:{jumpDate.text=planner.selected;datePopup.open();}}
+                Action {visible:["today","week","month","agenda"].indexOf(planner.view)>=0;text:"Date";shortcutHint:"Ctrl+L";onClicked:{jumpDate.text=planner.selected;datePopup.open();}}
                 Action {id:todayAction;visible:planner.view!=="settings";text:"Today";onClicked:win.goToToday()}
                 Action {id:toolsButton;visible:planner.view!=="settings";text:"Tools ▾";Accessible.name:"Creation tools";onClicked:creationMenu.open()
                     ActionMenu {accent:win.accent;id:creationMenu;parent:toolsButton;light:win.light;y:toolsButton.height+4;x:Math.min(0,toolsButton.width-width)
-                        ActionMenuItem {accent:win.accent;id:quickAddAction;light:win.light;text:"Quick add…";onTriggered:win.openQuick()}
+                        ActionMenuItem {accent:win.accent;id:quickAddAction;light:win.light;text:"Quick add…";shortcutHint:"Ctrl+Shift+N";onTriggered:win.openQuick()}
                         ActionMenuItem {accent:win.accent;id:templatesAction;light:win.light;text:"Event templates…";onTriggered:templateLibrary.open()}
                     }
                 }
                 Action {visible:planner.view!=="settings";text:"+ Task";primary:planner.view==="tasks";onClicked:editorSurface.openNewTask(win.dateValue(planner.selected))}
-                Action {visible:planner.view!=="settings";text:"+ Event";primary:planner.view!=="tasks";onClicked:win.newEvent()}
+                Action {visible:planner.view!=="settings";text:"+ Event";shortcutHint:"Ctrl+N";primary:planner.view!=="tasks";onClicked:win.newEvent()}
             }
             RowLayout {
                 visible:planner.view==="today"||win.calendarVisible
@@ -479,12 +568,12 @@ ApplicationWindow {
                                     Label {text:win.nextAppointment?win.nextAppointment.time:"";color:win.accent;font.pixelSize:23;font.weight:Font.DemiBold}
                                     ColumnLayout {Layout.fillWidth:true;spacing:4
                                         Label {text:planner.selected===Qt.formatDateTime(win.clockNow,"yyyy-MM-dd")?"UP NEXT":"FIRST TIME BLOCK";color:win.muted;font.pixelSize:10;font.letterSpacing:.8}
-                                        Label {Layout.fillWidth:true;text:win.nextAppointment?win.nextAppointment.title:"";textFormat:Text.PlainText;color:win.ink;font.pixelSize:14;font.weight:Font.DemiBold;elide:Text.ElideRight}
+                                        BalancedTitle {Layout.fillWidth:true;sourceText:win.nextAppointment?win.nextAppointment.title:"";textFormat:Text.PlainText;color:win.ink;font.pixelSize:14;font.weight:Font.DemiBold;elide:Text.ElideRight}
                                     }
                                     Action {text:"Open";onClicked:planner.edit(win.nextAppointment.id,win.nextAppointment.occurrenceDate,true)}
                                 }
                             }
-                            ListView {id:dayList;Layout.fillWidth:true;Layout.fillHeight:true;clip:true;spacing:8;model:planner.dayItems;delegate:Entry {required property var modelData;record:modelData;width:dayList.width} ScrollBar.vertical:GlassScrollBar {light:win.light;accent:win.accent;motionEnabled:win.motionEnabled} Label {anchors.centerIn:parent;width:parent.width-20;text:"Nothing planned yet.\nMake room for your next steps.";visible:dayList.count===0;color:win.muted;horizontalAlignment:Text.AlignHCenter;wrapMode:Text.Wrap;lineHeight:1.5}}
+                            RefreshListView {refreshSource:planner;contextKey:planner.view+"|"+planner.selected;id:dayList;Layout.fillWidth:true;Layout.fillHeight:true;clip:true;spacing:8;model:planner.dayItems;delegate:Entry {required property var modelData;record:modelData;width:dayList.width} ScrollBar.vertical:GlassScrollBar {light:win.light;accent:win.accent;motionEnabled:win.motionEnabled} Label {anchors.centerIn:parent;width:parent.width-20;text:"Nothing planned yet.\nMake room for your next steps.";visible:dayList.count===0;color:win.muted;horizontalAlignment:Text.AlignHCenter;wrapMode:Text.Wrap;lineHeight:1.5}}
                         }
                     }
                     Surface {
@@ -494,13 +583,14 @@ ApplicationWindow {
                             Label {text:"Open tasks";font.pixelSize:18;font.weight:Font.DemiBold;color:win.ink}
                             Label {Layout.fillWidth:true;text:"Collect without pressure. Schedule when needed.";color:win.muted;font.pixelSize:11;wrapMode:Text.Wrap}
                             Action {Layout.fillWidth:true;text:"View all tasks ("+planner.tasks.length+")";onClicked:planner.setView("tasks")}
-                            ListView {
+                            RefreshListView {
+                                refreshSource:planner;contextKey:"quickTasks"
                                 id:quickTasks;Layout.fillWidth:true;Layout.fillHeight:true;clip:true;spacing:8;model:planner.tasks.slice(0,3)
                                 delegate:Item {
                                     required property var modelData;width:quickTasks.width;implicitHeight:104
                                     Rectangle {x:0;y:8;width:3;height:26;radius:1;color:modelData.color}
                                     ColumnLayout {anchors.fill:parent;anchors.leftMargin:12;spacing:4
-                                        Label {Layout.fillWidth:true;text:modelData.title;textFormat:Text.PlainText;color:win.ink;font.pixelSize:13;font.weight:Font.DemiBold;wrapMode:Text.Wrap;maximumLineCount:2;elide:Text.ElideRight}
+                                        BalancedTitle {Layout.fillWidth:true;sourceText:modelData.title;textFormat:Text.PlainText;color:win.ink;font.pixelSize:13;font.weight:Font.DemiBold;maximumLineCount:2;elide:Text.ElideRight}
                                         Label {Layout.fillWidth:true;text:modelData.unscheduled?"Undated · "+modelData.minutes+" min":modelData.date+" · "+modelData.time;color:win.muted;font.pixelSize:11;elide:Text.ElideRight}
                                         RowLayout {Layout.fillWidth:true
                                             Action {text:"✓";Accessible.name:"Complete task";onClicked:planner.toggleTask(modelData.id,modelData.occurrenceDate,modelData.fingerprint)}
@@ -524,7 +614,7 @@ ApplicationWindow {
                             Repeater {model:[7,14,30];delegate:Action {required property int modelData;text:modelData+" days";primary:planner.agendaDays===modelData;onClicked:planner.setAgendaDays(modelData)}}
                         }
                         Label {Layout.fillWidth:true;text:"Events and scheduled tasks · completed tasks hidden";color:win.muted;font.pixelSize:11;wrapMode:Text.Wrap}
-                        ListView {id:agendaList;Layout.fillWidth:true;Layout.fillHeight:true;clip:true;spacing:4;model:planner.agendaItems
+                        RefreshListView {refreshSource:planner;contextKey:planner.view+"|"+planner.selected+"|"+planner.agendaDays;id:agendaList;Layout.fillWidth:true;Layout.fillHeight:true;clip:true;spacing:4;model:planner.agendaItems
                             section.property:"date";section.criteria:ViewSection.FullString
                             section.delegate:Label {required property string section;width:agendaList.width;height:36;verticalAlignment:Text.AlignVCenter;text:win.dateValue(section).toLocaleDateString(Qt.locale("en_GB"),"dddd, dd MMMM yyyy");color:win.accent;font.pixelSize:13;font.weight:Font.DemiBold}
                             delegate:Entry {required property var modelData;width:agendaList.width;record:modelData}
@@ -566,7 +656,7 @@ ApplicationWindow {
                             }
                             onVisibleChanged:if(visible)Qt.callLater(revealSelectedDay)
                             onSelectedDateChanged:if(visible)Qt.callLater(revealSelectedDay)
-                            onContentWidthChanged:if(visible)Qt.callLater(revealSelectedDay)
+                            onContentWidthChanged:contentX=Math.max(0,Math.min(contentX,contentWidth-width))
                             ScrollBar.horizontal:GlassScrollBar {id:weekHorizontalScroll;light:win.light;accent:win.accent;motionEnabled:win.motionEnabled&&!win.appearanceAdjusting;active:timeline.contentWidth>timeline.width}
                             Component.onCompleted:{contentY=7.5*hourHeight;Qt.callLater(revealSelectedDay);}
                             boundsBehavior:Flickable.StopAtBounds
@@ -577,7 +667,7 @@ ApplicationWindow {
                                 width:timeline.gutter;height:timeline.height-(weekHorizontalScroll.visible?weekHorizontalScroll.height:0)
                                 z:25;clip:true
                                 Rectangle {anchors.fill:parent;color:win.uiColors.panel}
-                                Repeater {model:24;delegate:Label {required property int index;x:1;y:index*timeline.hourHeight-timeline.contentY+2;text:(index<10?"0":"")+index+":00";color:win.muted;font.pixelSize:10}}
+                                Repeater {model:24;delegate:Label {required property int index;x:1;y:index*timeline.hourHeight-timeline.contentY+2;font.features:({"tnum":1});text:(index<10?"0":"")+index+":00";color:win.muted;font.pixelSize:10}}
                                 MouseArea {anchors.fill:parent;onWheel:function(wheel){wheel.accepted=false;}}
                             }
                             Item {
@@ -637,7 +727,7 @@ ApplicationWindow {
                                 Repeater {
                                     id:weekEventRepeater
                                     model:win.weekData.filter(function(v){return !v.allDay;})
-                                    delegate:Rectangle {
+                                    delegate:ContinuousSurface {
                                         id:eventBlock
                                         required property var modelData
                                         objectName:"weekEventBlock"
@@ -660,8 +750,8 @@ ApplicationWindow {
                                         Drag.active:dragMouse.drag.active;Drag.keys:["liquid-calendar-event"];Drag.source:eventBlock;Drag.hotSpot.x:width/2;Drag.hotSpot.y:8
                                         Column {
                                             anchors.fill:parent;anchors.margins:eventBlock.height<38?3:8;anchors.leftMargin:8;spacing:4
-                                            Label {width:parent.width;text:eventBlock.record.title;textFormat:Text.PlainText;color:win.ink;font.pixelSize:12;font.weight:Font.DemiBold;wrapMode:Text.NoWrap;elide:Text.ElideRight}
-                                            Label {width:parent.width;visible:eventBlock.height>38;text:(eventBlock.record.carry?"Continued · ":"")+eventBlock.record.time+"–"+(Math.floor(eventBlock.record.end/60)<10?"0":"")+Math.floor(eventBlock.record.end/60)+":"+(eventBlock.record.end%60<10?"0":"")+(eventBlock.record.end%60);color:win.muted;font.pixelSize:10;elide:Text.ElideRight}
+                                            BalancedTitle {fullTextHint:false;width:parent.width;maximumLineCount:eventBlock.height>=70&&!eventBlock.record.hasNested?2:1;sourceText:eventBlock.record.title;textFormat:Text.PlainText;color:win.ink;font.pixelSize:12;font.weight:Font.DemiBold;elide:Text.ElideRight}
+                                            Label {width:parent.width;visible:eventBlock.height>38;text:(eventBlock.record.carry?"Continued · ":"")+eventBlock.record.time+"–"+(Math.floor(eventBlock.record.end/60)<10?"0":"")+Math.floor(eventBlock.record.end/60)+":"+(eventBlock.record.end%60<10?"0":"")+(eventBlock.record.end%60);color:win.muted;font.pixelSize:10;font.features:({"tnum":1});elide:Text.ElideRight}
                                             Label {visible:eventBlock.height>85&&!!eventBlock.group.id&&!eventBlock.record.hasNested&&!eventBlock.record.nested;width:parent.width;text:eventBlock.group.label;color:win.muted;font.pixelSize:9;elide:Text.ElideRight}
                                             Label {visible:eventBlock.height>95&&eventBlock.record.conflict&&!eventBlock.record.hasNested;width:parent.width;text:"Overlap";color:win.danger;font.pixelSize:9;elide:Text.ElideRight}
                                         }
@@ -741,7 +831,7 @@ ApplicationWindow {
                             Item {Layout.fillWidth:true}
                         }
                         Label {text:planner.view==="tasks"?"Undated tasks stay here. Scheduled tasks also appear in the calendar.":"Search all months and years · includes projects and checklist steps";Layout.fillWidth:true;wrapMode:Text.Wrap;color:win.muted;font.pixelSize:11}
-                        ListView {id:resultList;Layout.fillWidth:true;Layout.fillHeight:true;clip:true;spacing:8;model:planner.view==="tasks"?planner.results.filter(function(e){return e.task;}):planner.results;delegate:Entry {required property var modelData;width:resultList.width;record:modelData;showDate:true} ScrollBar.vertical:GlassScrollBar {light:win.light;accent:win.accent;motionEnabled:win.motionEnabled} Label {anchors.centerIn:parent;text:"No matching entries.";color:win.muted;visible:resultList.count===0}}
+                        RefreshListView {refreshSource:planner;contextKey:[planner.view,planner.query,planner.kind,planner.category,planner.projectFilter,planner.priorityFilter,planner.taskOrder,planner.planningFilter].join("|");id:resultList;Layout.fillWidth:true;Layout.fillHeight:true;clip:true;spacing:8;model:planner.view==="tasks"?planner.results.filter(function(e){return e.task;}):planner.results;delegate:Entry {required property var modelData;width:resultList.width;record:modelData;showDate:true} ScrollBar.vertical:GlassScrollBar {light:win.light;accent:win.accent;motionEnabled:win.motionEnabled} Label {anchors.centerIn:parent;text:"No matching entries.";color:win.muted;visible:resultList.count===0}}
                     }
                 }
                 Surface {
@@ -823,13 +913,12 @@ ApplicationWindow {
             RowLayout {
                 Layout.fillWidth:true
                 Label {Layout.fillWidth:true;Layout.minimumWidth:0;text:planner.notice||"Saved locally · app and widget connected";textFormat:Text.PlainText;color:win.muted;font.pixelSize:11;elide:Text.ElideRight}
-                Action {visible:planner.canUndo;text:"Undo";onClicked:planner.undo()}
+                Action {visible:planner.canUndo;text:"Undo";shortcutHint:"Ctrl+Z";onClicked:planner.undo()}
             }
         }
     }
-    Popup {
-        enter:GlassTransition {motionEnabled:win.motionEnabled}
-        exit:GlassTransition {entering:false;motionEnabled:win.motionEnabled}
+    GlassPopup {
+        motionEnabled:win.motionEnabled
         id:slotPopup;anchors.centerIn:Overlay.overlay;width:Math.min(win.width-60,480);modal:true;focus:true
         background:Surface {}
         contentItem:ColumnLayout {
@@ -848,9 +937,8 @@ ApplicationWindow {
             Action {Layout.fillWidth:true;text:"Cancel";onClicked:slotPopup.close()}
         }
     }
-    Popup {
-        enter:GlassTransition {motionEnabled:win.motionEnabled}
-        exit:GlassTransition {entering:false;motionEnabled:win.motionEnabled}
+    GlassPopup {
+        motionEnabled:win.motionEnabled
         id:datePopup;anchors.centerIn:Overlay.overlay;width:360;modal:true;focus:true
         property string validation:""
         onOpened:{validation="";jumpDate.forceActiveFocus();jumpDate.selectAll();}
@@ -863,15 +951,55 @@ ApplicationWindow {
             RowLayout {Action {text:"Cancel";onClicked:datePopup.close()} Item {Layout.fillWidth:true} Action {text:"Open";primary:true;onClicked:datePopup.go()}}
         }
     }
+    Timer {id:importReveal;interval:300;onTriggered:if(planner.importBusy)importProgressPopup.open()}
+    Shortcut {sequence:"Escape";enabled:importProgressPopup.visible&&planner.importCancellable;onActivated:planner.cancelImport()}
+    GlassPopup {
+        id:importProgressPopup;objectName:"importProgressPopup";parent:Overlay.overlay;anchors.centerIn:parent
+        motionEnabled:win.motionEnabled;width:Math.min(win.width-48,480);padding:22;modal:true;focus:true
+        closePolicy:Popup.NoAutoClose
+        background:Surface {glassOpacity:1;radius:22}
+        contentItem:ColumnLayout {
+            spacing:14
+            BalancedTitle {Layout.fillWidth:true;sourceText:"Importing your calendar";color:win.ink;font.pixelSize:22;font.weight:Font.DemiBold}
+            Label {Layout.fillWidth:true;text:planner.importStage;textFormat:Text.PlainText;color:win.muted;wrapMode:Text.Wrap}
+            ColumnLayout {
+                objectName:"importSkeleton";visible:planner.importProgress<50;Layout.fillWidth:true;spacing:10
+                opacity:.55
+                SequentialAnimation on opacity {
+                    running:importProgressPopup.visible&&planner.importProgress<50&&win.motionEnabled;loops:Animation.Infinite
+                    NumberAnimation {to:.85;duration:600;easing.type:Easing.InOutSine}
+                    NumberAnimation {to:.4;duration:600;easing.type:Easing.InOutSine}
+                }
+                Repeater {model:3;delegate:ContinuousSurface {
+                    required property int index
+                    Layout.preferredWidth:index===1?220:300;Layout.preferredHeight:12;radius:5
+                    color:Qt.rgba(win.tint.r,win.tint.g,win.tint.b,win.light?.2:.16)
+                }}
+                Label {text:"Reading backup details…";color:win.muted;font.pixelSize:11}
+            }
+            ProgressBar {
+                Layout.fillWidth:true;from:0;to:100;value:planner.importProgress
+                Accessible.name:"Calendar import progress"
+                background:ContinuousSurface {implicitHeight:8;radius:4;color:win.field}
+                contentItem:Item {implicitHeight:8;ContinuousSurface {width:parent.width*parent.parent.visualPosition;height:parent.height;radius:4;color:win.accent}}
+            }
+            Label {Layout.fillWidth:true;text:planner.importProgress+"% · Existing entries stay unchanged until the import succeeds.";color:win.muted;font.pixelSize:11;font.features:({"tnum":1});wrapMode:Text.Wrap}
+            Action {Layout.alignment:Qt.AlignRight;text:planner.importCancellable?"Cancel import":planner.importStage.indexOf("Cancelling")===0?"Cancelling…":"Finishing…";enabled:planner.importCancellable;onClicked:planner.cancelImport()}
+        }
+    }
     FileDialog {id:saveDialog;fileMode:FileDialog.SaveFile;onAccepted:planner.exportFile(selectedFile.toString(),win.exportKind)}
-    FileDialog {id:importDialog;fileMode:FileDialog.OpenFile;nameFilters:["JSON backup (*.json)"];onAccepted:planner.importFile(selectedFile.toString())}
+    FileDialog {id:importDialog;fileMode:FileDialog.OpenFile;nameFilters:["JSON backup (*.json)"];onAccepted:planner.startImport(selectedFile.toString())}
     ParallelAnimation {
         id:viewArrival
-        NumberAnimation {target:workspace;property:"opacity";from:.35;to:1;duration:220;easing.type:Easing.OutCubic}
-        NumberAnimation {target:workspaceShift;property:"y";from:8;to:0;duration:260;easing.type:Easing.OutCubic}
+        NumberAnimation {target:workspace;property:"opacity";to:1;duration:220;easing.type:Easing.OutCubic}
+        NumberAnimation {target:workspaceShift;property:"y";to:0;duration:260;easing.type:Easing.OutCubic}
     }
     Connections {
         target:planner
+        function onImportStateChanged() {
+            if(planner.importBusy){if(!importReveal.running&&!importProgressPopup.visible)importReveal.start();}
+            else {importReveal.stop();importProgressPopup.close();if(win.quitAfterImport)win.requestQuit();}
+        }
         function onEditRequested(event){editorSurface.openEvent(event);}
         function onCreateRequested(event){editorSurface.openDraft(event);}
         function onChanged(){if(win.calendarVisible)win.calendarPresentation=planner.view;if(!editorSurface.modalOpen){editorSurface.events=planner.events;if(Qt.formatDateTime(editorSurface.selected,"yyyy-MM-dd")!==planner.selected)editorSurface.select(win.dateValue(planner.selected));}}

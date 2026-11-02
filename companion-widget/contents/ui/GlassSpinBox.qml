@@ -9,9 +9,10 @@ SpinBox {
 
     id:spin
     opacity:enabled?1:.5
-    implicitWidth:150; implicitHeight:36
-    leftPadding:36; rightPadding:36; editable:true
+    implicitWidth:150; implicitHeight:38
+    leftPadding:40; rightPadding:40; editable:true
     font.pixelSize:12
+    font.features:({"tnum":1})
     contentItem:TextInput {
         text:spin.textFromValue(spin.value,spin.locale)
         font:spin.font; color:spin.inkColor; selectionColor:spin.accentColor; selectedTextColor:"#111a2b"
@@ -25,12 +26,12 @@ SpinBox {
         }
     }
     up.indicator:Rectangle {
-        x:spin.width-width; width:32; height:spin.height; radius:9
+        x:spin.width-width; width:38; height:spin.height; radius:9
         color:spin.up.pressed?Qt.rgba(spin.accentColor.r,spin.accentColor.g,spin.accentColor.b,.25):spin.fieldColor
         Text { anchors.centerIn:parent; text:"+"; color:spin.inkColor; font.pixelSize:18 }
     }
     down.indicator:Rectangle {
-        width:32; height:spin.height; radius:9
+        width:38; height:spin.height; radius:9
         color:spin.down.pressed?Qt.rgba(spin.accentColor.r,spin.accentColor.g,spin.accentColor.b,.25):spin.fieldColor
         Text { anchors.centerIn:parent; text:"−"; color:spin.inkColor; font.pixelSize:18 }
     }

@@ -26,7 +26,7 @@ def build(build_dir,out,reuse=False):
     else:
         run('flatpak','build-init','--base='+manifest['base'],'--base-version='+branch,build_dir,APP_ID,manifest['runtime'],manifest['runtime'],branch)
     files=build_dir/'files';app=files/'share/liquid-calendar';app.mkdir(parents=True,exist_ok=True)
-    for name in ['app.py','logic.py','store.py','desktop_portals.py','VERSION']:
+    for name in ['app.py','logic.py','store.py','import_job.py','desktop_portals.py','VERSION']:
         shutil.copy2(ROOT/name,app/name)
     for name in ['qml','icons']:
         target=app/name
@@ -49,7 +49,7 @@ def build(build_dir,out,reuse=False):
     checksum=hashlib.sha256(bundle.read_bytes()).hexdigest()
     (out/'SHA256SUMS').write_text(checksum+'  '+bundle.name+'\n')
     receipt={'app_id':APP_ID,'version':version,'runtime':runtime,'base':base,'runtime_commit':subprocess.check_output(['flatpak','info','--show-commit',runtime],text=True).strip(),'base_commit':subprocess.check_output(['flatpak','info','--show-commit',base],text=True).strip(),'bundle_bytes':bundle.stat().st_size,'sha256':checksum}
-    payload=[ROOT/name for name in ['app.py','logic.py','store.py','desktop_portals.py','VERSION','LICENSE','flatpak/liquid-calendar','flatpak/'+APP_ID+'.desktop','flatpak/'+APP_ID+'.metainfo.xml','flatpak/'+APP_ID+'.json']]
+    payload=[ROOT/name for name in ['app.py','logic.py','store.py','import_job.py','desktop_portals.py','VERSION','LICENSE','flatpak/liquid-calendar','flatpak/'+APP_ID+'.desktop','flatpak/'+APP_ID+'.metainfo.xml','flatpak/'+APP_ID+'.json']]
     payload += [p for name in ['qml','icons'] for p in (ROOT/name).rglob('*') if p.is_file() and '__pycache__' not in p.parts and p.suffix not in ['.pyc','.pyo']]
     receipt['source_sha256']={str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(payload)}
     (out/'build-info.json').write_text(json.dumps(receipt,indent=2)+'\n');print(json.dumps(receipt,indent=2));print('Bundle:',bundle)

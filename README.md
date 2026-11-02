@@ -2,13 +2,13 @@
 
 A local desktop calendar and task planner for **Fedora Linux / KDE Plasma 6**. English interface, no account required.
 
-**Current beta: 0.3.9.3** · Released **2026-10-31** · **GPL-3.0-or-later**
+**Current beta: 0.3.9.4** · Released **2026-11-02** · **GPL-3.0-or-later**
 
-[Download 0.3.9.3](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.3.9.3) · [Release notes](RELEASE_NOTES.md) · [Known issues](KNOWN_ISSUES.md) · [Roadmap](ROADMAP.md)
+[Download 0.3.9.4](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.3.9.4) · [Release notes](RELEASE_NOTES.md) · [Known issues](KNOWN_ISSUES.md) · [Roadmap](ROADMAP.md)
 
 ![Today view with synthetic example data](docs/screenshots/today.png)
 
-**0.3.9.3** repairs interrupted automatic backups, preserves the start time when nested events are dragged to another day, and closes timed-out Flatpak autostart requests. It includes the reworked linked-event display and separate Flatpak package introduced in the previous beta. See [what changed](RELEASE_NOTES.md).
+**0.3.9.4** adds copied task file attachments, command search, balanced titles, continuous glass contours and background JSON imports with progress and cancellation. Refreshes preserve your position and expanded checklists; dialog animations can reverse smoothly. See [what changed](RELEASE_NOTES.md), [task files](docs/TASK_ATTACHMENTS.md) and [interaction improvements](docs/UX_POLISH.md).
 
 ## Features
 
@@ -43,7 +43,7 @@ A separate Flatpak bundle is included in the release; build sources are also pro
 
 Requirements: Fedora/KDE Plasma 6, **Python 3.10–3.14**, venv/pip support, network access to PyPI and the system Qt platform libraries. `notify-send` is needed for notifications. Other systems are not validated.
 
-Download a source archive from the [0.3.9.3 release](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.3.9.3), extract it and open a terminal in its folder:
+Download a source archive from the [0.3.9.4 release](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.3.9.4), extract it and open a terminal in its folder:
 
 ```bash
 python3 installieren.py

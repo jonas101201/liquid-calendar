@@ -24,7 +24,16 @@ function valid(e) {
         Number.isInteger(e.category) && e.category>=0 && e.category<4 &&
         (e.reminder===undefined||(Number.isInteger(e.reminder)&&[-1,0,5,10,30,60,1440].indexOf(e.reminder)>=0)) &&
         (e.groupId===undefined||(typeof e.groupId==='string'&&textLength(e.groupId)>0&&textLength(e.groupId)<=150)) &&
-        (e.exceptions===undefined||validExceptions(e.exceptions)) && validTaskDetails(e) && validWeekdays(e);
+        (e.exceptions===undefined||validExceptions(e.exceptions)) && validTaskDetails(e) && validWeekdays(e) && validAttachments(e);
+}
+function validAttachments(e) {
+    if(e.attachments===undefined)return true;
+    if(!Array.isArray(e.attachments)||e.attachments.length>10)return false;
+    var ids=Object.create(null);
+    return e.attachments.every(function(item){
+        if(!item||typeof item!=="object"||Object.keys(item).sort().join(",")!=="id,name,size"||typeof item.id!=="string"||!/^[0-9a-f]{64}$/.test(item.id)||ids[item.id]||typeof item.name!=="string"||!item.name.trim()||textLength(item.name)>255||item.name==="."||item.name===".."||/[\/\\\x00-\x1f\x7f]/.test(item.name)||!Number.isInteger(item.size)||item.size<0||item.size>10*1024*1024)return false;
+        ids[item.id]=true;return true;
+    });
 }
 function isoWeekday(date) {return (date.getDay()+6)%7;}
 function weeklyDays(e) {return e.weekdays===undefined?[isoWeekday(parse(e.date))]:e.weekdays;}
@@ -43,7 +52,7 @@ function validTaskDetails(e) {
         ids[item.id]=true;return true;
     });
 }
-function taskWords(e) {return (e.project||'')+' '+(e.checklist||[]).map(function(item){return item.title;}).join(' ');}
+function taskWords(e) {return (e.project||'')+' '+(e.checklist||[]).map(function(item){return item.title;}).join(' ')+' '+(e.attachments||[]).map(function(item){return item.name;}).join(' ');}
 function validExceptions(value) {
     return !!value&&typeof value==='object'&&!Array.isArray(value)&&Object.keys(value).every(function(date){
         var item=value[date];return !!parse(date)&&!!item&&typeof item==='object'&&!Array.isArray(item)&&item.cancelled===true;
@@ -77,12 +86,17 @@ function instances(events,start,days,query,category,kind) {
     out.sort(function(a,b) { return a.sort.localeCompare(b.sort) || a.event.title.localeCompare(b.event.title); });
     return out;
 }
-function backup(events) { return JSON.stringify({format:'liquid-glass-calendar',version:1,events:events},null,2); }
+function backup(events) {
+    if(events.some(function(e){return e.attachments&&e.attachments.length;}))throw Error("Use the desktop app to export a complete JSON backup with attached files.");
+    return JSON.stringify({format:'liquid-glass-calendar',version:1,events:events},null,2);
+}
 function restore(text) {
     var data=JSON.parse(text);
+    if(data.format==='liquid-glass-calendar'&&data.version===2)throw Error("Use the desktop app to import a backup with attached files.");
     if(data.format!=='liquid-glass-calendar' || data.version!==1 || !Array.isArray(data.events) || data.events.length>10000) throw Error("Not a valid calendar backup (version 1).");
     var ids=Object.create(null);
     data.events.forEach(function(e){ if(!valid(e) || ids[e.id] || ['occurrenceOf','occurrenceDate','originHash'].some(function(k){return Object.prototype.hasOwnProperty.call(e,k);})) throw Error("Invalid or duplicate events in the backup."); ids[e.id]=true; });
+    if(data.events.some(function(e){return e.attachments&&e.attachments.length;}))throw Error("File references alone are not a complete backup. Use desktop JSON export and import.");
     return data.events;
 }
 function escapeIcs(s) { return s.replace(/\\/g,'\\\\').replace(/\r/g,'').replace(/\n/g,'\\n').replace(/;/g,'\\;').replace(/,/g,'\\,'); }

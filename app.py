@@ -2,6 +2,7 @@
 """Liquid Calendar: a local desktop planner for the existing Plasma calendar."""
 from __future__ import annotations
 import argparse
+import base64
 import copy
 import datetime as dt
 import json
@@ -9,9 +10,13 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+import hashlib
+import stat
+import tempfile
 
-from PySide6.QtCore import QObject,Signal,Slot,Property,QTimer,QUrl,QLocale,QSaveFile,QIODevice,QCoreApplication,QEvent
-from PySide6.QtGui import QIcon
+from PySide6.QtCore import QObject,Signal,Slot,Property,QTimer,QUrl,QLocale,QSaveFile,QIODevice,QCoreApplication,QEvent,QStandardPaths
+from import_job import ImportJob
+from PySide6.QtGui import QIcon,QDesktopServices
 from PySide6.QtWidgets import QApplication,QSystemTrayIcon,QMenu,QMessageBox
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtNetwork import QLocalServer,QLocalSocket
@@ -35,6 +40,9 @@ from logic import (
     slot_available,
     template_from_event,
     validate,
+    validate_attachments,
+    MAX_ATTACHMENT_BYTES,
+    MAX_ATTACHMENT_TOTAL,
 )
 from store import Store,ConflictError
 from desktop_portals import DesktopPortals
@@ -50,6 +58,9 @@ class Bridge(QObject):
     changed=Signal(); errorChanged=Signal(); editRequested=Signal('QVariantMap'); noticeChanged=Signal()
     createRequested=Signal('QVariantMap')
     appearanceChanged=Signal()
+    aboutToRefresh=Signal()
+    importStateChanged=Signal()
+    changeCommitted=Signal(str)
     def __init__(self,store,smoke=False):
         super().__init__()
         self.store=store
@@ -65,6 +76,9 @@ class Bridge(QObject):
         self._error=''
         self._notice=''
         self._undo=None
+        self._import_job=None;self._import_progress=0;self._import_stage="";self._import_cancellable=False
+        self._pending_attachments={}
+        self._attachment_cache=None
         self._settings=store.settings()
         self.smoke=smoke
         self._need_widget=FLATPAK and store.path==LEGACY_DB
@@ -104,7 +118,7 @@ class Bridge(QObject):
     def saveTemplate(self,name,snapshot):
         try:
             template=template_from_event(name,json.loads(snapshot))
-            self._templates=self.store.write_template(template);self.changed.emit();self.note('Event template saved');return True
+            self._templates=self.store.write_template(template);self.refresh();self.note('Event template saved');return True
         except Exception as e:self.fail(e);return False
     @Slot(str)
     def useTemplate(self,ident):
@@ -119,15 +133,17 @@ class Bridge(QObject):
             base=json.loads(snapshot)
             if base['id']!=ident:raise ValueError('Invalid template identity.')
             new=copy.deepcopy(base);new['name']=name.strip()
-            self._templates=self.store.write_template(new,base);self.changed.emit();return True
+            self._templates=self.store.write_template(new,base);self.refresh();return True
         except Exception as e:self.fail(e);return False
     @Slot(str,str,result=bool)
     def deleteTemplate(self,ident,snapshot):
         try:
             base=json.loads(snapshot)
             if base['id']!=ident:raise ValueError('Invalid template identity.')
-            self._templates=self.store.write_template(None,base);self.changed.emit();self.note('Template deleted; events kept');return True
+            self._templates=self.store.write_template(None,base);self.refresh();self.note('Template deleted; events kept');return True
         except Exception as e:self.fail(e);return False
+    def refresh(self):
+        self.aboutToRefresh.emit();self.changed.emit()
     def fail(self,error):self._error=str(error);self.errorChanged.emit();return ''
     def note(self,text):self._notice=text;self.noticeChanged.emit()
     def check_compatibility(self):
@@ -177,7 +193,7 @@ class Bridge(QObject):
     @Slot(str)
     def setTaskOrder(self,value):
         if value in ['default','title','duration','planned','priority','project']:
-            self._task_order=value;self.changed.emit()
+            self._task_order=value;self.refresh()
     @Property(str,notify=changed)
     def projectFilter(self):return self._project_filter
     @Property(int,notify=changed)
@@ -185,7 +201,7 @@ class Bridge(QObject):
     @Slot(str,int)
     def setTaskFilters(self,project,priority):
         if len(project)<=80 and -1<=priority<=3:
-            self._project_filter=project;self._priority_filter=priority;self.changed.emit()
+            self._project_filter=project;self._priority_filter=priority;self.refresh()
     @Property('QVariantList',notify=changed)
     def projects(self):
         counts={}
@@ -208,14 +224,14 @@ class Bridge(QObject):
             previous_filter=self._project_filter
             if self.commit(desired,label='Project updated',project_name=name) is not None:
                 if name!=new_name:self._undo_project_filter=(previous_filter,new_name)
-                self._project_filter=new_name;self.changed.emit()
+                self._project_filter=new_name;self.refresh()
         except Exception as e:self.fail(e)
     @Property(str,notify=changed)
     def planningFilter(self):return self._planning_filter
     @Slot(str)
     def setPlanningFilter(self,value):
         if value in ['all','undated','planned']:
-            self._planning_filter=value;self.changed.emit()
+            self._planning_filter=value;self.refresh()
     @Slot(str,result='QVariantMap')
     def resolveDate(self,text):
         options=date_hints(text,dt.date.today())
@@ -223,7 +239,7 @@ class Bridge(QObject):
         return {'date':'','error':"Several dates match. Be more specific." if options else "Enter a valid date, e.g. 2026-11-15, 15.11.2026 or tomorrow."}
     @Slot(int)
     def setAgendaDays(self,days):
-        if days in [7,14,30]:self._agenda_days=days;self.changed.emit()
+        if days in [7,14,30]:self._agenda_days=days;self.refresh()
     @Property('QVariantList',notify=changed)
     def agendaItems(self):
         return [v for v in instances(self._events,self._selected,self._agenda_days,'all',self._category) if not(v['task'] and v['done'])]
@@ -237,7 +253,7 @@ class Bridge(QObject):
             settings=dict(self._settings,animations=enabled)
             self.store.set_settings(settings)
             self._settings=settings
-            self.changed.emit()
+            self.refresh()
         except Exception as e:self.fail(e)
     @Property(str,notify=appearanceChanged)
     def accentColor(self):return self._settings.get('accent','#7ceafa')
@@ -271,7 +287,7 @@ class Bridge(QObject):
                 path.parent.mkdir(parents=True,exist_ok=True)
                 path.write_text('[Desktop Entry]\nType=Application\nName=Liquid Calendar\nExec="'+str(BASE/'launch.sh')+'" --background\nIcon='+str(BASE/'icons/calendar.svg')+'\nTerminal=false\n',encoding='utf-8')
             else:path.unlink(missing_ok=True)
-            self.changed.emit()
+            self.refresh()
         except Exception as e:self.fail(e)
     @Property(str,notify=changed)
     def databasePath(self):return str(self.store.path)
@@ -308,16 +324,21 @@ class Bridge(QObject):
     def reload(self):
         try:
             current=self.store.read();compatible=self.check_compatibility();templates=self.store.templates()
-            if current!=self._events or compatible!=self._compatible or templates!=self._templates:self._events=current;self._compatible=compatible;self._templates=templates;self.changed.emit()
+            if current!=self._events or compatible!=self._compatible or templates!=self._templates:self._events=current;self._compatible=compatible;self._templates=templates;self.refresh()
         except Exception as e:self.fail(e)
-    def commit(self,desired,base=None,label="Saved",allow_occurrences=False,project_name=None,planning_slot=None,unchanged_sources=None):
+    def commit(self,desired,base=None,label="Saved",allow_occurrences=False,project_name=None,planning_slot=None,unchanged_sources=None,attachment_files=None):
+        if self.importBusy:self.fail("Finish or cancel the import before editing entries.");return None
         if not self._compatible:
             self.fail("Update the desktop calendar using “Connect” first. The app is read-only until connected.");return None
         try:
-            before,after=self.store.merge(desired,self._events if base is None else base,allow_occurrences=allow_occurrences,project_name=project_name,planning_slot=planning_slot,unchanged_sources=unchanged_sources)
+            files=dict(self._pending_attachments);files.update(attachment_files or {})
+            before,after=self.store.merge(desired,self._events if base is None else base,allow_occurrences=allow_occurrences,project_name=project_name,planning_slot=planning_slot,unchanged_sources=unchanged_sources,attachment_files=files)
+            for ident in self.store.attachment_refs(after):self._pending_attachments.pop(ident,None)
             self._undo=(before,after) if before!=after else self._undo
             if before!=after:self._undo_project_filter=None
-            self._events=after;self._error='';self.errorChanged.emit();self.changed.emit();self.note(label);return after
+            self._events=after;self._error='';self.errorChanged.emit();self.refresh();self.note(label)
+            if before!=after:self.changeCommitted.emit(label)
+            return after
         except Exception as e:self.fail(e);return None
     @Slot(str,str,result=str)
     def storeJson(self,desired,base):
@@ -332,23 +353,23 @@ class Bridge(QObject):
     def setView(self,view):
         if view in ['today','week','month','agenda','tasks','search','settings']:
             if view!=self._view:self._query='';self._kind='tasks' if view=='tasks' else 'all';self._category=-1;self._project_filter='*';self._priority_filter=-1
-            self._view=view;self.changed.emit()
+            self._view=view;self.refresh()
     @Slot(str)
     def selectDate(self,date):
-        try:self._selected=parse(date);self.changed.emit()
+        try:self._selected=parse(date);self.refresh()
         except Exception as e:self.fail(e)
     @Slot(int)
     def navigate(self,n):
         ordinal=self._selected.toordinal()+n*(7 if self._view=='week' else 1)
-        self._selected=dt.date.fromordinal(max(dt.date(1000,1,1).toordinal(),min(dt.date.max.toordinal(),ordinal)));self.changed.emit()
+        self._selected=dt.date.fromordinal(max(dt.date(1000,1,1).toordinal(),min(dt.date.max.toordinal(),ordinal)));self.refresh()
     @Slot()
-    def today(self):self._selected=dt.date.today();self.changed.emit()
+    def today(self):self._selected=dt.date.today();self.refresh()
     @Slot(str)
     def setQuery(self,text):
-        if text[:200]!=self._query:self._query=text[:200];self.changed.emit()
+        if text[:200]!=self._query:self._query=text[:200];self.refresh()
     @Slot(str,int)
     def setFilter(self,kind,category):
-        if kind in ['all','events','tasks','open','done'] and -1<=category<=3:self._kind=kind;self._category=category;self.changed.emit()
+        if kind in ['all','events','tasks','open','done'] and -1<=category<=3:self._kind=kind;self._category=category;self.refresh()
     def merge_source(self,snapshot,base):
         validate([snapshot])
         if snapshot.get('occurrenceOf'):
@@ -555,12 +576,13 @@ class Bridge(QObject):
         except Exception as e:self.fail(e);return False
     @Slot()
     def undo(self):
+        if self.importBusy:self.fail('Finish or cancel the import before undoing changes.');return
         if not self._compatible:self.fail("Connect the desktop calendar first.");return
         if not self._undo:return
         try:
             _,after=self.store.patch(*self._undo);self._events=after;self._undo=None
             if self._undo_project_filter and self._project_filter==self._undo_project_filter[1]:self._project_filter=self._undo_project_filter[0]
-            self._undo_project_filter=None;self.changed.emit();self.note("Last change undone")
+            self._undo_project_filter=None;self.refresh();self.note("Last change undone")
         except Exception as e:self.fail(e)
     @Slot(str)
     def setTheme(self,value):
@@ -569,18 +591,108 @@ class Bridge(QObject):
                 settings=dict(self._settings,theme=value)
                 self.store.set_settings(settings)
                 self._settings=settings
-                self.changed.emit()
-            except Exception as e:self.fail(e);self.changed.emit()
+                self.refresh()
+            except Exception as e:self.fail(e);self.refresh()
     @Slot(bool)
     def setReminders(self,value):
         try:
             settings=dict(self._settings,reminders=value)
             self.store.set_settings(settings)
             self._settings=settings
-            self.changed.emit()
+            self.refresh()
         except Exception as e:self.fail(e)
     @Slot()
     def clearError(self):self._error='';self.errorChanged.emit()
+    @Slot('QVariantList',str,result='QVariantMap')
+    def stageAttachments(self,urls,existing):
+        try:
+            items=validate_attachments(json.loads(existing));pending={}
+            if len(urls)>10:raise ValueError('Select up to 10 files.')
+            for url in urls:
+                filename=QUrl(str(url)).toLocalFile()
+                if not filename:raise ValueError('Choose a local file.')
+                path=Path(filename)
+                with os.fdopen(os.open(path,os.O_RDONLY|os.O_NONBLOCK),'rb') as source:
+                    details=os.fstat(source.fileno())
+                    if not stat.S_ISREG(details.st_mode):raise ValueError('Only regular files can be attached.')
+                    if details.st_size>MAX_ATTACHMENT_BYTES:raise ValueError('Each attachment may be up to 10 MiB.')
+                    data=source.read(MAX_ATTACHMENT_BYTES+1)
+                if len(data)>MAX_ATTACHMENT_BYTES:raise ValueError('Each attachment may be up to 10 MiB.')
+                ident=hashlib.sha256(data).hexdigest()
+                if any(item['id']==ident for item in items):continue
+                items=items+[dict(id=ident,name=path.name,size=len(data))]
+                validate_attachments(items);pending[ident]=data
+            if sum(map(len,self._pending_attachments.values()))+sum(len(data) for key,data in pending.items() if key not in self._pending_attachments)>MAX_ATTACHMENT_TOTAL:raise ValueError('Too many staged files. Save or close the task first.')
+            self._pending_attachments.update(pending)
+            return {'attachments':items,'error':''}
+        except Exception as e:return {'attachments':[],'error':str(e)}
+    @Slot(str)
+    def discardAttachmentDrafts(self,snapshot):
+        try:
+            for item in validate_attachments(json.loads(snapshot)):self._pending_attachments.pop(item['id'],None)
+        except (ValueError,TypeError):pass
+    def attachment_contents(self,snapshot):
+        item=validate_attachments([json.loads(snapshot)])[0]
+        data=self._pending_attachments.get(item['id'])
+        if data is None:data=self.store.attachment_data(item['id'])
+        if len(data)!=item['size'] or hashlib.sha256(data).hexdigest()!=item['id']:raise ValueError('This attached file failed its integrity check.')
+        return item,data
+    @Slot(str,result=bool)
+    def openAttachment(self,snapshot):
+        try:
+            item,data=self.attachment_contents(snapshot)
+            if self._attachment_cache is None:self._attachment_cache=tempfile.TemporaryDirectory(prefix='liquid-calendar-files-')
+            # Never use a supplied path or preserve executable permissions.
+            folder=Path(self._attachment_cache.name)/item['id'];folder.mkdir(mode=0o700,exist_ok=True)
+            path=folder/item['name']
+            self.write_attachment(path,data);path.chmod(0o600)
+            if not QDesktopServices.openUrl(QUrl.fromLocalFile(str(path))):raise OSError('No application could be asked to open this file. Try Save copy instead.')
+            return True
+        except Exception as e:self.fail(e);return False
+    @staticmethod
+    def write_attachment(path,data):
+        output=QSaveFile(str(path))
+        if not output.open(QIODevice.WriteOnly):raise OSError(output.errorString())
+        try:
+            if output.write(data)!=len(data):raise OSError(output.errorString())
+            if not output.commit():raise OSError(output.errorString())
+        finally:
+            if output.isOpen():output.cancelWriting();output.commit()
+    @Slot(str,str,result=bool)
+    def saveAttachment(self,snapshot,url):
+        try:
+            item,data=self.attachment_contents(snapshot)
+            target=QUrl(url).toLocalFile()
+            if not target:raise ValueError('Choose a local destination.')
+            self.write_attachment(Path(target),data);self.note('File copy saved: '+item['name']);return True
+        except Exception as e:self.fail(e);return False
+    @Slot(str,result=str)
+    def attachmentSaveUrl(self,snapshot):
+        try:
+            item=validate_attachments([json.loads(snapshot)])[0]
+            folder=QStandardPaths.writableLocation(QStandardPaths.DownloadLocation) or str(Path.home())
+            return QUrl.fromLocalFile(str(Path(folder)/item['name'])).toString()
+        except Exception as e:self.fail(e);return ''
+    def backup_document(self,events):
+        refs=self.store.attachment_refs(events)
+        document={'format':'liquid-glass-calendar','version':2 if refs else 1,'events':events}
+        if refs:document['files']={ident:base64.b64encode(self.store.attachment_data(ident)).decode('ascii') for ident in refs}
+        return document
+    @staticmethod
+    def backup_attachment_files(document,events,check_cancel=None,progress=None):
+        refs=Store.attachment_refs(events);files=document.get('files',{})
+        if document['version']==1 and refs:raise ValueError('This backup contains file references only. Export a complete backup from the desktop app.')
+        if not isinstance(files,dict) or set(files)!=set(refs):raise ValueError('The backup is missing attached files or contains unexpected file data.')
+        decoded={}
+        for index,(ident,size) in enumerate(refs.items()):
+            if check_cancel:check_cancel()
+            text=files[ident]
+            if not isinstance(text,str) or len(text)>((MAX_ATTACHMENT_BYTES+2)//3)*4:raise ValueError('Invalid attached file data.')
+            data=base64.b64decode(text,validate=True)
+            if len(data)!=size or hashlib.sha256(data).hexdigest()!=ident:raise ValueError('An attached file failed its integrity check.')
+            decoded[ident]=data
+            if progress:progress((index+1)/max(1,len(refs)))
+        return decoded
     @Slot(str,str)
     def exportFile(self,url,kind):
         try:
@@ -588,7 +700,7 @@ class Bridge(QObject):
             if not target:raise ValueError("Choose a local file.")
             path=Path(target)
             events=self.store.read()
-            text=export_ics(events) if kind=='ics' else json.dumps({'format':'liquid-glass-calendar','version':1,'events':events},ensure_ascii=False,indent=2)
+            text=export_ics(events) if kind=='ics' else json.dumps(self.backup_document(events),ensure_ascii=False,indent=2)
             # QSaveFile keeps an existing export intact until the complete write commits.
             output=QSaveFile(str(path))
             if not output.open(QIODevice.WriteOnly):raise OSError(output.errorString())
@@ -598,25 +710,74 @@ class Bridge(QObject):
                 if not output.commit():raise OSError(output.errorString())
             finally:
                 if output.isOpen():output.cancelWriting();output.commit()
-            self.note("Export saved: "+path.name)
+            self.note("Export saved: "+path.name+(' · ICS does not include attached files; use JSON for a full backup' if kind=='ics' and any(e.get('attachments') for e in events) else ''))
         except Exception as e:self.fail(e)
+    @Property(bool,notify=importStateChanged)
+    def importBusy(self):return self._import_job is not None
+    @Property(int,notify=importStateChanged)
+    def importProgress(self):return self._import_progress
+    @Property(str,notify=importStateChanged)
+    def importStage(self):return self._import_stage
+    @Property(bool,notify=importStateChanged)
+    def importCancellable(self):return self._import_cancellable
+    @Slot(str,result=bool)
+    def startImport(self,url):
+        if self.importBusy:self.fail('An import is already running.');return False
+        if not self._compatible:self.fail('Connect the desktop calendar first.');return False
+        path=QUrl(url).toLocalFile()
+        if not path:self.fail('Choose a local JSON backup.');return False
+        self.clearError();self._import_progress=0;self._import_stage='Reading backup';self._import_cancellable=True
+        job=ImportJob(path,self.store.path,self.store.backup_dir,self.backup_attachment_files,self)
+        self._import_job=job;job.progress.connect(self.import_progress);job.finished.connect(self.import_finished)
+        self.importStateChanged.emit();job.start();return True
+    @Slot(int,str,bool)
+    def import_progress(self,progress,stage,cancellable):
+        if self._import_job is None:return
+        self._import_progress=progress;self._import_stage=stage;self._import_cancellable=cancellable and not self._import_job.cancelled.is_set()
+        self.importStateChanged.emit()
+    @Slot()
+    def cancelImport(self):
+        if self._import_job is None:return
+        if self._import_job.cancel():self._import_stage='Cancelling import'
+        else:self._import_stage='Finishing import'
+        self._import_cancellable=False;self.importStateChanged.emit()
+    @Slot(object)
+    def import_finished(self,result):
+        job=self._import_job
+        if job is None:return
+        job.thread.join();self._import_job=None;self._import_cancellable=False
+        if result.get('cancelled'):self.note('Import cancelled · no entries changed')
+        elif result.get('error'):self.fail(result['error'])
+        else:
+            self.clearError()
+            before,after=result['before'],result['after']
+            if before!=after:self._undo=(before,after);self._undo_project_filter=None
+            self.reload();self._import_progress=100
+            label=f"{result['count']} new entries imported; existing IDs preserved"
+            self.note(label)
+            if before!=after:self.changeCommitted.emit(label)
+        self.importStateChanged.emit();job.deleteLater()
+    def shutdown_imports(self):
+        job=self._import_job
+        if job is not None:job.cancel();job.thread.join()
     @Slot(str)
     def importFile(self,url):
         try:
             path=Path(QUrl(url).toLocalFile())
-            if path.stat().st_size>20_000_000:raise ValueError("The backup is too large.")
+            if path.stat().st_size>180_000_000:raise ValueError("The backup is too large.")
             data=json.loads(path.read_text(encoding='utf-8'))
-            if data.get('format')!='liquid-glass-calendar' or data.get('version')!=1:raise ValueError("Not a compatible JSON backup.")
+            if data.get('format')!='liquid-glass-calendar' or type(data.get('version')) is not int or data.get('version') not in [1,2]:raise ValueError("Not a compatible JSON backup.")
             imported=validate(data['events'])
+            files=self.backup_attachment_files(data,imported)
             if any(any(k in e for k in ['occurrenceOf','occurrenceDate','originHash']) for e in imported):raise ValueError("A backup must not contain pending series edit commands.")
             ids={e['id'] for e in self._events};new=[e for e in imported if e['id'] not in ids]
-            self.commit(self._events+new,label=f'{len(new)} new entries imported; existing IDs preserved')
+            self.commit(self._events+new,label=f'{len(new)} new entries imported; existing IDs preserved',attachment_files=files)
         except Exception as e:self.fail(e)
     def background_finished(self,ok,autostart,error):
         if not ok:self.fail(error);return
         try:
             settings=dict(self._settings,flatpakAutostart=autostart)
-            self.store.set_settings(settings);self._settings=settings;self.changed.emit()
+            self.store.set_settings(settings);self._settings=settings;self.refresh()
             self.note("Autostart enabled" if autostart else "Autostart disabled")
         except Exception as e:self.fail(e)
     def notification_finished(self,key,ok,error):
@@ -686,6 +847,7 @@ def main():
             app.quit()
         QTimer.singleShot(700,finish)
     exit_code=app.exec()
+    bridge.shutdown_imports()
     bridge.reload_timer.stop();bridge.reminder_timer.stop()
     engine.deleteLater();QCoreApplication.sendPostedEvents(None,QEvent.DeferredDelete)
     return exit_code

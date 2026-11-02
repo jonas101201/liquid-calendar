@@ -21,7 +21,7 @@
       "build-commands": [
         "install -Dm755 flatpak/liquid-calendar /app/bin/liquid-calendar",
         "mkdir -p /app/share/liquid-calendar",
-        "cp app.py logic.py store.py desktop_portals.py VERSION /app/share/liquid-calendar/",
+        "cp app.py logic.py store.py import_job.py desktop_portals.py VERSION /app/share/liquid-calendar/",
         "cp -r qml icons /app/share/liquid-calendar/",
         "install -Dm644 flatpak/io.github.jonas101201.LiquidCalendar.desktop /app/share/applications/io.github.jonas101201.LiquidCalendar.desktop",
         "install -Dm644 flatpak/io.github.jonas101201.LiquidCalendar.metainfo.xml /app/share/metainfo/io.github.jonas101201.LiquidCalendar.metainfo.xml",

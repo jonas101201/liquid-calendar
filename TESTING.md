@@ -55,6 +55,18 @@ The [current source tests](https://github.com/jonas101201/liquid-calendar/action
 
 The 840-occurrence agenda benchmark improved from about 1.55 seconds before the fix to about 0.02 seconds on the development machine. Timings depend on hardware; randomized correctness and operation-count regression checks complement the benchmark.
 
+## 0.3.9.4 calendar polish checks
+
+`python tests/check_polish_details.py` exercises long title geometry, stable visible-record offsets after external insert/update, preserved selection and expanded checklists, popup/dialog reversal, immediate reduced motion, a genuinely slow import's delayed progress UI and cancellation, and absence of loader flashes on fast imports. It uses both themes and synthetic data. `tests/test_async_import.py` checks success/Undo, pre-commit rollback of events and attachment blobs, cancellation while reading or waiting for a backup lock, the commit cancellation boundary, shared-client changes, invalid files/FIFOs and duplicate-job/edit guards. The 0.3.9.4 suite contains **210 Python tests**. See [the implementation record](docs/UX_POLISH.md).
+
+## 0.3.9.4 attachment checks
+
+`tests/test_attachments.py` covers copied files, deduplication, limits, path validation, source deletion, restart, failed-save retry, Cancel without database writes, conflict/transaction rollback, remove/delete/Undo, database backups, portable JSON import/export integrity, legacy database migration, filename search, series copies and external-open dispatch. `python tests/check_attachment_ui.py` exercises both themes and the real task editor's Qt fallback file-selection/acceptance, add/remove/Cancel/save/reopen/Undo flow. `node tests/test-attachments.cjs` checks app/widget metadata compatibility, filename search, completion preservation and incomplete-backup rejection. Tests use synthetic files only; the interactive native file chooser and external viewer acceptance are not automated.
+
+## 0.3.9.4 interaction checks
+
+`python tests/check_interaction_polish.py` uses a temporary database and real Qt key events. It covers multi-word command search, keyboard wrapping, empty results, Escape/focus restoration, modal draft protection, Dark/Light themes, successful-write-only Undo feedback, failed/no-op saves, toast expiry without losing Undo, text-field Undo, a preselected date across initialization, failed-save retry, duplicate Save rejection, and retargeted/reduced-motion section transitions. The workflow runs it alongside the existing calendar/editor and widget checks.
+
 ## Run the checks
 
 From the repository root with requirements installed in a virtual environment:

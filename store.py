@@ -5,10 +5,12 @@ import json
 import os
 import tempfile
 import fcntl
+import hashlib
+import time
 from pathlib import Path
 import sqlite3
 from contextlib import contextmanager, closing
-from logic import validate, fingerprint, validate_templates, slot_available, clean_groups
+from logic import validate, fingerprint, validate_templates, slot_available, clean_groups, MAX_ATTACHMENT_BYTES, MAX_ATTACHMENT_TOTAL
 
 class ConflictError(ValueError):pass
 
@@ -20,6 +22,7 @@ class Store:
         with self.connect() as c:
             c.execute('CREATE TABLE IF NOT EXISTS state (key TEXT PRIMARY KEY, value TEXT NOT NULL)')
             c.execute('CREATE TABLE IF NOT EXISTS planner_reminders (key TEXT PRIMARY KEY, sent TEXT NOT NULL)')
+            c.execute('CREATE TABLE IF NOT EXISTS planner_attachments (id TEXT PRIMARY KEY, data BLOB NOT NULL)')
         self.read()
     @contextmanager
     def connect(self):
@@ -41,22 +44,31 @@ class Store:
         try:
             with closing(sqlite3.connect(path.resolve().as_uri()+'?mode=ro',uri=True,timeout=8)) as connection:
                 if connection.execute('PRAGMA quick_check').fetchall()!=[('ok',)]:return False
-                cls.read_conn(connection);cls.templates_conn(connection)
+                events=cls.read_conn(connection);cls.templates_conn(connection)
+                cls.check_attachment_refs(connection,events,verify=True)
             return True
         except (OSError,ValueError,sqlite3.Error):return False
-    def backup(self):
+    def backup(self,check_cancel=None):
+        if check_cancel:check_cancel()
         today=dt.date.today()
         if self._backup_date==today:return
         self.backup_dir.mkdir(parents=True,exist_ok=True)
         target=self.backup_dir/('calendar-'+today.strftime('%Y%m%d')+'.sqlite')
         # Serialize first-of-day creation across the native app and shared clients.
         with (self.backup_dir/'.backup.lock').open('a') as lock:
-            fcntl.flock(lock,fcntl.LOCK_EX)
+            if check_cancel:
+                while True:
+                    check_cancel()
+                    try:fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB);break
+                    except BlockingIOError:time.sleep(.04)
+            else:fcntl.flock(lock,fcntl.LOCK_EX)
             if not self.valid_backup(target):
                 descriptor,name=tempfile.mkstemp(prefix='.'+target.stem+'-',suffix='.sqlite',dir=self.backup_dir)
                 os.close(descriptor);temporary=Path(name)
                 try:
-                    with self.connect() as source,closing(sqlite3.connect(temporary)) as destination:source.backup(destination)
+                    with self.connect() as source,closing(sqlite3.connect(temporary)) as destination:
+                        if check_cancel:source.backup(destination,pages=128,progress=lambda *args:check_cancel())
+                        else:source.backup(destination)
                     if not self.valid_backup(temporary):raise OSError('The automatic backup did not pass validation.')
                     with temporary.open('rb') as saved:os.fsync(saved.fileno())
                     os.replace(temporary,target)
@@ -66,11 +78,44 @@ class Store:
                 finally:temporary.unlink(missing_ok=True)
             self._backup_date=today
             for old in sorted(self.backup_dir.glob('calendar-*.sqlite'))[:-14]:old.unlink()
-    def merge(self,desired,base,allow_occurrences=False,project_name=None,planning_slot=None,unchanged_sources=None):
-        validate(desired);validate(base);self.backup()
+    @staticmethod
+    def attachment_refs(events):
+        refs={}
+        for event in events:
+            for item in event.get('attachments',[]):
+                if item['id'] in refs and refs[item['id']]!=item['size']:raise ValueError('Inconsistent attachment size.')
+                refs[item['id']]=item['size']
+        if sum(refs.values())>MAX_ATTACHMENT_TOTAL:raise ValueError('The calendar can contain up to 100 MiB of attached files.')
+        return refs
+    @classmethod
+    def check_attachment_refs(cls,c,events,verify=False):
+        for ident,size in cls.attachment_refs(events).items():
+            row=c.execute('SELECT '+('data' if verify else 'length(data)')+' FROM planner_attachments WHERE id=?',(ident,)).fetchone()
+            if row is None:raise ValueError('An attached file is missing. Restore a complete desktop JSON backup.')
+            if verify:
+                if len(row[0])!=size or hashlib.sha256(row[0]).hexdigest()!=ident:raise ValueError('An attached file failed its integrity check.')
+            elif row[0]!=size:raise ValueError('An attached file has an unexpected size.')
+    def attachment_data(self,ident):
+        with self.connect() as c:row=c.execute('SELECT data FROM planner_attachments WHERE id=?',(ident,)).fetchone()
+        if row is None:raise ValueError('This attached file is missing.')
+        data=row[0]
+        if len(data)>MAX_ATTACHMENT_BYTES or hashlib.sha256(data).hexdigest()!=ident:raise ValueError('This attached file failed its integrity check.')
+        return data
+    def merge(self,desired,base,allow_occurrences=False,project_name=None,planning_slot=None,unchanged_sources=None,attachment_files=None,check_cancel=None,before_commit=None):
+        if check_cancel:check_cancel()
+        validate(desired);validate(base);self.backup(check_cancel)
+        if check_cancel:check_cancel()
         desired_map={e['id']:copy.deepcopy(e) for e in desired};base_map={e['id']:e for e in base}
         with self.connect() as c:
-            c.execute('BEGIN IMMEDIATE')
+            if check_cancel:
+                c.execute('PRAGMA busy_timeout=100')
+                deadline=time.monotonic()+8
+                while True:
+                    check_cancel()
+                    try:c.execute('BEGIN IMMEDIATE');break
+                    except sqlite3.OperationalError as error:
+                        if 'locked' not in str(error).lower() or time.monotonic()>deadline:raise
+            else:c.execute('BEGIN IMMEDIATE')
             before=self.read_conn(c);remote={e['id']:e for e in before}
             if unchanged_sources and any(remote.get(ident)!=source for ident,source in unchanged_sources.items()):
                 raise ConflictError("A merge source has changed. Reopen the events before merging.")
@@ -80,6 +125,7 @@ class Store:
                 members=lambda records:{i for i,e in records.items() if e['task'] and e.get('project','')==project_name}
                 if members(base_map)!=members(remote):raise ConflictError("Project membership has changed. Refresh and reopen the project; no tasks were renamed.")
             for ident in base_map.keys()|desired_map.keys():
+                if check_cancel:check_cancel()
                 old=base_map.get(ident);new=desired_map.get(ident)
                 if old==new:continue
                 current=remote.get(ident)
@@ -101,7 +147,16 @@ class Store:
                         new['seriesId']=new.pop('occurrenceOf');new['originalDate']=new.pop('occurrenceDate');new.pop('originHash',None)
                     remote[ident]=new
             after=clean_groups(list(remote.values()));validate(after)
+            refs=self.attachment_refs(after)
+            for ident,data in (attachment_files or {}).items():
+                if check_cancel:check_cancel()
+                if ident not in refs:continue
+                if not isinstance(data,bytes) or len(data)!=refs[ident] or len(data)>MAX_ATTACHMENT_BYTES or hashlib.sha256(data).hexdigest()!=ident:raise ValueError('Invalid attached file contents.')
+                c.execute('INSERT OR IGNORE INTO planner_attachments VALUES (?,?)',(ident,data))
+            self.check_attachment_refs(c,after)
             c.execute('INSERT OR REPLACE INTO state VALUES (?,?)',('events',json.dumps(after,ensure_ascii=False)))
+            if check_cancel:check_cancel()
+            if before_commit:before_commit()
         return before,after
     def patch(self,before,after):
         """Undo only this mutation. Reject overwriting a newer edit of the same record."""

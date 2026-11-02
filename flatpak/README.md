@@ -5,7 +5,7 @@ Application ID: `io.github.jonas101201.LiquidCalendar`. The current package uses
 ## Install the local bundle
 
 ```bash
-flatpak install --user ./liquid-calendar-0.3.9.3-x86_64.flatpak
+flatpak install --user ./liquid-calendar-0.3.9.4-x86_64.flatpak
 flatpak run io.github.jonas101201.LiquidCalendar
 ```
 
@@ -57,4 +57,4 @@ The BaseApp cleanup and explicit pruning remove WebEngine, NumPy, code generator
 - Native QML and nested-card checks run offscreen with temporary databases; AppStream metadata is validated locally.
 - The installed bundle is smoke-tested with `--smoke-test`, which selects a temporary database.
 
-The beta bundle is distributed through the [0.3.9.3 GitHub prerelease](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.3.9.3). It is not a Flathub publication or a signed update channel. File-chooser interaction and real login/autostart prompts still require an interactive desktop acceptance check. No production database is used in the automated checks.
+The beta bundle is distributed through the [0.3.9.4 GitHub prerelease](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.3.9.4). It is not a Flathub publication or a signed update channel. File-chooser interaction and real login/autostart prompts still require an interactive desktop acceptance check. No production database is used in the automated checks.
