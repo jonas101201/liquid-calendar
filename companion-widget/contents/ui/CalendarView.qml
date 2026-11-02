@@ -187,12 +187,12 @@ Item {
         }
     }
     readonly property var linkedGroups:Cal.groupIndex(root.events)
-    component EventCard: Rectangle {
+    component EventCard: ContinuousSurface {
         id: card
         required property var entry
         property bool showDate: false
         readonly property var group:Cal.groupDetails(root.events,entry.event,root.linkedGroups)
-        implicitHeight: (root.compact ? 62 : 72)+(group.id?20:0)
+        implicitHeight:Math.max((root.compact?62:72)+(group.id?20:0),cardDetails.implicitHeight+20)
         radius: 13
         color: root.light ? "#80ffffff" : "#16ffffff"
         border.color: card.group.id?root.accent:root.line
@@ -201,8 +201,9 @@ Item {
             Rectangle { Layout.preferredWidth:3; Layout.fillHeight:true; radius:2; color:root.colors[card.entry.event.category] }
             GlassCheck { visible:card.entry.event.task; checked:card.entry.event.done; onClicked:root.toggleTask(card.entry.event,card.entry.occurrenceDate||card.entry.date); Accessible.name:card.entry.event.repeat!=="none"&&card.entry.event.done?"Reopen completed series":"Task completed" }
             ColumnLayout {
+                id:cardDetails
                 Layout.fillWidth:true; Layout.minimumWidth:0; spacing:4
-                Label { Layout.fillWidth:true; textFormat:Text.PlainText; text:card.entry.event.title; color:root.ink; font.pixelSize:13; font.weight:Font.DemiBold; font.strikeout:card.entry.event.task&&card.entry.event.done; elide:Text.ElideRight }
+                BalancedTitle { Layout.fillWidth:true; sourceText:card.entry.event.title; color:root.ink; font.pixelSize:13; font.weight:Font.DemiBold; font.strikeout:card.entry.event.task&&card.entry.event.done; elide:Text.ElideRight }
                 Label { Layout.fillWidth:true; textFormat:Text.PlainText; text:Cal.isUndated(card.entry.event)?"Undated · "+card.entry.event.minutes+" min":(card.showDate?root.dateText(Cal.parse(card.entry.date),root.globalMode?"dd.MM.yyyy":"ddd, dd MMM")+" · ":"")+(card.entry.event.allDay?"All day":(card.entry.carry?"Continued · 00:00":card.entry.event.time)+" · "+(card.entry.carry?card.entry.segmentMinutes:card.entry.event.minutes)+" min")+(card.entry.event.location?" · "+card.entry.event.location:"")+(card.entry.event.repeat!=="none"?" · Series":""); color:root.muted; font.pixelSize:11; elide:Text.ElideRight }
                 Label {visible:!!card.group.id;Layout.fillWidth:true;text:"↔ "+card.group.label+" · "+card.group.peers.map(function(e){return e.title;}).join(", ");textFormat:Text.PlainText;color:root.accentInk;font.pixelSize:10;elide:Text.ElideRight}
             }
@@ -646,7 +647,7 @@ Item {
                         }
                     }
                     Label { text:"Your events stay on this computer."; color:root.muted; font.pixelSize:12; wrapMode:Text.Wrap; Layout.fillWidth:true }
-                    GlassButton { Layout.fillWidth:true; text:"Export backup"; onClicked: { transfer.importing=false; transfer.title="Copy JSON backup"; transfer.message=""; transferText.text=Cal.backup(root.events); options.close(); transfer.open(); } }
+                    GlassButton { Layout.fillWidth:true; text:"Export backup"; onClicked: { transfer.importing=false; transfer.title="Copy JSON backup"; transfer.message="";try{transferText.text=Cal.backup(root.events);}catch(problem){transferText.text="";transfer.message=String(problem);}options.close();transfer.open(); } }
                     GlassButton { Layout.fillWidth:true; text:"Import backup …"; onClicked: { transfer.importing=true; transfer.title="Merge backup"; transferText.text=""; transfer.message=""; options.close(); transfer.open(); } }
                     GlassButton { Layout.fillWidth:true; text:"Export events as ICS"; onClicked: { try { var exported=Cal.ics(root.events); transfer.importing=false; transfer.title="Copy ICS"; transfer.message=""; transferText.text=exported; root.error=""; options.close(); transfer.open(); } catch(problem) { root.error=String(problem); options.close(); } } }
                 }

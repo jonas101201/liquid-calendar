@@ -1,8 +1,19 @@
 # Known issues and beta limitations
 
-Applies to **Liquid Calendar 0.3.9.3** (beta prerelease). Last updated: **2026-10-31**.
+Applies to **Liquid Calendar 0.3.9.4** (beta prerelease). Last updated: **2026-11-02**.
 
 This page distinguishes current limitations from issues fixed in earlier beta versions. It is not a guarantee that the beta is free of bugs.
+
+## 0.3.9.4 feature limits and corrected interaction issues
+
+- Long titles now use up to two balanced lines where space permits. Tiny timeline blocks and headers above nested events remain single-line; longer text is still elided and available on hover.
+- Data refreshes retain visible record/offset, selection and checklist expansion. If an anchor record was removed, a nearby position is used.
+- Background JSON import can be cancelled before its atomic commit. The last commit step displays Finishing and cannot be cancelled. Progress/skeleton UI is delayed for 300 ms to avoid flashes for fast imports.
+- Task files: up to 10 per task, 10 MiB per file and 100 MiB of current unique file contents across the calendar. Opened copies do not synchronize external edits back into the task. Removed contents remain stored for Undo/recovery; there is no compaction control yet.
+- Desktop JSON backups include attachments (format version 2). Older app releases and widget-only text import cannot restore these files; use the current desktop app. ICS does not include file contents.
+- Reload an already-running app/widget after updating. Host file-picker/viewer acceptance, live Plasma reload, real login/autostart acceptance and a fresh-account install have not been validated by the isolated tests.
+
+The earlier text-field Undo conflict, startup date reset and duplicate Save creation risk are corrected. Popup/dialog transitions now reverse from the current visual progress and stop immediately for reduced motion. See [task files](docs/TASK_ATTACHMENTS.md) and [calendar polish](docs/UX_POLISH.md).
 
 ## Fixed in 0.3.9.3
 
@@ -20,7 +31,7 @@ See the [audit and resolution record](docs/BUG_AUDIT_0.3.9.2_BETA_2_FOLLOWUP.md)
 
 The Flatpak beta uses asynchronous Notification portal calls and is not affected by the two native `notify-send` issues below. Its interactive file-picker and login/autostart acceptance checks remain separate from the isolated tests; see [Flatpak limitations](flatpak/README.md).
 
-These native notification issues remain present in 0.3.9.3; the Flatpak uses a different portal backend. Confirmed with isolated synthetic records on **2026-10-30**; an independent review reproduced both.
+These native notification issues remain present in 0.3.9.4; the Flatpak uses a different portal backend. Confirmed with isolated synthetic records on **2026-10-30**; an independent review reproduced both.
 
 ### Native reminder titles beginning with a hyphen can suppress delivery
 

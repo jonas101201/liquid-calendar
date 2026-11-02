@@ -3,7 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import "Calendar.js" as Cal
 
-Popup {
+GlassPopup {
     id:picker
     property bool light:false
     property color ink:light?"#202631":"#f0f2f6"
@@ -16,9 +16,9 @@ Popup {
     property color line:light?"#191c2b42":"#24ffffff"
     component PickerButton: Button {
         id:control
-        implicitWidth:Math.max(34,contentItem.implicitWidth+18);implicitHeight:34;padding:6
-        contentItem:Text {text:control.text;textFormat:Text.PlainText;color:control.highlighted?(picker.light?"#ffffff":"#171620"):picker.ink;font.pixelSize:12;horizontalAlignment:Text.AlignHCenter;verticalAlignment:Text.AlignVCenter;elide:Text.ElideRight}
-        background:Rectangle {radius:9;color:control.highlighted?picker.accent:control.hovered?picker.field:"transparent";border.width:control.activeFocus?1:0;border.color:picker.accent}
+        implicitWidth:Math.max(38,contentItem.implicitWidth+18);implicitHeight:38;padding:6
+        contentItem:Text {text:control.text;textFormat:Text.PlainText;color:control.highlighted?(picker.light?"#ffffff":"#171620"):picker.ink;font.pixelSize:12;font.features:({"tnum":1});horizontalAlignment:Text.AlignHCenter;verticalAlignment:Text.AlignVCenter;elide:Text.ElideRight}
+        background:ContinuousSurface {radius:9;color:control.highlighted?picker.accent:control.hovered?picker.field:"transparent";border.width:control.activeFocus?1:0;border.color:picker.accent}
     }
     component PickerSpin: GlassSpinBox {
         inkColor:picker.ink; accentColor:picker.accent; fieldColor:picker.field; lineColor:picker.line
@@ -26,7 +26,7 @@ Popup {
     signal picked(string value)
     width:Math.min(parent?parent.width-12:360,360)
     modal:true;focus:true;padding:14
-    background:Rectangle {radius:16;color:picker.panel;border.color:picker.accent;border.width:1}
+    background:ContinuousSurface {radius:16;color:picker.panel;border.color:picker.accent;border.width:1}
     function openFor(value){var date=Cal.parse(value)||new Date();selectedDate=Cal.key(date);monthDate=Cal.month(date,0);open();}
     function choose(value){selectedDate=value;picked(value);close();}
     function shift(amount){var next=Cal.month(monthDate,amount);if(next.getFullYear()>=1000&&next.getFullYear()<=9999)monthDate=next;}
@@ -51,7 +51,7 @@ Popup {
                     required property int index
                     readonly property date day:Cal.add(Cal.monday(picker.monthDate),index)
                     readonly property string dayKey:Cal.key(day)
-                    Layout.fillWidth:true;Layout.preferredWidth:38;Layout.preferredHeight:34;padding:0
+                    Layout.fillWidth:true;Layout.preferredWidth:38;Layout.preferredHeight:38;padding:0
                     text:String(day.getDate());Accessible.name:dayKey
                     enabled:day.getFullYear()>=1000&&day.getFullYear()<=9999
                     highlighted:dayKey===picker.selectedDate

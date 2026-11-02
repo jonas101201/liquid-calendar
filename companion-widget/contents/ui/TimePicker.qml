@@ -3,7 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import "Calendar.js" as Cal
 
-Popup {
+GlassPopup {
     id:picker
     property bool light:false
     property color ink:light?"#202631":"#f0f2f6"
@@ -13,9 +13,9 @@ Popup {
     property color line:light?"#191c2b42":"#24ffffff"
     component PickerButton: Button {
         id:control
-        implicitWidth:Math.max(34,contentItem.implicitWidth+18);implicitHeight:34;padding:6
-        contentItem:Text {text:control.text;textFormat:Text.PlainText;color:control.highlighted?(picker.light?"#ffffff":"#171620"):picker.ink;font.pixelSize:12;horizontalAlignment:Text.AlignHCenter;verticalAlignment:Text.AlignVCenter;elide:Text.ElideRight}
-        background:Rectangle {radius:9;color:control.highlighted?picker.accent:control.hovered?picker.field:"transparent";border.width:control.activeFocus?1:0;border.color:picker.accent}
+        implicitWidth:Math.max(38,contentItem.implicitWidth+18);implicitHeight:38;padding:6
+        contentItem:Text {text:control.text;textFormat:Text.PlainText;color:control.highlighted?(picker.light?"#ffffff":"#171620"):picker.ink;font.pixelSize:12;font.features:({"tnum":1});horizontalAlignment:Text.AlignHCenter;verticalAlignment:Text.AlignVCenter;elide:Text.ElideRight}
+        background:ContinuousSurface {radius:9;color:control.highlighted?picker.accent:control.hovered?picker.field:"transparent";border.width:control.activeFocus?1:0;border.color:picker.accent}
     }
     component PickerSpin: GlassSpinBox {
         inkColor:picker.ink; accentColor:picker.accent; fieldColor:picker.field; lineColor:picker.line
@@ -23,7 +23,7 @@ Popup {
     signal picked(string value)
     width:Math.min(parent?parent.width-12:320,320)
     modal:true;focus:true;padding:16
-    background:Rectangle {radius:16;color:picker.panel;border.color:picker.accent}
+    background:ContinuousSurface {radius:16;color:picker.panel;border.color:picker.accent}
     function openFor(value){var parts=/^([01]\d|2[0-3]):([0-5]\d)$/.exec(value);hours.value=parts?Number(parts[1]):9;minutes.value=parts?Number(parts[2]):0;open();}
     function choose(){picked(Cal.pad(hours.value)+":"+Cal.pad(minutes.value));close();}
     contentItem:ColumnLayout {

@@ -1,21 +1,27 @@
-# Liquid Calendar 0.3.9.3
+# Liquid Calendar 0.3.9.4
 
-Beta prerelease · **31 October 2026**. [Release and downloads](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.3.9.3).
+Beta prerelease · **2 November 2026** · [Downloads](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.3.9.4).
 
-## Fixed
+## New and improved
 
-- **Smooth early popup closing:** closing a popup during its opening animation no longer briefly increases its scale.
-
-- **Reliable automatic backups:** interrupted copies no longer leave an accepted empty daily backup. Copies are validated before atomic publication; existing empty/corrupt daily files are repaired before saving. Concurrent clients retain the first valid daily snapshot, and failures remain retryable.
-- **Correct nested-event rescheduling:** dragging an inner event horizontally to another day preserves its start time. The previously reproduced 09:30 → 09:45 drift is fixed. Vertical dragging applies 15-minute movement increments while preserving an existing non-quarter-hour time offset.
-- **Flatpak autostart cancellation:** a timed-out permission request is closed remotely, so the old dialog does not remain active after the app gives up. Alternative returned handles are followed and a subsequent request can succeed.
+- **Task file attachments:** add, open, save copies and remove local files. Copies remain available after moving/deleting their originals, appear in filename search and survive Undo, restart and complete JSON backup/restore. Up to 10 files per task, 10 MiB each and 100 MiB of current unique file contents per calendar.
+- **Faster keyboard workflows:** Ctrl+K searches commands; F1 shows shortcuts. Contextual key hints, dismissible Undo feedback and separate text-field Undo make common actions easier to discover.
+- **Readable titles and continuous glass contours:** long event/task titles use up to two balanced lines where space allows. Rows grow around their metadata/checklists. Glass surfaces, menus, cards and dialogs share vector continuous-corner outlines.
+- **Stable updates:** refreshes preserve the visible record and scroll offset, selection, expanded checklists and week viewport.
+- **Background JSON import:** the interface stays available while a worker reads/checks/saves. Slow imports show progress, a reading-stage skeleton and Cancel; fast imports do not flash a loader. Accepted cancellation rolls back new events and file blobs. The final atomic commit is labelled Finishing and cannot be cancelled.
+- **Interruptible motion:** popup/dialog opening and closing retarget from the current frame; reduced motion settles immediately. The command menu waits for its exit before handing focus to the next dialog.
+- **Additional corrections:** retain a preselected startup date, prevent repeated Save from creating duplicate events, and protect calendar Undo while editing text or importing.
 
 ## Validation and downloads
 
-182 Python tests, eight JavaScript suites, real native/Flatpak QML interactions, private D-Bus portal checks, isolated widget editing, AppStream validation, source-copy synchronization, smoke launches and archive/asset checksums form the validation set. Tests use synthetic records and temporary databases.
+210 Python tests, nine JavaScript suites, actual Qt calendar/editor/file/shortcut/refresh/animation interactions in both themes, private D-Bus portal checks, isolated widget editing, native/Flatpak smoke launches, shared-source synchronization, AppStream validation and package checksum checks form the release validation set. All tests use synthetic records and temporary files/databases.
 
-Native source ZIP/TAR archives, a separate Flatpak bundle, a build receipt and SHA256SUMS are included. The Flatpak uses separate storage by default; transfer existing events/tasks through JSON. It is not a Flathub release. See [Flatpak instructions](flatpak/README.md).
+Downloads include native source ZIP/TAR archives, an x86_64 Flatpak bundle, its build receipt and SHA256SUMS. Flatpak stores its data separately by default; transfer through desktop JSON export/import. This is not a Flathub publication. See [installation](flatpak/README.md).
 
-The two native notify-send issues remain documented in [Known issues](KNOWN_ISSUES.md). Interactive file-picker/login acceptance and installation in a fresh user account have not been tested. Previously damaged backup history cannot be reconstructed; repair snapshots the current live data. Existing release tags/assets remain unchanged.
+## Compatibility and limits
 
-Fully quit with **Ctrl+Q** before reopening an updated installation. See [the audit resolution](docs/BUG_AUDIT_0.3.9.2_BETA_2_FOLLOWUP.md).
+- JSON exports with file attachments use **backup format version 2**. Use 0.3.9.4 desktop import to restore them. Plain version-1 backups remain supported. Widget-only text backup controls direct file-bearing calendars to the desktop app; ICS contains no attached file contents.
+- Opened attachment copies do not write external edits back into the stored file. Removed contents remain for Undo/recovery; there is no compaction control yet.
+- The two native `notify-send` issues remain open. Host picker/viewer acceptance, real login/autostart acceptance, live Plasma reload and installation in a fresh account are not established by isolated tests. See [Known issues](KNOWN_ISSUES.md).
+
+Quit completely with **Ctrl+Q** before reopening an updated installation. Reload an existing companion widget after updating its sources. Earlier tags and release assets remain unchanged.

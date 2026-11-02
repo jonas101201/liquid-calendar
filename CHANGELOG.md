@@ -2,6 +2,23 @@
 
 **0.3.6-beta.1** is the cumulative public release of the 0.3.x development work. Versions 0.3.0–0.3.5 below are unpublished historical snapshots. Patch numbers were assigned retrospectively on 28 October 2026, one per functional code patch after the initial 0.3.0 baseline. Source links identify the original implementation commits, which retain their original version strings. No commits or published tags were rewritten. Documentation-only commits are not numbered separately.
 
+## 0.3.9.4 — 2026-11-02
+
+Beta prerelease.
+
+- Balance long titles across two measured lines and grow list rows without obscuring metadata or expanded checklists.
+- Share vector continuous-corner contours across glass surfaces, menus, dialogs and event cards.
+- Preserve list anchors, selected records, checklist expansion and timeline scroll during data refreshes.
+- Run JSON imports in a cancellable worker with delayed skeleton/progress UI and transaction rollback on accepted cancellation. Existing entries remain visible; the final commit cannot be cancelled.
+- Share retargetable popup/dialog motion and settle immediately when reduced motion is enabled.
+- Add copied local file attachments to tasks: attach/open/save copy/remove, filename search, atomic storage with Undo, and portable version-2 JSON backups including file contents. Existing plain version-1 backups remain compatible; widget-only backup controls direct file-bearing calendars to the desktop app.
+- Add a searchable command palette (Ctrl+K), keyboard navigation and an F1 shortcut guide with contextual shortcut hints.
+- Show dismissible Undo feedback only after a successful calendar mutation; keep Undo available after the hint expires and preserve text-field Undo.
+- Retarget interrupted section animations from their current frame; respect reduced motion. Open subsequent dialogs only after the command palette closes, preserving focus.
+- Enlarge date/time picker controls and spin buttons, and use tabular numerals for time and duration displays. Keep shared widget controls synchronized.
+- Preserve an already selected day during editor initialization, and prevent repeated Save activation from creating duplicate events while the editor closes. Failed saves remain retryable.
+- Add real Qt interaction regressions in both themes. See [the applicability record](docs/INTERACTION_POLISH.md).
+
 ## 0.3.9.3 — 2026-10-31
 
 Beta prerelease.

@@ -10,6 +10,21 @@ import json
 import unicodedata
 import uuid
 
+MAX_ATTACHMENT_BYTES=10*1024*1024
+MAX_ATTACHMENT_TOTAL=100*1024*1024
+
+def validate_attachments(items):
+    if not isinstance(items,list) or len(items)>10:raise ValueError('Attach up to 10 files per task.')
+    ids=set()
+    for item in items:
+        if not isinstance(item,dict) or set(item)!={'id','name','size'}:raise ValueError('Invalid attachment metadata.')
+        ident=item['id'];name=item['name'];size=item['size']
+        if not isinstance(ident,str) or len(ident)!=64 or any(c not in '0123456789abcdef' for c in ident) or ident in ids:raise ValueError('Invalid or duplicate attachment.')
+        if not isinstance(name,str) or not name.strip() or len(name)>255 or name in ['.','..'] or any(c in name for c in '/\\') or any(ord(c)<32 or ord(c)==127 for c in name):raise ValueError('Invalid attachment filename.')
+        if type(size) is not int or not 0<=size<=MAX_ATTACHMENT_BYTES:raise ValueError('Each attachment may be up to 10 MiB.')
+        ids.add(ident)
+    return items
+
 CATEGORIES = ["Personal", "Work", "Important", "Leisure"]
 COLORS = ['#7ceafa', '#6edfc2', '#ffbd83', '#f49ac4']
 WEEKDAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
@@ -60,6 +75,7 @@ def validate(events):
         if type(e.get('priority',0)) is not int or not 0<=e.get('priority',0)<=3:raise ValueError("Invalid task priority.")
         if not isinstance(e.get('project',''),str) or len(e.get('project',''))>80 or e.get('project','')=='*':raise ValueError("Project names can contain up to 80 characters.")
         checklist=e.get('checklist',[])
+        validate_attachments(e.get('attachments',[]))
         if not isinstance(checklist,list) or len(checklist)>100:raise ValueError("A checklist can contain up to 100 steps.")
         step_ids=set()
         for item in checklist:
@@ -243,7 +259,7 @@ def search(events,text,today,kind='all',category=-1):
         if (category>=0 and e['category']!=category) or not kind_matches(e,kind):continue
         if is_undated(e):
             if exact_target:continue
-            if all(t in normalize(e['title']+' '+e['location']+' '+e['notes']+' '+e.get('project','')+' '+' '.join(item['title'] for item in e.get('checklist',[]))) for t in tokens):out.append(occurrence(e,None))
+            if all(t in normalize(e['title']+' '+e['location']+' '+e['notes']+' '+e.get('project','')+' '+' '.join(item['title'] for item in e.get('checklist',[]))+' '+' '.join(item['name'] for item in e.get('attachments',[]))) for t in tokens):out.append(occurrence(e,None))
             continue
         if exact_target and not occurs(e,exact_target):continue
         day=exact_target or representative(e,today)
@@ -253,7 +269,7 @@ def search(events,text,today,kind='all',category=-1):
         if not day:continue
         distance=(day-today).days
         relative={0:'today heute',1:'tomorrow morgen',2:'day after tomorrow übermorgen'}.get(distance,'')
-        words=' '.join([relative,e['title'],e['location'],e['notes'],e.get('project',''),' '.join(item['title'] for item in e.get('checklist',[])),day.isoformat(),parse(e['date']).isoformat(),WEEKDAYS[day.weekday()],MONTHS[day.month-1],GERMAN_WEEKDAYS[day.weekday()],GERMAN_MONTHS[day.month-1],day.strftime('%d.%m.%Y')])
+        words=' '.join([relative,e['title'],e['location'],e['notes'],e.get('project',''),' '.join(item['title'] for item in e.get('checklist',[]))+' '+' '.join(item['name'] for item in e.get('attachments',[])),day.isoformat(),parse(e['date']).isoformat(),WEEKDAYS[day.weekday()],MONTHS[day.month-1],GERMAN_WEEKDAYS[day.weekday()],GERMAN_MONTHS[day.month-1],day.strftime('%d.%m.%Y')])
         if not all(t in normalize(words) for t in tokens):continue
         out.append(occurrence(e,day))
     q=normalize(text)

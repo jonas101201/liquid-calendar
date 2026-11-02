@@ -5,6 +5,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SHARED_FILES = (
+    'ContinuousShape.qml', 'ContinuousSurface.qml', 'BalancedTitle.qml', 'GlassPopup.qml', 'PopupMotion.qml', 'GlassDialog.qml',
     'Calendar.js', 'Theme.js',
     'DatePicker.qml',
     'TimePicker.qml',

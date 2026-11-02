@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Dialogs
 import QtQuick.Layouts
 import QtQuick.LocalStorage as SQL
 
@@ -22,7 +23,7 @@ Item {
     property date today: new Date()
     property date selected: new Date()
     onSelectedChanged: {
-        if(persistence&&persistence.selected!==Cal.key(selected))persistence.selectDate(Cal.key(selected));
+        if(dataReady&&persistence&&persistence.selected!==Cal.key(selected))persistence.selectDate(Cal.key(selected));
     }
     property date page: new Date(new Date().getFullYear(), new Date().getMonth(), 1, 12)
     property int mode: 0
@@ -94,6 +95,9 @@ Item {
         else select(Cal.add(selected,n*(mode===1?7:30)));
     }
     function openEvent(e, date) {
+        if(persistence)persistence.discardAttachmentDrafts(JSON.stringify(editor.attachmentFiles));
+        editor.attachmentFiles=JSON.parse(JSON.stringify(e&&e.attachments?e.attachments:[]));
+        editor.submitted=false;
         editor.selectedWeekdays=e&&e.weekdays?e.weekdays.slice():[];
         editor.checklist=JSON.parse(JSON.stringify(e&&e.checklist?e.checklist:[]));
         priorityBox.currentIndex=e&&e.priority?e.priority:0;projectField.text=e&&e.project?e.project:"";
@@ -121,7 +125,7 @@ Item {
     function dateText(d, format) { return d.toLocaleDateString(Qt.locale("en_GB"),format); }
     function dayCount(d) { return Cal.instances(events,d,1,"",categoryFilter,kindFilter).length; }
     Component.onCompleted: {
-        if(persistence) {events=persistence.events;dataReady=true;return;}
+        if(persistence) {events=persistence.events;select(Cal.parse(persistence.selected));dataReady=true;return;}
         try {
             db=SQL.LocalStorage.openDatabaseSync('JonasLiquidCalendar','1.0',"Local Liquid Glass Calendar",4000000);
             db.transaction(function(tx) {
@@ -184,9 +188,8 @@ Item {
             contentItem: Text { text:modelData; textFormat:Text.PlainText; font:combo.font; color:root.ink; elide:Text.ElideRight; verticalAlignment:Text.AlignVCenter }
             background: Rectangle { radius:7; color:parent.highlighted?Qt.rgba(root.accent.r,root.accent.g,root.accent.b,.24):"transparent" }
         }
-        popup: Popup {
-            enter:GlassTransition {motionEnabled:root.motionEnabled}
-            exit:GlassTransition {entering:false;motionEnabled:root.motionEnabled}
+        popup: GlassPopup {
+        motionEnabled:root.motionEnabled
             y:combo.height+4
             width:combo.width
             padding:4
@@ -196,12 +199,12 @@ Item {
         }
     }
     readonly property var linkedGroups:Cal.groupIndex(root.events)
-    component EventCard: Rectangle {
+    component EventCard: ContinuousSurface {
         id: card
         required property var entry
         property bool showDate: false
         readonly property var group:Cal.groupDetails(root.events,entry.event,root.linkedGroups)
-        implicitHeight: (root.compact ? 62 : 72)+(group.id?20:0)
+        implicitHeight:Math.max((root.compact?62:72)+(group.id?20:0),cardDetails.implicitHeight+20)
         radius: 13
         color: root.light ? "#80ffffff" : "#16ffffff"
         border.color: card.group.id?Qt.rgba(root.accent.r,root.accent.g,root.accent.b,.5):root.line
@@ -210,8 +213,9 @@ Item {
             Rectangle { Layout.preferredWidth:3; Layout.fillHeight:true; radius:2; color:root.colors[card.entry.event.category] }
             GlassCheck {objectName:"calendarEntryTaskToggle";visible:card.entry.event.task; checked:card.entry.event.done; onClicked:root.toggleTask(card.entry.event,card.entry.occurrenceDate||card.entry.date); Accessible.name:card.entry.event.repeat!=="none"&&card.entry.event.done?"Reopen completed series":"Task completed" }
             ColumnLayout {
+                id:cardDetails
                 Layout.fillWidth:true; Layout.minimumWidth:0; spacing:4
-                Label { Layout.fillWidth:true; textFormat:Text.PlainText; text:card.entry.event.title; color:root.ink; font.pixelSize:13; font.weight:Font.DemiBold; font.strikeout:card.entry.event.task&&card.entry.event.done; elide:Text.ElideRight }
+                BalancedTitle { Layout.fillWidth:true; sourceText:card.entry.event.title; color:root.ink; font.pixelSize:13; font.weight:Font.DemiBold; font.strikeout:card.entry.event.task&&card.entry.event.done; elide:Text.ElideRight }
                 Label {objectName:"calendarEntryDetails";Layout.fillWidth:true;textFormat:Text.PlainText;text:Cal.isUndated(card.entry.event)?"Undated · "+card.entry.event.minutes+" min":(card.showDate?root.dateText(Cal.parse(card.entry.date),root.globalMode?"dd.MM.yyyy":"ddd, dd MMM")+" · ":"")+(card.entry.event.allDay?"All day":(card.entry.carry?"Continued · 00:00":card.entry.event.time)+" · "+(card.entry.carry?card.entry.segmentMinutes:card.entry.event.minutes)+" min")+(card.entry.event.location?" · "+card.entry.event.location:"")+(card.entry.event.repeat!=="none"?" · Series":""); color:root.muted; font.pixelSize:11; elide:Text.ElideRight }
                 Label {visible:!!card.group.id;Layout.fillWidth:true;text:"↔ "+card.group.label+" · "+card.group.peers.map(function(e){return e.title;}).join(", ");textFormat:Text.PlainText;color:root.accentInk;font.pixelSize:10;elide:Text.ElideRight}
             }
@@ -391,7 +395,8 @@ Item {
             Label { Layout.fillWidth:true; text:root.globalMode?(root.searching?"SEARCH RESULTS · ALL MONTHS":"TASKS · ALL MONTHS"):root.mode===2?"FROM "+root.dateText(root.selected,"dd MMMM").toUpperCase():root.mode===1?root.dateText(root.weekStart,"dd MMM")+" – "+root.dateText(Cal.add(root.weekStart,6),"dd MMM"):root.dateText(root.selected,"dddd, dd MMMM"); color:root.muted; font.pixelSize:11; font.weight:Font.DemiBold; elide:Text.ElideRight }
             Label { text:agenda.count+(agenda.count===1?" entry":" entries"); color:root.muted; font.pixelSize:10 }
         }
-        ListView {
+        RefreshListView {
+            refreshSource:root.persistence;contextKey:root.mode+"|"+Cal.key(root.selected)+"|"+root.query+"|"+root.kindFilter+"|"+root.categoryFilter
             id:agenda
             Layout.fillWidth:true; Layout.fillHeight:true; Layout.minimumHeight:60; Layout.preferredHeight:root.compact?60:140; clip:true; spacing:7
             model:root.globalMode?root.results:root.mode===2?root.agendaItems:root.mode===1?Cal.instances(root.events,root.weekStart,7,"",root.categoryFilter,root.kindFilter):root.dayItems
@@ -412,9 +417,8 @@ Item {
         }
     }
 
-    Popup {
-        enter:GlassTransition {motionEnabled:root.motionEnabled}
-        exit:GlassTransition {entering:false;motionEnabled:root.motionEnabled}
+    GlassPopup {
+        motionEnabled:root.motionEnabled
         id:filters
         parent:root; anchors.centerIn:parent; width:Math.min(root.width-24,360); modal:true; focus:true
         background:LiquidSurface {light:root.light;tint:root.accent;motionEnabled:root.motionEnabled;radius:18;glassOpacity:1}
@@ -432,9 +436,8 @@ Item {
             }
         }
     }
-    Popup {
-        enter:GlassTransition {motionEnabled:root.motionEnabled}
-        exit:GlassTransition {entering:false;motionEnabled:root.motionEnabled}
+    GlassPopup {
+        motionEnabled:root.motionEnabled
         id:dateJump
         property string error:""
         parent:root; anchors.centerIn:parent; width:Math.min(root.width-24,380); modal:true; focus:true
@@ -457,13 +460,27 @@ Item {
             }
         }
     }
-    Popup {
-        enter:GlassTransition {motionEnabled:root.motionEnabled}
-        exit:GlassTransition {entering:false;motionEnabled:root.motionEnabled}
+    GlassPopup {
+        motionEnabled:root.motionEnabled
         id:editor
-        Popup {
-            enter:GlassTransition {motionEnabled:root.motionEnabled}
-            exit:GlassTransition {entering:false;motionEnabled:root.motionEnabled}
+        property var attachmentFiles:[]
+        onClosed:if(root.persistence)root.persistence.discardAttachmentDrafts(JSON.stringify(attachmentFiles))
+        function addFiles(urls) {
+            var result=root.persistence.stageAttachments(urls,JSON.stringify(attachmentFiles));
+            if(result.error){validation=result.error;return;}
+            attachmentFiles=result.attachments;validation="";
+        }
+        FileDialog {
+            id:attachmentPicker;title:"Attach files to task";fileMode:FileDialog.OpenFiles
+            onAccepted:editor.addFiles(selectedFiles.map(function(url){return url.toString();}))
+        }
+        FileDialog {
+            id:attachmentSave;title:"Save a copy of the attachment";fileMode:FileDialog.SaveFile
+            property string snapshot:""
+            onAccepted:if(!root.persistence.saveAttachment(snapshot,selectedFile.toString()))editor.validation=root.persistence.error
+        }
+        GlassPopup {
+        motionEnabled:root.motionEnabled
             id:templateNamePopup;parent:editor.contentItem;anchors.centerIn:parent;width:Math.min(parent.width-8,420);modal:true;focus:true;padding:16
             property string error:""
             background:LiquidSurface {light:root.light;tint:root.accent;motionEnabled:root.motionEnabled;radius:16;glassOpacity:1}
@@ -480,9 +497,10 @@ Item {
                 }
             }
         }
-        DatePicker {id:untilPicker;parent:editor.contentItem;anchors.centerIn:parent;light:root.light;ink:root.ink;accent:root.accentInk;panel:root.panel;field:root.field;line:root.line;onPicked:function(value){untilField.text=value;}}
-        DatePicker {id:datePicker;parent:editor.contentItem;anchors.centerIn:parent;light:root.light;ink:root.ink;accent:root.accentInk;panel:root.panel;field:root.field;line:root.line;onPicked:function(value){dateField.text=value;}}
-        TimePicker {id:timePicker;parent:editor.contentItem;anchors.centerIn:parent;light:root.light;ink:root.ink;accent:root.accentInk;panel:root.panel;field:root.field;line:root.line;onPicked:function(value){timeField.text=value;}}
+        DatePicker {motionEnabled:root.motionEnabled;id:untilPicker;parent:editor.contentItem;anchors.centerIn:parent;light:root.light;ink:root.ink;accent:root.accentInk;panel:root.panel;field:root.field;line:root.line;onPicked:function(value){untilField.text=value;}}
+        DatePicker {motionEnabled:root.motionEnabled;id:datePicker;parent:editor.contentItem;anchors.centerIn:parent;light:root.light;ink:root.ink;accent:root.accentInk;panel:root.panel;field:root.field;line:root.line;onPicked:function(value){dateField.text=value;}}
+        TimePicker {motionEnabled:root.motionEnabled;id:timePicker;parent:editor.contentItem;anchors.centerIn:parent;light:root.light;ink:root.ink;accent:root.accentInk;panel:root.panel;field:root.field;line:root.line;onPicked:function(value){timeField.text=value;}}
+        property bool submitted:false
         property var selectedWeekdays:[]
         function weeklyDays(){var date=Cal.parse(dateField.text);return selectedWeekdays.length?selectedWeekdays:[Cal.isoWeekday(date||new Date())];}
         function toggleWeekday(day){
@@ -518,7 +536,7 @@ Item {
                     }
                     RowLayout {
                         GlassCheck { id:allDay; visible:!task.checked||scheduled.checked; text:"All day" }
-                        GlassCheck { id:task; text:"Task"; onClicked:{if(checked&&!editor.draftOriginal)scheduled.checked=false;else if(!checked)scheduled.checked=true;} }
+                        GlassCheck { id:task; text:"Task"; onClicked:{if(!checked&&editor.attachmentFiles.length){checked=true;editor.validation="Remove attached files before converting this task to an event.";return;}if(checked&&!editor.draftOriginal)scheduled.checked=false;else if(!checked)scheduled.checked=true;} }
                     }
                     GlassCheck {id:scheduled;visible:task.checked;text:"Schedule in calendar";enabled:repeatBox.currentIndex===0;Accessible.name:"Schedule task with a date"}
                     Label {visible:task.checked&&!scheduled.checked;Layout.fillWidth:true;text:"Undated · stays in your task list. You can schedule it later.";color:root.muted;font.pixelSize:11;wrapMode:Text.Wrap}
@@ -561,6 +579,31 @@ Item {
                             }
                         }
                         Label {visible:repeatBox.currentIndex>0;text:"Checklist changes in this editor apply to the selected entry or series. Open a single occurrence for independent progress.";color:root.muted;font.pixelSize:10;Layout.fillWidth:true;wrapMode:Text.Wrap}
+                        ColumnLayout {
+                            visible:!!root.persistence;Layout.fillWidth:true;spacing:6
+                            RowLayout {
+                                Layout.fillWidth:true
+                                Label {Layout.fillWidth:true;text:"Files · "+editor.attachmentFiles.length+" / 10";color:root.muted}
+                                GlassButton {objectName:"addTaskFiles";text:"+ Files";enabled:editor.attachmentFiles.length<10;onClicked:attachmentPicker.open();Accessible.name:"Attach files to this task"}
+                            }
+                            Label {Layout.fillWidth:true;text:"Stored copies · up to 10 MiB each. Changes in an opened copy do not change the attachment.";color:root.muted;font.pixelSize:10;wrapMode:Text.Wrap}
+                            Repeater {
+                                id:attachmentRows;model:editor.attachmentFiles
+                                delegate:RowLayout {
+                                    required property var modelData
+                                    required property int index
+                                    Layout.fillWidth:true
+                                    ColumnLayout {
+                                        Layout.fillWidth:true;Layout.minimumWidth:0;spacing:2
+                                        Label {Layout.fillWidth:true;text:modelData.name;textFormat:Text.PlainText;color:root.ink;elide:Text.ElideMiddle;ToolTip.visible:attachmentHover.hovered;ToolTip.text:modelData.name;HoverHandler {id:attachmentHover}}
+                                        Label {text:modelData.size<1024?modelData.size+" B":modelData.size<1048576?(modelData.size/1024).toFixed(1)+" KiB":(modelData.size/1048576).toFixed(1)+" MiB";color:root.muted;font.pixelSize:10}
+                                    }
+                                    GlassButton {text:"Open";Accessible.name:"Open attachment "+modelData.name;onClicked:if(!root.persistence.openAttachment(JSON.stringify(modelData)))editor.validation=root.persistence.error}
+                                    GlassButton {text:"Save copy…";Accessible.name:"Save a copy of "+modelData.name;onClicked:{attachmentSave.snapshot=JSON.stringify(modelData);attachmentSave.selectedFile=root.persistence.attachmentSaveUrl(attachmentSave.snapshot);attachmentSave.open();}}
+                                    GlassButton {text:"×";Accessible.name:"Remove attachment "+modelData.name;onClicked:{if(root.persistence)root.persistence.discardAttachmentDrafts(JSON.stringify([modelData]));var items=editor.attachmentFiles.slice();items.splice(index,1);editor.attachmentFiles=items;}}
+                                }
+                            }
+                        }
                     }
                     RowLayout {
                         Label { text:"Duration (minutes)"; color:root.muted }
@@ -611,11 +654,12 @@ Item {
                 Item { Layout.fillWidth:true }
                 GlassButton {
                     id:saveButton
-                    text:"Save"; highlighted:true; tint:root.accentInk
+                    text:"Save"; highlighted:true; tint:root.accentInk;enabled:!editor.submitted
                     onClicked: {
+                        if(editor.submitted)return;
                         var e=root.currentDraft();if(!e)return;
                         var next=root.events.filter(function(v){return v.id!==e.id;}); next.push(e);
-                        if(root.store(next)) { if(e.date)root.select(Cal.parse(e.date));else if(root.persistence)root.persistence.setView("tasks");else{searchInput.clear();kindBox.currentIndex=3;} editor.close(); } else editor.validation=root.error;
+                        if(root.store(next)) { editor.submitted=true;if(e.date)root.select(Cal.parse(e.date));else if(root.persistence)root.persistence.setView("tasks");else{searchInput.clear();kindBox.currentIndex=3;} editor.close(); } else editor.validation=root.error;
                     }
                 }
             }
@@ -629,10 +673,11 @@ Item {
         if(e.repeat==="weekly"&&e.until&&Cal.valid(e)&&!Cal.unskippedNext(e,Cal.parse(e.date))){editor.validation="No selected weekdays fall within this date range.";return;}
         if(undated){e.exceptions={};e.reminder=-1;}
         if(task.checked) {
+            if(editor.attachmentFiles.length||(previous&&previous.attachments!==undefined))e.attachments=JSON.parse(JSON.stringify(editor.attachmentFiles));
             if(priorityBox.currentIndex||(previous&&previous.priority!==undefined))e.priority=priorityBox.currentIndex;
             if(projectField.text.trim()||(previous&&previous.project!==undefined))e.project=projectField.text.trim();
             if(editor.checklist.length||(previous&&previous.checklist!==undefined))e.checklist=JSON.parse(JSON.stringify(editor.checklist));
-        } else {delete e.priority;delete e.project;delete e.checklist;}
+        } else {if(editor.attachmentFiles.length){editor.validation="Remove attached files before converting this task to an event.";return;}delete e.priority;delete e.project;delete e.checklist;delete e.attachments;}
         if(task.checked&&e.project==="*"){editor.validation="Choose a different project name; * is reserved.";return;}
         if(task.checked&&!Cal.validTaskDetails(e)){editor.validation="Every checklist step needs a title of 1–200 characters. Fill in or remove empty steps.";return;}
         if(!Cal.valid(e)) { editor.validation="Check the title and, for scheduled entries, the date, time and repeat end date. Notes can contain up to 10,000 characters."; return; }
@@ -648,9 +693,8 @@ Item {
         mergeChoice.currentIndex=mergeDialog.choices.length?0:-1;
         mergeDialog.message="";mergeDialog.open();
     }
-    Dialog {
-        enter:GlassTransition {motionEnabled:root.motionEnabled}
-        exit:GlassTransition {entering:false;motionEnabled:root.motionEnabled}
+    GlassDialog {
+        motionEnabled:root.motionEnabled
         id:mergeDialog;objectName:"mergeEventsDialog";parent:root;anchors.centerIn:parent;modal:true
         width:Math.max(280,Math.min(root.width-20,500));height:Math.min(root.height-20,520)
         property string first:""
@@ -676,7 +720,7 @@ Item {
                             required property int index
                             width:parent.width;spacing:0
                             Rectangle {visible:index>0;anchors.horizontalCenter:parent.horizontalCenter;width:2;height:20;color:root.accent}
-                            Rectangle {
+                            ContinuousSurface {
                                 width:parent.width;height:previewContent.implicitHeight+24;radius:13
                                 color:Qt.rgba(root.accent.r,root.accent.g,root.accent.b,root.light?.07:.10)
                                 border.color:Qt.rgba(root.accent.r,root.accent.g,root.accent.b,.45)
@@ -702,9 +746,8 @@ Item {
             }
         }
     }
-    Dialog {
-        enter:GlassTransition {motionEnabled:root.motionEnabled}
-        exit:GlassTransition {entering:false;motionEnabled:root.motionEnabled}
+    GlassDialog {
+        motionEnabled:root.motionEnabled
         id:deleteConfirm; parent:root; anchors.centerIn:parent; modal:true; title:"Delete entry"
         width:Math.max(300,Math.min(root.width-20,420))
         height:header.implicitHeight+contentItem.implicitHeight+footer.implicitHeight+topPadding+bottomPadding
@@ -729,9 +772,8 @@ Item {
             } else editor.validation=root.error;
         }
     }
-    Popup {
-        enter:GlassTransition {motionEnabled:root.motionEnabled}
-        exit:GlassTransition {entering:false;motionEnabled:root.motionEnabled}
+    GlassPopup {
+        motionEnabled:root.motionEnabled
         id:options; parent:root; anchors.centerIn:parent; width:Math.min(root.width-20,430); modal:true; focus:true
         background:LiquidSurface {light:root.light;tint:root.accent;motionEnabled:root.motionEnabled;radius:18;glassOpacity:1}
         height:Math.min(root.height-24,540)
@@ -764,7 +806,7 @@ Item {
                         }
                     }
                     Label { text:"Your events stay on this computer."; color:root.muted; font.pixelSize:12; wrapMode:Text.Wrap; Layout.fillWidth:true }
-                    GlassButton { Layout.fillWidth:true; text:"Export backup"; onClicked: { transfer.importing=false; transfer.title="Copy JSON backup"; transfer.message=""; transferText.text=Cal.backup(root.events); options.close(); transfer.open(); } }
+                    GlassButton { Layout.fillWidth:true; text:"Export backup"; onClicked: { transfer.importing=false; transfer.title="Copy JSON backup"; transfer.message="";try{transferText.text=Cal.backup(root.events);}catch(problem){transferText.text="";transfer.message=String(problem);}options.close();transfer.open(); } }
                     GlassButton { Layout.fillWidth:true; text:"Import backup …"; onClicked: { transfer.importing=true; transfer.title="Merge backup"; transferText.text=""; transfer.message=""; options.close(); transfer.open(); } }
                     GlassButton { Layout.fillWidth:true; text:"Export events as ICS"; onClicked: { try { var exported=Cal.ics(root.events); transfer.importing=false; transfer.title="Copy ICS"; transfer.message=""; transferText.text=exported; root.error=""; options.close(); transfer.open(); } catch(problem) { root.error=String(problem); options.close(); } } }
                 }
@@ -773,9 +815,8 @@ Item {
         }
     }
 
-    Popup {
-        enter:GlassTransition {motionEnabled:root.motionEnabled}
-        exit:GlassTransition {entering:false;motionEnabled:root.motionEnabled}
+    GlassPopup {
+        motionEnabled:root.motionEnabled
         id:transfer; parent:root; anchors.centerIn:parent; width:root.width-20; height:root.height-30; modal:true; focus:true
         property bool importing:false
         property string title:""
