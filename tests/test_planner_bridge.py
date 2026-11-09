@@ -51,17 +51,30 @@ class TestBridge(unittest.TestCase):
   finally:bridge.reload_timer.stop();bridge.reminder_timer.stop()
  def test_notification_once(self):
   self.store.merge([event()],[])
-  with patch('app.dt.datetime',FakeNow),patch('app.subprocess.run',return_value=Mock(returncode=0)) as notify:
+  with patch('app.dt.datetime',FakeNow),patch.object(self.bridge._native_notifications,'notify') as notify:
    self.bridge.remind();self.bridge.remind();self.assertEqual(notify.call_count,1)
+   key=notify.call_args.args[0];self.assertFalse(self.store.notified(key))
+   self.bridge.notification_finished(key,True,'');self.assertTrue(self.store.notified(key))
+   self.bridge.remind();self.assertEqual(notify.call_count,1)
  def test_disabled_or_done_no_notification(self):
   self.store.merge([event(task=True,done=True)],[])
-  with patch('app.dt.datetime',FakeNow),patch('app.subprocess.run',return_value=Mock(returncode=0)) as notify:
+  with patch('app.dt.datetime',FakeNow),patch.object(self.bridge._native_notifications,'notify') as notify:
    self.bridge.remind();self.assertEqual(notify.call_count,0)
    self.bridge.setReminders(False);self.bridge.remind();self.assertEqual(notify.call_count,0)
  def test_failed_notification_retried(self):
   self.store.merge([event()],[])
-  with patch('app.dt.datetime',FakeNow),patch('app.subprocess.run',side_effect=[Mock(returncode=1),Mock(returncode=0)]) as notify:
-   self.bridge.remind();self.bridge.remind();self.assertEqual(notify.call_count,2)
+  with patch('app.dt.datetime',FakeNow),patch.object(self.bridge._native_notifications,'notify') as notify:
+   self.bridge.remind();key=notify.call_args.args[0]
+   self.bridge.notification_finished(key,False,'Synthetic failure');self.assertFalse(self.store.notified(key))
+   self.bridge.remind();self.assertEqual(notify.call_count,2)
+ def test_pause_cancels_pending_native_reminders_only_after_successful_setting_write(self):
+  self.bridge._pending_notifications.add('pending')
+  with patch.object(self.bridge._native_notifications,'cancel',return_value=['pending']) as cancel:
+   with patch.object(self.store,'set_settings',side_effect=OSError('synthetic failure')):
+    self.bridge.setReminders(False)
+   cancel.assert_not_called();self.assertTrue(self.bridge.remindersEnabled)
+   self.bridge.setReminders(False);cancel.assert_called_once()
+   self.assertNotIn('pending',self.bridge._pending_notifications);self.assertFalse(self.store.notified('pending'))
  def test_single_occurrence_delete_and_undo(self):
   source=event(repeat='weekly');self.store.merge([source],[]);self.bridge.reload()
   self.assertTrue(self.bridge.deleteOccurrence('a','2026-11-04',fingerprint(source)))

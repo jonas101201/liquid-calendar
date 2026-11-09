@@ -2,10 +2,10 @@
 
 ## Current public beta
 
-**Liquid Calendar 0.3.9.4** is the beta prerelease dated **2 November 2026**.
+**Liquid Calendar 0.3.9.5** is the beta prerelease dated **9 November 2026**.
 
-- [Release and downloads](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.3.9.4)
-- [Release record](docs/RELEASE_0.3.9.4.md) and [release notes](RELEASE_NOTES.md).
+- [Release and downloads](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.3.9.5)
+- [Release record](docs/RELEASE_0.3.9.5.md) and [release notes](RELEASE_NOTES.md).
 - Native source ZIP/TAR archives, a separate Flatpak bundle, its build receipt and SHA256SUMS are provided. Earlier tags/assets remain unchanged.
 
 The previous [0.3.9.2 Beta 2](docs/RELEASE_0.3.9.2_BETA_2.md) introduced the separate Flatpak package.
@@ -78,3 +78,9 @@ python3 scripts/build_release.py
 ```
 
 The resulting dist/SHA256SUMS applies to those newly built archives. Rebuilding modified main with an old VERSION does not reproduce the old published source snapshot; check out its release tag to reproduce that release.
+
+## CI publication after a tested release commit
+
+The `Publish tested beta` workflow listens only for a successful `Tests` push run on this repository's `main` branch whose commit message includes **`[release]`**. A normal merge without this marker does not publish. It checks out that exact tested commit, builds/smoke-tests a Flatpak from the official Flathub runtime and BaseApp, builds matching source archives and verifies checksums. A separate job with `contents: write` creates and uploads a new draft, then publishes it as a prerelease. Pull-request runs cannot trigger publication. Existing tags are rejected; published assets are never replaced.
+
+A failed package job publishes nothing. If publication fails after draft creation, inspect that draft and its assets before taking further action; reruns refuse the already-created tag rather than overwrite it.

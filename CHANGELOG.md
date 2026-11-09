@@ -2,6 +2,16 @@
 
 **0.3.6-beta.1** is the cumulative public release of the 0.3.x development work. Versions 0.3.0–0.3.5 below are unpublished historical snapshots. Patch numbers were assigned retrospectively on 28 October 2026, one per functional code patch after the initial 0.3.0 baseline. Source links identify the original implementation commits, which retain their original version strings. No commits or published tags were rewritten. Documentation-only commits are not numbered separately.
 
+## 0.3.9.5 — 2026-11-09
+
+Beta bug-fix prerelease.
+
+- Treat native reminder titles beginning with `-`, including `--help`, as literal notification text.
+- Replace blocking native notification delivery with a serialized asynchronous QProcess queue and an eight-second timeout per attempt. Slow delivery leaves the interface responsive.
+- Record delivery only after a successful exit. Report failures, missing executables and timeouts; release pending keys so later reminder ticks can retry without simultaneous duplicates.
+- Discard queued native notifications when reminders are paused and stop/reap child processes on exit.
+- Add real child-process and event-loop regressions plus dispatch/acknowledgement tests. Update Known Issues to mark the two previously confirmed native reminder bugs fixed.
+
 ## 0.3.9.4 — 2026-11-02
 
 Beta prerelease.

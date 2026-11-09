@@ -49,8 +49,8 @@ class Bugfixes(unittest.TestCase):
    @classmethod
    def now(cls,tz=None):return cls(2032,1,5,9,0,tzinfo=tz)
   self.put([event('tomorrow',date='2032-01-06',allDay=True,repeat='none',reminder=1440)])
-  with patch('app.dt.datetime',Now),patch('app.subprocess.run',return_value=Mock(returncode=0)) as notify:
-   self.bridge.remind();self.assertEqual(notify.call_args.args[0][-1],'All day tomorrow')
+  with patch('app.dt.datetime',Now),patch.object(self.bridge._native_notifications,'notify') as notify:
+   self.bridge.remind();self.assertEqual(notify.call_args.args[-1],'All day tomorrow')
  def test_connections_close_and_transactions_roll_back(self):
   with self.store.connect() as connection:connection.execute('CREATE TABLE rollback_probe (value TEXT)')
   with self.assertRaises(sqlite3.ProgrammingError):connection.execute('SELECT 1')

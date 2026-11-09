@@ -1,0 +1,109 @@
+name: Publish tested beta
+on:
+  workflow_run:
+    workflows: [Tests]
+    types: [completed]
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: publish-tested-beta
+  cancel-in-progress: false
+jobs:
+  package:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_repository.full_name == github.repository &&
+      contains(github.event.workflow_run.head_commit.message, '[release]')
+    runs-on: ubuntu-22.04
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    env:
+      SOURCE_SHA: ${{ github.event.workflow_run.head_sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate version and refuse existing tags
+        id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import os,re
+          from pathlib import Path
+          version=Path('VERSION').read_text().strip()
+          if not re.fullmatch(r'[0-9]+(?:\.[0-9]+){2,3}(?:-beta\.[0-9]+)?',version):
+              raise SystemExit('Invalid release version')
+          with open(os.environ['GITHUB_OUTPUT'],'a') as output:
+              output.write('version='+version+'\n')
+          PY
+          tag="v$(cat VERSION)"
+          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$tag" > /tmp/existing-tag.json 2>/tmp/tag-error; then
+            echo "Refusing to replace existing tag $tag" >&2
+            exit 1
+          fi
+          grep -q 'HTTP 404' /tmp/tag-error || { cat /tmp/tag-error >&2; exit 1; }
+      - name: Install official Flatpak runtime and BaseApp
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y flatpak dbus-x11 libegl1 libopengl0 libgl1 libxkbcommon0
+          flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+          flatpak install --user --noninteractive flathub org.kde.Platform//6.10 io.qt.PySide.BaseApp//6.10
+      - name: Build and smoke-test the Flatpak
+        run: dbus-run-session -- python3 flatpak/build.py
+      - name: Build matching source archives and checksums
+        run: python3 scripts/build_release.py
+      - name: Stage only release assets
+        run: |
+          python3 - <<'PY'
+          import json,shutil
+          from pathlib import Path
+          out=Path('release-assets');out.mkdir()
+          data=json.loads(Path('dist/release.json').read_text())
+          if len(data['assets'])!=5:raise SystemExit('Flatpak or source assets missing')
+          for name in data['assets']:
+              if Path(name).name!=name:raise SystemExit('Invalid asset name')
+              shutil.copy2(Path('dist')/name,out/name)
+          shutil.copy2('RELEASE_NOTES.md',out/'RELEASE_NOTES.md')
+          shutil.copy2('dist/release.json',out/'release.json')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tested-beta-assets
+          path: release-assets/
+          retention-days: 14
+  publish:
+    needs: package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SOURCE_SHA: ${{ github.event.workflow_run.head_sha }}
+      VERSION: ${{ needs.package.outputs.version }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: tested-beta-assets
+          path: release-assets
+      - name: Verify assets and publish a new beta
+        working-directory: release-assets
+        run: |
+          sha256sum --check SHA256SUMS
+          tag="v$VERSION"
+          # Create a private draft only after packaging; never replace an existing tag/release.
+          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$tag" > /tmp/existing-tag.json 2>/tmp/tag-error; then
+            echo "Refusing to replace existing tag $tag" >&2
+            exit 1
+          fi
+          grep -q 'HTTP 404' /tmp/tag-error || { cat /tmp/tag-error >&2; exit 1; }
+          mapfile -t assets < <(python3 -c 'import json; print("\n".join(json.load(open("release.json"))["assets"]))')
+          gh release create "$tag" --repo "$GITHUB_REPOSITORY" --target "$SOURCE_SHA" --title "Liquid Calendar $VERSION" --notes-file RELEASE_NOTES.md --prerelease --draft "${assets[@]}"
+          gh release edit "$tag" --repo "$GITHUB_REPOSITORY" --draft=false --prerelease
+          gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json url,assets
