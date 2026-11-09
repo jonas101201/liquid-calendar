@@ -1,6 +1,6 @@
 # Known issues and beta limitations
 
-Applies to **Liquid Calendar 0.3.9.4** (beta prerelease). Last updated: **2026-11-02**.
+Applies to **Liquid Calendar 0.3.9.5** (beta prerelease). Last updated: **2026-11-09**.
 
 This page distinguishes current limitations from issues fixed in earlier beta versions. It is not a guarantee that the beta is free of bugs.
 
@@ -27,27 +27,16 @@ The three failures reproduced against 0.3.9.2 Beta 2 are corrected:
 
 See the [audit and resolution record](docs/BUG_AUDIT_0.3.9.2_BETA_2_FOLLOWUP.md). Existing damaged snapshots cannot be reconstructed retroactively; recovery creates a valid snapshot of the current live data.
 
-## Confirmed open bugs
+## Fixed in 0.3.9.5: native reminders
 
-The Flatpak beta uses asynchronous Notification portal calls and is not affected by the two native `notify-send` issues below. Its interactive file-picker and login/autostart acceptance checks remain separate from the isolated tests; see [Flatpak limitations](flatpak/README.md).
+Both previously confirmed native reminder defects were reproduced against 0.3.9.4 and corrected:
 
-These native notification issues remain present in 0.3.9.4; the Flatpak uses a different portal backend. Confirmed with isolated synthetic records on **2026-10-30**; an independent review reproduced both.
+- **Option-like titles:** `--help` and other titles beginning with a hyphen are passed after an explicit end-of-options separator and treated as text. Earlier releases could silently suppress these reminders.
+- **UI blocking:** native `notify-send` calls now run asynchronously in a serialized QProcess queue with an eight-second timeout. A synthetic 350 ms child no longer blocks the Qt event loop. Earlier releases ran the blocking subprocess on the GUI thread.
 
-### Native reminder titles beginning with a hyphen can suppress delivery
+Only successful process exits mark delivery. Failed starts, nonzero exits and timeouts report an error and release the pending key for retry on later reminder ticks; duplicate pending attempts are suppressed. Pausing reminders discards the native queue; quitting stops child processes. Flatpak continues to use asynchronous desktop portals.
 
-- **Reproduce:** create an event titled `--help` with an enabled reminder and keep the app running until it is due.
-- **Actual behavior:** the title is passed to `notify-send` without an end-of-options separator. `notify-send` interprets `--help` as an option, exits successfully without displaying the reminder, and the app records it as delivered. Other option-like titles can also be misinterpreted.
-- **Expected:** every event title is treated as notification text.
-- **Workaround:** start reminder titles with a letter or number rather than `-`.
-- **Status:** open; notification argument handling needs correction and a regression test.
-
-### Native slow notification delivery blocks the interface
-
-- **Reproduce:** a due reminder runs while `notify-send` or its notification service responds slowly. An isolated event-loop check with a simulated 350 ms notification call delayed a 20 ms Qt timer until approximately 352 ms.
-- **Actual behavior:** reminder delivery uses a blocking subprocess on the GUI thread. The interface cannot process input during that call. The timeout is up to eight seconds per due reminder; several due reminders can accumulate delays.
-- **Expected:** notification delivery does not block interaction with the calendar.
-- **Workaround:** pause reminders if notification delivery repeatedly stalls. This disables notifications until reminders are enabled again.
-- **Status:** open; delivery needs asynchronous processing with correct success/failure tracking.
+No additional confirmed open bug was established in this focused scan of reminder delivery and the existing import/attachment/refresh regressions. This is not a guarantee that all bugs have been found. See the current limitations below and [the audit record](docs/BUG_AUDIT_0.3.9.5.md).
 
 ## Fixed in 0.3.9.2 Beta 2; still present in 0.3.9.1
 
@@ -82,7 +71,7 @@ The public 0.3.6 beta can return an unrelated date for an exact search matching 
 - **Native installation:** Python 3.10–3.14, venv/pip support and network access to PyPI are required. The installer is not an offline installer; Qt platform libraries must be supplied by the operating system.
 - **Language:** the interface is English only. There is no language selector or complete localization framework yet. German date-query aliases remain available as input compatibility.
 - **Synchronization:** data is stored locally. Account sync, mobile apps and collaborative calendars are not implemented.
-- **Reminders:** the app must remain open or run in the system tray. Notifications use `notify-send`. Closing the window may keep reminders running; **Ctrl+Q** fully quits.
+- **Reminders:** the app must remain open or run in the system tray. Native notifications use asynchronous `notify-send`; Flatpak uses desktop portals. Closing the window may keep reminders running; **Ctrl+Q** fully quits.
 - **Planning:** time suggestions cover 09:00–18:00. Times are local floating times; timezone-aware invitations and travel-time planning are not supported.
 - **Import and export:** JSON import adds new IDs and preserves existing IDs. ICS export includes events, not tasks. ICS import is not implemented.
 - **Shared storage:** the native app and widget use the same local Plasma database. Flatpak uses isolated data by default and requires explicit permissions for optional shared-widget mode. If an incompatible active widget is detected, editing is blocked until **Connect** reloads it. This briefly refreshes the desktop and panels.

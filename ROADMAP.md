@@ -23,7 +23,7 @@ English remains the primary interface language. The language milestone introduce
 
 ## Bug-fix releases and version naming
 
-The current public release is **0.3.9.4** (beta prerelease), including corrected event merging, nested-card presentation and separate Flatpak packaging after the third feature milestone. The next milestone is **0.4.0**, with configurable planning hours, breaks and task splitting. See the [release record](docs/RELEASE_0.3.6.md).
+The current public release is **0.3.9.5** (beta prerelease), including corrected event merging, nested-card presentation and separate Flatpak packaging after the third feature milestone. The next milestone is **0.4.0**, with configurable planning hours, breaks and task splitting. See the [release record](docs/RELEASE_0.3.6.md).
 
 Each beta milestone can receive bug-fix releases as needed. These do not count as additional milestones in the ten-beta roadmap.
 
@@ -75,3 +75,7 @@ Released on **31 October 2026** as [0.3.9.3](https://github.com/jonas101201/liqu
 ## 0.3.9.4 task files and calendar polish
 
 Released on **2 November 2026** as [0.3.9.4](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.3.9.4). Adds local task attachments with portable JSON backups, command search, shortcut help, Undo feedback, balanced titles, continuous contours, stable refresh positions, cancellable background JSON imports and retargetable dialog motion. It does not complete the configurable-planning features scheduled for 0.4.0. See [the release record](docs/RELEASE_0.3.9.4.md).
+
+## 0.3.9.5 reminder maintenance
+
+Released on **9 November 2026** as [0.3.9.5](https://github.com/jonas101201/liquid-calendar/releases/tag/v0.3.9.5). Fixes literal title handling and UI blocking during native reminder delivery, with asynchronous completion, timeout/retry tracking and real-process regressions. The next feature milestone remains 0.4.0. See [the audit](docs/BUG_AUDIT_0.3.9.5.md).

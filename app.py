@@ -2,6 +2,7 @@
 """Liquid Calendar: a local desktop planner for the existing Plasma calendar."""
 from __future__ import annotations
 import argparse
+from collections import deque
 import base64
 import copy
 import datetime as dt
@@ -14,7 +15,7 @@ import hashlib
 import stat
 import tempfile
 
-from PySide6.QtCore import QObject,Signal,Slot,Property,QTimer,QUrl,QLocale,QSaveFile,QIODevice,QCoreApplication,QEvent,QStandardPaths
+from PySide6.QtCore import QObject,Signal,Slot,Property,QTimer,QUrl,QLocale,QSaveFile,QIODevice,QCoreApplication,QEvent,QStandardPaths,QProcess
 from import_job import ImportJob
 from PySide6.QtGui import QIcon,QDesktopServices
 from PySide6.QtWidgets import QApplication,QSystemTrayIcon,QMenu,QMessageBox
@@ -54,6 +55,52 @@ FLATPAK=bool(os.environ.get('FLATPAK_ID'))
 LEGACY_DB=Path.home()/'.local/share/plasmashell/QML/OfflineStorage/Databases/dd9450f249be1bf7e7f3854d39b8b74b.sqlite'
 DEFAULT_DB=DATA/'calendar.sqlite' if FLATPAK else LEGACY_DB
 
+
+class NativeNotifications(QObject):
+    """Serialize notify-send without blocking the Qt event loop."""
+    finished=Signal(str,bool,str)
+    def __init__(self,parent=None,timeout_ms=8000):
+        super().__init__(parent)
+        self.queue=deque();self.active=None;self.stopped=False;self.timeout_ms=timeout_ms
+    def notify(self,key,title,body):
+        if self.stopped:return
+        self.queue.append((key,title,body));self._start_next()
+    def _start_next(self):
+        if self.stopped or self.active is not None or not self.queue:return
+        key,title,body=self.queue.popleft()
+        process=QProcess(self);timer=QTimer(process);timer.setSingleShot(True)
+        self.active=(key,process,timer)
+        process.setStandardOutputFile(QProcess.nullDevice())
+        process.finished.connect(lambda code,status:self._complete(process,code==0 and status==QProcess.NormalExit,
+            '' if code==0 and status==QProcess.NormalExit else 'notify-send failed (exit '+str(code)+').'))
+        process.errorOccurred.connect(lambda error:self._complete(process,False,process.errorString()) if error==QProcess.FailedToStart else None)
+        timer.timeout.connect(lambda:self._timeout(process))
+        timer.start(self.timeout_ms)
+        process.start('notify-send',['--app-name=Liquid Calendar','--icon='+str(BASE/'icons/calendar.svg'),'--',title,body])
+    def _timeout(self,process):
+        if self.active is None or self.active[1] is not process:return
+        process.kill();self._complete(process,False,'Notification delivery timed out.')
+    def _complete(self,process,ok,error):
+        if self.active is None or self.active[1] is not process:return
+        key,_,timer=self.active;timer.stop();self.active=None
+        # Wait for a killed child to exit before deleting its QProcess wrapper.
+        if process.state()==QProcess.NotRunning:process.deleteLater()
+        else:process.finished.connect(process.deleteLater)
+        self.finished.emit(key,ok,error)
+        QTimer.singleShot(0,self._start_next)
+    def cancel(self):
+        keys=[entry[0] for entry in self.queue];self.queue.clear()
+        if self.active is not None:
+            key,process,timer=self.active;keys.append(key);self.active=None;timer.stop()
+            process.kill()
+            if process.state()==QProcess.NotRunning:process.deleteLater()
+            else:process.finished.connect(process.deleteLater)
+        return keys
+    def shutdown(self):
+        self.stopped=True;self.cancel()
+        for process in self.findChildren(QProcess):
+            if process.state()!=QProcess.NotRunning:process.kill();process.waitForFinished(1000)
+
 class Bridge(QObject):
     changed=Signal(); errorChanged=Signal(); editRequested=Signal('QVariantMap'); noticeChanged=Signal()
     createRequested=Signal('QVariantMap')
@@ -83,6 +130,8 @@ class Bridge(QObject):
         self.smoke=smoke
         self._need_widget=FLATPAK and store.path==LEGACY_DB
         self._pending_notifications=set()
+        self._native_notifications=NativeNotifications(self)
+        self._native_notifications.finished.connect(self.notification_finished)
         self._portals=DesktopPortals(self) if FLATPAK and not smoke else None
         if self._portals:
             self._portals.notificationFinished.connect(self.notification_finished)
@@ -599,6 +648,8 @@ class Bridge(QObject):
             settings=dict(self._settings,reminders=value)
             self.store.set_settings(settings)
             self._settings=settings
+            if not value:
+                for key in self._native_notifications.cancel():self._pending_notifications.discard(key)
             self.refresh()
         except Exception as e:self.fail(e)
     @Slot()
@@ -800,11 +851,10 @@ class Bridge(QObject):
                     key=f'{v["id"]}|{v["date"]}|{v["time"]}|{lead}'
                     if key in self._pending_notifications:continue
                     if not self.store.notified(key):
-                        if self._portals:
-                            body=(("All day today" if start.date()==now.date() else "All day tomorrow") if v['allDay'] else v['time'])+(' · '+v['location'] if v['location'] else '')
-                            self._pending_notifications.add(key);self._portals.notify(key,v['title'],body);continue
-                        result=subprocess.run(['notify-send','--app-name=Liquid Calendar','--icon='+str(BASE/'icons/calendar.svg'),v['title'],(("All day today" if start.date()==now.date() else "All day tomorrow" if start.date()==now.date()+dt.timedelta(days=1) else "All day on "+v["date"]) if v["allDay"] else v["time"])+(' · '+v['location'] if v['location'] else '')],capture_output=True,timeout=8)
-                        if result.returncode==0:self.store.mark_notified(key)
+                        body=(("All day today" if start.date()==now.date() else "All day tomorrow" if start.date()==now.date()+dt.timedelta(days=1) else "All day on "+v["date"]) if v['allDay'] else v['time'])+(' · '+v['location'] if v['location'] else '')
+                        self._pending_notifications.add(key)
+                        backend=self._portals or self._native_notifications
+                        backend.notify(key,v['title'],body)
         except Exception as e:self.fail("Could not deliver reminder: "+str(e))
 
 def main():
@@ -848,6 +898,7 @@ def main():
         QTimer.singleShot(700,finish)
     exit_code=app.exec()
     bridge.shutdown_imports()
+    bridge._native_notifications.shutdown()
     bridge.reload_timer.stop();bridge.reminder_timer.stop()
     engine.deleteLater();QCoreApplication.sendPostedEvents(None,QEvent.DeferredDelete)
     return exit_code

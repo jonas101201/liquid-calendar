@@ -1,5 +1,9 @@
 # Testing
 
+## 0.3.9.5 reminder regressions
+
+`tests/test_native_notifications.py` uses temporary synthetic `notify-send` executables and the real Qt event loop. It checks literal `--help`/Unicode arguments, a responsive 20 ms timer during a 350 ms child, queue ordering, nonzero exit, missing executable, timeout without duplicate completion, cancellation/reuse and shutdown. Bridge tests verify acknowledgement-only delivery records, suppression of pending duplicates, failed-attempt retry and successful-setting-write-only pause cancellation. The full suite contains **218 Python tests**. Existing import, attachments, refresh, linked events and real QML interactions remain required. No desktop notifications or personal database are used by these tests.
+
 ## 0.3.9.3 regression checks
 
 182 Python tests include genuine interrupted SQLite copies, repair of empty/corrupt daily snapshots, rename failure/retry, preservation of an existing valid snapshot and concurrent creators. The actual nested-card Qt check covers horizontal, vertical and combined drags, including a 09:37 start. The private D-Bus service records remote Close calls, suppresses late permission grants after cancellation and verifies a successful retry with an alternative handle. All records and services are synthetic.

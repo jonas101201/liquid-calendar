@@ -67,5 +67,5 @@ class WeeklyDays(unittest.TestCase):
    day=28
    @classmethod
    def now(cls,tz=None):return cls(2026,10,cls.day,8,50,tzinfo=tz)
-  with patch('app.dt.datetime',Clock),patch('app.subprocess.run',return_value=Mock(returncode=0)) as notify:
+  with patch('app.dt.datetime',Clock),patch.object(self.b._native_notifications,'notify') as notify:
    self.b.remind();self.assertEqual(notify.call_count,1);Clock.day=29;self.b.remind();self.assertEqual(notify.call_count,1)
