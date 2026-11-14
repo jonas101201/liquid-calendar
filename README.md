@@ -95,6 +95,10 @@ Reminders require the app to be open or running in the tray. Closing the window 
 - **Ctrl+Z:** undo last change
 - **Ctrl+Q:** quit app and reminders
 
+## Local-first security direction
+
+Local-first design and user data ownership are core goals. The current beta uses **plaintext SQLite**, and its local backup/export files are **not database-encrypted**. Encryption should not be assumed. A future design aims for **encrypted storage and backups with convenient OS-backed unlocking**, plus an optional additional app lock. Implementation requires testing key recovery, safe migration and Plasma widget/reminder access. See the [security roadmap](docs/SECURITY_ROADMAP.md) and the [Calendar milestones](ROADMAP.md). These are **plans, not current security features**.
+
 ## Data and privacy
 
 No cloud synchronization, account sign-in or analytics are implemented. Data stays local. The app shares the companion widget's SQLite database at:

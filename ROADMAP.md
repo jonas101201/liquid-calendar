@@ -36,6 +36,12 @@ Each beta milestone can receive bug-fix releases as needed. These do not count a
 
 For example, **0.3.1** is a bug-fix release for the third milestone. The **Beta** label remains visible until the stable release. The numeric milestone after **0.9.0** is **0.10.0**.
 
+## Local-first security and encryption workstream (proposed)
+
+The project prioritizes **local-first operation, privacy by default, and secure-by-design storage**. In the current beta, SQLite databases and local backup/export files are **not encrypted at rest**. A planned workstream will assess SQLCipher-backed data encryption, secure key storage with a convenient KDE Wallet / Secret Service unlock, optional additional app lock, encryption of sensitive attachments and backups, and safe migration for existing users. The optional Plasma widget and background reminders must keep functioning without embedding keys in QML.
+
+Begin threat modeling, dependency validation, data-path audits and migration prototyping during the remaining beta releases. Resolve the feasible encryption and recovery scope as part of **0.10.0 / 1.0.0 readiness**; add a specific release milestone only after implementation and testing justify it. Do **not** claim encryption is shipped or commit to mandatory password prompts. See [Security Roadmap](docs/SECURITY_ROADMAP.md).
+
 ## After the beta milestones
 
 After **0.10.0 Beta**, release candidates can be published as `1.0.0-rc.1`, `1.0.0-rc.2`, and so on, followed by **1.0.0** when the release is ready.
